@@ -858,10 +858,11 @@ components:
         | 401 | `auth.unauthenticated`, `auth.invalid_credentials` |
         | 403 | `auth.csrf`, `pact.not_backer`, `checkin.not_allowed` |
         | 404 | `not_found` (also for non-members) |
+        | 405 | `method_not_allowed` |
         | 409 | `auth.email_taken`, `pact.invalid_state`, `pact.terms_mismatch`, `pact.member_missing`, `pact.limit_reached`, `checkin.invalid_transition`, `checkin.conflict`, `checkin.override_limit`, `checkin.rest_limit`, `upload.quota_exceeded`, `idempotency.in_progress` |
         | 410 | `pact.invite_invalid` |
-        | 413 | `upload.too_large` |
-        | 415 | `upload.unsupported_type` |
+        | 413 | `upload.too_large`, `request.too_large` |
+        | 415 | `upload.unsupported_type`, `request.unsupported_media_type` |
         | 422 | `pact.signature_mismatch`, `checkin.deadline_passed`, `checkin.evidence_insufficient`, `idempotency.key_reused` |
         | 429 | `rate_limited`, `auth.rate_limited` |
         | 500 | `server.internal` |
@@ -869,6 +870,9 @@ components:
       enum:
         - validation.failed
         - not_found
+        - method_not_allowed
+        - request.too_large
+        - request.unsupported_media_type
         - rate_limited
         - server.internal
         - server.unavailable

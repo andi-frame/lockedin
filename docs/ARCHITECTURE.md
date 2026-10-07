@@ -118,7 +118,9 @@ cmd/tepatictl                       ─┘                 │
 
 ### Middleware stack (Fiber v3, in order)
 
-`requestid` → `recover` → structured access log (slog JSON) → `cors` (dev only; prod is same-origin) → **rate limiter** (Redis storage; 300 req/min/IP global, stricter per route: auth 10/min, upload-intent 30/min) → session auth → CSRF (double-submit token header for unsafe methods) → **idempotency** (`Idempotency-Key` header on POSTs that create or transition; the response is cached in Redis for 24 h) → body limit (1 MB JSON; uploads never pass through the API) → handler.
+`requestid` → structured access log and metrics → `recover` → `cors` (dev only; prod is same-origin) → **rate limiter** (Redis storage; 300 req/min/IP global, stricter per route: auth 10/min, upload-intent 30/min) → session auth + CSRF (double-submit token header for unsafe methods; only register, login and the invite preview are public) → **idempotency** (`Idempotency-Key` header on mutating requests; the 2xx response is cached in Redis for 24 h, scoped by user, method and path; failures release the key) → body limit (1 MB JSON, enforced by Fiber while it reads the request; uploads never pass through the API) → handler.
+
+The access log sits outside `recover` on purpose, so a panic is logged as the 500 it became. Logs carry the route pattern, never the raw path (invite tokens live in paths), and never bodies or tokens. `/healthz`, `/readyz` and `/metrics` are mounted at the origin root, are exempt from rate limits, and `/metrics` must not be proxied to the internet (Caddy, PLAN 7.2). Request IDs come from `X-Request-Id` and are echoed in every problem body.
 
 ### Load and burst handling
 

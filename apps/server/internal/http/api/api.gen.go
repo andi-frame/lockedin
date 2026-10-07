@@ -197,6 +197,7 @@ const (
 	CheckinRestLimit            ErrorCode = "checkin.rest_limit"
 	IdempotencyInProgress       ErrorCode = "idempotency.in_progress"
 	IdempotencyKeyReused        ErrorCode = "idempotency.key_reused"
+	MethodNotAllowed            ErrorCode = "method_not_allowed"
 	NotFound                    ErrorCode = "not_found"
 	PactInvalidState            ErrorCode = "pact.invalid_state"
 	PactInvalidTerms            ErrorCode = "pact.invalid_terms"
@@ -209,6 +210,8 @@ const (
 	PactTermsMismatch           ErrorCode = "pact.terms_mismatch"
 	ProofInvalidDoc             ErrorCode = "proof.invalid_doc"
 	RateLimited                 ErrorCode = "rate_limited"
+	RequestTooLarge             ErrorCode = "request.too_large"
+	RequestUnsupportedMediaType ErrorCode = "request.unsupported_media_type"
 	ServerInternal              ErrorCode = "server.internal"
 	ServerUnavailable           ErrorCode = "server.unavailable"
 	UploadQueueBusy             ErrorCode = "upload.queue_busy"
@@ -258,6 +261,8 @@ func (e ErrorCode) Valid() bool {
 		return true
 	case IdempotencyKeyReused:
 		return true
+	case MethodNotAllowed:
+		return true
 	case NotFound:
 		return true
 	case PactInvalidState:
@@ -281,6 +286,10 @@ func (e ErrorCode) Valid() bool {
 	case ProofInvalidDoc:
 		return true
 	case RateLimited:
+		return true
+	case RequestTooLarge:
+		return true
+	case RequestUnsupportedMediaType:
 		return true
 	case ServerInternal:
 		return true
@@ -675,10 +684,11 @@ type DecisionAction string
 // | 401 | `auth.unauthenticated`, `auth.invalid_credentials` |
 // | 403 | `auth.csrf`, `pact.not_backer`, `checkin.not_allowed` |
 // | 404 | `not_found` (also for non-members) |
+// | 405 | `method_not_allowed` |
 // | 409 | `auth.email_taken`, `pact.invalid_state`, `pact.terms_mismatch`, `pact.member_missing`, `pact.limit_reached`, `checkin.invalid_transition`, `checkin.conflict`, `checkin.override_limit`, `checkin.rest_limit`, `upload.quota_exceeded`, `idempotency.in_progress` |
 // | 410 | `pact.invite_invalid` |
-// | 413 | `upload.too_large` |
-// | 415 | `upload.unsupported_type` |
+// | 413 | `upload.too_large`, `request.too_large` |
+// | 415 | `upload.unsupported_type`, `request.unsupported_media_type` |
 // | 422 | `pact.signature_mismatch`, `checkin.deadline_passed`, `checkin.evidence_insufficient`, `idempotency.key_reused` |
 // | 429 | `rate_limited`, `auth.rate_limited` |
 // | 500 | `server.internal` |
@@ -902,10 +912,11 @@ type Problem struct {
 	// | 401 | `auth.unauthenticated`, `auth.invalid_credentials` |
 	// | 403 | `auth.csrf`, `pact.not_backer`, `checkin.not_allowed` |
 	// | 404 | `not_found` (also for non-members) |
+	// | 405 | `method_not_allowed` |
 	// | 409 | `auth.email_taken`, `pact.invalid_state`, `pact.terms_mismatch`, `pact.member_missing`, `pact.limit_reached`, `checkin.invalid_transition`, `checkin.conflict`, `checkin.override_limit`, `checkin.rest_limit`, `upload.quota_exceeded`, `idempotency.in_progress` |
 	// | 410 | `pact.invite_invalid` |
-	// | 413 | `upload.too_large` |
-	// | 415 | `upload.unsupported_type` |
+	// | 413 | `upload.too_large`, `request.too_large` |
+	// | 415 | `upload.unsupported_type`, `request.unsupported_media_type` |
 	// | 422 | `pact.signature_mismatch`, `checkin.deadline_passed`, `checkin.evidence_insufficient`, `idempotency.key_reused` |
 	// | 429 | `rate_limited`, `auth.rate_limited` |
 	// | 500 | `server.internal` |

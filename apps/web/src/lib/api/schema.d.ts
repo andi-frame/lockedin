@@ -707,17 +707,18 @@ export interface components {
          *     | 401 | `auth.unauthenticated`, `auth.invalid_credentials` |
          *     | 403 | `auth.csrf`, `pact.not_backer`, `checkin.not_allowed` |
          *     | 404 | `not_found` (also for non-members) |
+         *     | 405 | `method_not_allowed` |
          *     | 409 | `auth.email_taken`, `pact.invalid_state`, `pact.terms_mismatch`, `pact.member_missing`, `pact.limit_reached`, `checkin.invalid_transition`, `checkin.conflict`, `checkin.override_limit`, `checkin.rest_limit`, `upload.quota_exceeded`, `idempotency.in_progress` |
          *     | 410 | `pact.invite_invalid` |
-         *     | 413 | `upload.too_large` |
-         *     | 415 | `upload.unsupported_type` |
+         *     | 413 | `upload.too_large`, `request.too_large` |
+         *     | 415 | `upload.unsupported_type`, `request.unsupported_media_type` |
          *     | 422 | `pact.signature_mismatch`, `checkin.deadline_passed`, `checkin.evidence_insufficient`, `idempotency.key_reused` |
          *     | 429 | `rate_limited`, `auth.rate_limited` |
          *     | 500 | `server.internal` |
          *     | 503 | `upload.queue_busy`, `server.unavailable` |
          * @enum {string}
          */
-        ErrorCode: "validation.failed" | "not_found" | "rate_limited" | "server.internal" | "server.unavailable" | "idempotency.in_progress" | "idempotency.key_reused" | "auth.unauthenticated" | "auth.csrf" | "auth.invalid_credentials" | "auth.email_taken" | "auth.invalid_email" | "auth.invalid_name" | "auth.weak_password" | "auth.rate_limited" | "pact.invalid_state" | "pact.invalid_terms" | "pact.terms_members" | "pact.terms_mismatch" | "pact.not_backer" | "pact.invite_invalid" | "pact.limit_reached" | "pact.signature_mismatch" | "pact.member_missing" | "proof.invalid_doc" | "checkin.invalid_transition" | "checkin.not_allowed" | "checkin.deadline_passed" | "checkin.reason_required" | "checkin.evidence_insufficient" | "checkin.override_limit" | "checkin.rest_limit" | "checkin.conflict" | "upload.too_large" | "upload.unsupported_type" | "upload.size_mismatch" | "upload.quota_exceeded" | "upload.queue_busy";
+        ErrorCode: "validation.failed" | "not_found" | "method_not_allowed" | "request.too_large" | "request.unsupported_media_type" | "rate_limited" | "server.internal" | "server.unavailable" | "idempotency.in_progress" | "idempotency.key_reused" | "auth.unauthenticated" | "auth.csrf" | "auth.invalid_credentials" | "auth.email_taken" | "auth.invalid_email" | "auth.invalid_name" | "auth.weak_password" | "auth.rate_limited" | "pact.invalid_state" | "pact.invalid_terms" | "pact.terms_members" | "pact.terms_mismatch" | "pact.not_backer" | "pact.invite_invalid" | "pact.limit_reached" | "pact.signature_mismatch" | "pact.member_missing" | "proof.invalid_doc" | "checkin.invalid_transition" | "checkin.not_allowed" | "checkin.deadline_passed" | "checkin.reason_required" | "checkin.evidence_insufficient" | "checkin.override_limit" | "checkin.rest_limit" | "checkin.conflict" | "upload.too_large" | "upload.unsupported_type" | "upload.size_mismatch" | "upload.quota_exceeded" | "upload.queue_busy";
         FieldError: {
             /** @description JSON path of the offending field, for example `terms.members.<id>.penalty_per_miss`. */
             field: string;
