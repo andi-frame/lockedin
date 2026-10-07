@@ -17,6 +17,7 @@ type Metrics struct {
 	relayed     prometheus.Counter
 	skipped     prometheus.Counter
 	reminders   prometheus.Counter
+	emails      *prometheus.CounterVec
 	runs        *prometheus.CounterVec
 	duration    *prometheus.HistogramVec
 }
@@ -31,6 +32,10 @@ func NewMetrics() *Metrics {
 		relayed:   prometheus.NewCounter(prometheus.CounterOpts{Name: "tepati_outbox_relayed_total", Help: "Outbox rows turned into notifications."}),
 		skipped:   prometheus.NewCounter(prometheus.CounterOpts{Name: "tepati_outbox_skipped_total", Help: "Outbox rows dropped because they were unreadable."}),
 		reminders: prometheus.NewCounter(prometheus.CounterOpts{Name: "tepati_reminders_queued_total", Help: "Cutoff and review reminders written to the outbox."}),
+		emails: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tepati_emails_total",
+			Help: "Email outcomes: sent, skipped (already sent or nothing to send), failed, enqueue_failed.",
+		}, []string{"result"}),
 		runs: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "tepati_job_runs_total", Help: "Job runs by task type and result.",
 		}, []string{"task", "result"}),
@@ -39,10 +44,13 @@ func NewMetrics() *Metrics {
 			Buckets: []float64{.01, .05, .1, .5, 1, 5, 15, 60},
 		}, []string{"task"}),
 	}
-	m.reg.MustRegister(m.transitions, m.relayed, m.skipped, m.reminders, m.runs, m.duration)
+	m.reg.MustRegister(m.transitions, m.relayed, m.skipped, m.reminders, m.emails, m.runs, m.duration)
 	// Series exist from the start, so a rate() over a quiet hour is 0 rather than absent.
 	for _, t := range []string{"deadline", "activated", "closed"} {
 		m.transitions.WithLabelValues(t)
+	}
+	for _, r := range []string{"sent", "skipped", "failed", "enqueue_failed"} {
+		m.emails.WithLabelValues(r)
 	}
 	return m
 }

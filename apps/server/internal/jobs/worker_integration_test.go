@@ -36,6 +36,23 @@ func redisOpt(rdb *redis.Client) asynq.RedisClientOpt {
 
 func quietLog() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
 
+// workedTerms is the PLAN worked example; the doer slot is uuid.Nil until they join.
+func workedTerms(backer uuid.UUID) domain.Terms {
+	cap1500 := int64(1500)
+	return domain.Terms{
+		Version: 1, Timezone: "Asia/Jakarta",
+		StartsOn: domain.MustDate("2026-11-02"), EndsOn: domain.MustDate("2026-11-29"),
+		CutoffLocalTime: "23:59", GraceMinutes: 30, CoinRateIDR: 1000,
+		InitialPot: 1000, PotFloor: 0, PotCap: &cap1500,
+		ReviewWindowHours: 24, DisputeWindowHours: 24, DisputeResolutionHours: 48, OverrideWindowHours: 48,
+		MaxOverrides: 3, BackerCommits: true,
+		Members: map[uuid.UUID]domain.MemberTerms{
+			backer:   {Role: domain.RoleBacker, Commitment: "Belajar Kalkulus 2 jam", Schedule: []int{1, 2, 3, 4, 5}, PenaltyPerMiss: 50, RestDays: 2},
+			uuid.Nil: {Role: domain.RoleDoer, Commitment: "Latihan soal UTBK 50 soal", Schedule: []int{1, 2, 3, 4, 5, 6}, PenaltyPerMiss: 50, RestDays: 2},
+		},
+	}
+}
+
 // activePact builds the PLAN worked example through the normal service flow and activates it.
 func activePact(t *testing.T, st *store.Store, clock *domain.FakeClock, svc *service.Service) (store.Pact, store.User, store.User) {
 	t.Helper()
@@ -48,19 +65,7 @@ func activePact(t *testing.T, st *store.Store, clock *domain.FakeClock, svc *ser
 		return u
 	}
 	backer, doer := mk("andi@tepati.test", "Andi"), mk("bima@tepati.test", "Bima")
-	cap1500 := int64(1500)
-	terms := domain.Terms{
-		Version: 1, Timezone: "Asia/Jakarta",
-		StartsOn: domain.MustDate("2026-11-02"), EndsOn: domain.MustDate("2026-11-29"),
-		CutoffLocalTime: "23:59", GraceMinutes: 30, CoinRateIDR: 1000,
-		InitialPot: 1000, PotFloor: 0, PotCap: &cap1500,
-		ReviewWindowHours: 24, DisputeWindowHours: 24, DisputeResolutionHours: 48, OverrideWindowHours: 48,
-		MaxOverrides: 3, BackerCommits: true,
-		Members: map[uuid.UUID]domain.MemberTerms{
-			backer.ID: {Role: domain.RoleBacker, Commitment: "Belajar Kalkulus 2 jam", Schedule: []int{1, 2, 3, 4, 5}, PenaltyPerMiss: 50, RestDays: 2},
-			uuid.Nil:  {Role: domain.RoleDoer, Commitment: "Latihan soal UTBK 50 soal", Schedule: []int{1, 2, 3, 4, 5, 6}, PenaltyPerMiss: 50, RestDays: 2},
-		},
-	}
+	terms := workedTerms(backer.ID)
 	must := func(err error) {
 		t.Helper()
 		if err != nil {

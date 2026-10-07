@@ -16,6 +16,7 @@ import (
 type Options struct {
 	Redis           asynq.RedisConnOpt
 	Svc             Settlement
+	Mail            *Mail // nil runs without email; a nil Mail.Queue gets a client on Redis
 	Log             *slog.Logger
 	Metrics         *Metrics      // default: a fresh set
 	Concurrency     int           // default 10
@@ -44,6 +45,17 @@ func Run(ctx context.Context, o Options) error {
 		o.ShutdownTimeout = 25 * time.Second
 	}
 	log := asynqLogger{o.Log}
+
+	handlers := NewHandlers(o.Svc, o.Log, o.Metrics)
+	if o.Mail != nil {
+		mail := *o.Mail
+		if mail.Queue == nil {
+			client := asynq.NewClient(o.Redis)
+			defer client.Close()
+			mail.Queue = client
+		}
+		handlers.WithMail(&mail)
+	}
 
 	srv := asynq.NewServer(o.Redis, asynq.Config{
 		Concurrency:     o.Concurrency,
@@ -75,7 +87,7 @@ func Run(ctx context.Context, o Options) error {
 	defer insp.Close()
 	o.Metrics.WatchQueues(insp)
 
-	if err := srv.Start(NewHandlers(o.Svc, o.Log, o.Metrics).Mux()); err != nil {
+	if err := srv.Start(handlers.Mux()); err != nil {
 		return fmt.Errorf("start asynq server: %w", err)
 	}
 	if err := sched.Start(); err != nil {

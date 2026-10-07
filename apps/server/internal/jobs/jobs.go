@@ -74,35 +74,51 @@ const (
 
 // Handlers binds the task types to the service.
 type Handlers struct {
-	svc Settlement
-	log *slog.Logger
-	m   *Metrics
+	svc  Settlement
+	log  *slog.Logger
+	m    *Metrics
+	mail *Mail // nil: no email, the relay only writes in-app notifications
 }
 
 func NewHandlers(svc Settlement, log *slog.Logger, m *Metrics) *Handlers {
 	return &Handlers{svc: svc, log: log, m: m}
 }
 
+// WithMail turns on email: the relay then queues email tasks and the email handlers are served.
+func (h *Handlers) WithMail(m *Mail) *Handlers {
+	h.mail = m
+	return h
+}
+
 // Mux registers every task type, each wrapped to record its duration and outcome.
 func (h *Handlers) Mux() *asynq.ServeMux {
 	mux := asynq.NewServeMux()
-	for typ, fn := range map[string]func(context.Context) error{
-		TypeSettlementSweep: h.sweep,
-		TypePactsActivate:   h.activate,
-		TypePactsClose:      h.closePacts,
-		TypeOutboxRelay:     h.relay,
-		TypeUploadsGC:       h.uploadsGC,
-		TypeRemindersCutoff: h.reminders,
-	} {
+	bare := func(fn func(context.Context) error) func(context.Context, *asynq.Task) error {
+		return func(ctx context.Context, _ *asynq.Task) error { return fn(ctx) }
+	}
+	handlers := map[string]func(context.Context, *asynq.Task) error{
+		TypeSettlementSweep: bare(h.sweep),
+		TypePactsActivate:   bare(h.activate),
+		TypePactsClose:      bare(h.closePacts),
+		TypeOutboxRelay:     bare(h.relay),
+		TypeUploadsGC:       bare(h.uploadsGC),
+		TypeRemindersCutoff: bare(h.reminders),
+	}
+	if h.mail != nil {
+		handlers[TypeEmailNotification] = h.emailNotification
+		handlers[TypeEmailDigest] = h.emailDigest
+		handlers[TypeEmailInvite] = h.emailInvite
+	}
+	for typ, fn := range handlers {
 		mux.HandleFunc(typ, h.instrument(typ, fn))
 	}
 	return mux
 }
 
-func (h *Handlers) instrument(typ string, fn func(context.Context) error) func(context.Context, *asynq.Task) error {
-	return func(ctx context.Context, _ *asynq.Task) error {
+func (h *Handlers) instrument(typ string, fn func(context.Context, *asynq.Task) error) func(context.Context, *asynq.Task) error {
+	return func(ctx context.Context, t *asynq.Task) error {
 		start := time.Now()
-		err := fn(ctx)
+		err := fn(ctx, t)
 		h.m.observe(typ, time.Since(start), err)
 		if err != nil {
 			h.log.Error("job failed", "task", typ, "err", err)
@@ -148,8 +164,8 @@ func (h *Handlers) closePacts(ctx context.Context) error {
 	return err
 }
 
-// relay drains the outbox into notifications. Email enqueueing for the relayed rows
-// arrives with PLAN 3.2, after this transaction has committed.
+// relay drains the outbox into notifications, then queues the emails for what it delivered.
+// The queueing happens after RelayOutbox returned, i.e. after its transaction committed.
 func (h *Handlers) relay(ctx context.Context) error {
 	res, err := h.svc.RelayOutbox(ctx, relayBatch)
 	if err != nil {
@@ -160,6 +176,7 @@ func (h *Handlers) relay(ctx context.Context) error {
 	if res.Skipped > 0 {
 		h.log.Warn("outbox rows skipped as unreadable", "rows", res.Skipped)
 	}
+	h.queueEmails(res)
 	return nil
 }
 
