@@ -36,7 +36,7 @@ test("setup creates env files once and is idempotent", async () => {
   expect(root.get("GARAGE_RPC_SECRET")).toMatch(/^[0-9a-f]{64}$/);
   expect(dev.get("POSTGRES_PASSWORD")).toBe(root.get("POSTGRES_PASSWORD")!);
   expect(dev.get("GARAGE_RPC_SECRET")).toBe(root.get("GARAGE_RPC_SECRET")!);
-  expect(root.get("DATABASE_URL")).toContain(`:${root.get("POSTGRES_PASSWORD")}@localhost:5432/`);
+  expect(root.get("DATABASE_URL")).toContain(`:${root.get("POSTGRES_PASSWORD")}@localhost:55432/`);
   expect(dev.get("DATABASE_URL")).toContain("@postgres:5432/");
 
   const second = runSetup();

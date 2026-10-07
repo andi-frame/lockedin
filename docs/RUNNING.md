@@ -34,10 +34,12 @@ bun run setup                     # copies deploy/env/*.example → .env files i
 
 | Command | What it does |
 |---|---|
-| `bun run infra:up` | `docker compose -f deploy/compose.yaml --profile infra up -d`, waits for health, runs `garage:init` |
+| `bun run infra:up` | `docker compose -f deploy/compose.yaml --env-file .env --profile infra up -d --wait`, then runs `garage:init` |
+| `bun run infra:status` | `docker compose ps` for the infra profile |
 | `bun run infra:down` | stops infra, **keeping volumes** |
 | `bun run infra:reset` | stops infra and **deletes volumes** (asks for confirmation; `--yes` to skip) |
-| `bun run garage:init` | idempotent: assigns the layout, creates key `tepati-app` and buckets `tepati-staging`/`tepati-media`, grants permissions, writes the key to `.env.local` |
+| `bun run garage:init` | idempotent: assigns the layout, creates key `tepati-app` and buckets `tepati-staging`/`tepati-media`, grants permissions, sets CORS on the staging bucket. The S3 key pair is generated once into `.env` (and `deploy/env/.env.dev`) and *imported*, so it survives `infra:reset` |
+| `bun run s3:smoke` | lists both buckets and does a put/get/delete round-trip with the app key |
 | `bun run db:migrate` / `db:rollback` / `db:new <name>` | goose against `DATABASE_URL` |
 | `bun run db:seed` | `tepatictl seed`: 2 demo users and 1 active pact with synthetic history (labelled synthetic) |
 | `bun run codegen` | OpenAPI → Go + TS, then sqlc |
@@ -52,11 +54,11 @@ bun run setup                     # copies deploy/env/*.example → .env files i
 | `bun run deploy:build -- --env staging` | builds and tags images `tepati-web`/`tepati-server:<git sha>` |
 | `bun run deploy:up -- --env staging` | `docker compose -f deploy/compose.yaml -f deploy/compose.prod.yaml --env-file deploy/env/.env.staging --profile infra --profile app --profile edge up -d`, then runs `migrate` |
 
-Ports in dev: web `3000`, api `8080`, Postgres `5432`, Redis `6379`, Garage S3 `3900` (admin `3903`), Mailpit UI `8025` (SMTP `1025`), asynqmon `8081`. Override them in `.env` if a port is taken.
+Ports in dev: web `3000`, api `8080`, Postgres `55432` (Docker; 5432/5433 stay free for native Postgres installs), Redis `6379`, Garage S3 `3900` (admin `3903`), Mailpit UI `8025` (SMTP `1025`), asynqmon `8081`. Override them in `.env` if a port is taken.
 
 ## 4. Compose structure and **mount rules**
 
-- `deploy/compose.yaml` (base) defines every service with **profiles**: `infra` (postgres, redis, garage, garage-init, mailpit), `app` (migrate, api, worker, web), `edge` (caddy), and `tools` (asynqmon).
+- `deploy/compose.yaml` (base) defines every service with **profiles**: `infra` (postgres, redis, garage, mailpit), `app` (migrate, api, worker, web), `edge` (caddy), and `tools` (asynqmon).
 - `deploy/compose.dev.yaml` adds source bind mounts and dev commands.
 - `deploy/compose.prod.yaml` sets built images, `restart: unless-stopped`, resource limits, and no source mounts. Mailpit is replaced by real SMTP and asynqmon sits behind auth.
 
@@ -82,7 +84,7 @@ Ports in dev: web `3000`, api `8080`, Postgres `5432`, Redis `6379`, Garage S3 `
 ## 5. Garage specifics
 
 - The config is `deploy/garage/garage.toml`, single-node, with `replication_factor = 1`. `rpc_secret`, `admin_token`, and `metrics_token` come from env via `GARAGE_RPC_SECRET` etc. (Garage v2 supports `*_file` and env overrides; see the Garage docs via context7).
-- `garage-init` is a one-shot service using the same image. It runs `garage status`, then `garage layout assign -z dc1 -c 10G <node>`, `garage layout apply --version N` (only if no layout exists), and `garage key import`/`key create`, `bucket create`, and `bucket allow`. Each step is guarded so a re-run is a no-op.
+- The Garage image has no shell, so bootstrap is `scripts/garage-init.ts` (run by `infra:up` and by deploy scripts). It calls the CLI through `docker compose exec garage /garage …`: `node id`, `layout assign -z dc1 -c $GARAGE_CAPACITY` + `layout apply --version 1` (only while the layout version is 0), `key import` (only if the key is unknown), `bucket create` (only if missing), and `bucket allow` (idempotent). A re-run prints only `=` no-op lines.
 - CORS on the `tepati-staging` bucket must allow `PUT` from `APP_BASE_URL` (set via the S3 `PutBucketCors` API in `garage:init`).
 - In hybrid and native mode, the browser reaches Garage at `http://localhost:3900`. In Docker prod, Caddy exposes it at `https://media.<domain>` or under `/s3/*`, so set `S3_PUBLIC_ENDPOINT` accordingly.
 

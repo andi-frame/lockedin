@@ -1,0 +1,25 @@
+# Single-node Garage for Tepati (dev, staging, small production).
+# Secrets are NOT in this file: GARAGE_RPC_SECRET, GARAGE_ADMIN_TOKEN and
+# GARAGE_METRICS_TOKEN come from the environment (see deploy/compose.yaml).
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+# sqlite is the safest engine on Docker Desktop volumes (no mmap surprises).
+db_engine = "sqlite"
+metadata_auto_snapshot_interval = "6h"
+
+replication_factor = 1
+# Uploads are compressed by the worker; a modest block size keeps memory low.
+block_size = "1M"
+compression_level = "none"
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+# Path-style requests only (http://host:3900/bucket/key); no vhost DNS needed.
+
+[admin]
+api_bind_addr = "[::]:3903"

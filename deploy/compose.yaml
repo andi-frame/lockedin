@@ -1,0 +1,86 @@
+# Tepati base compose file. Run it through the Bun scripts (`bun run infra:up`, ...),
+# which pass `--env-file` and the right profiles. Relative paths resolve from deploy/.
+#
+# Mount rules (docs/RUNNING.md §4): data lives only in named volumes, config files
+# are mounted read-only, and ports bind to 127.0.0.1 so dev infra is not exposed on
+# the LAN. compose.prod.yaml removes host port bindings entirely.
+
+name: tepati
+
+services:
+  postgres:
+    image: postgres:18
+    profiles: [infra]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tepati}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run `bun run setup` first}
+      POSTGRES_DB: ${POSTGRES_DB:-tepati}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Postgres 18 images keep PGDATA under /var/lib/postgresql/<major>/docker,
+      # so the volume mounts the parent directory (it survives major upgrades).
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:8-alpine
+    profiles: [infra]
+    restart: unless-stopped
+    # AOF keeps queued asynq tasks across restarts (ADR-0004).
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1000"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  garage:
+    image: dxflrs/garage:v2.4.1
+    profiles: [infra]
+    restart: unless-stopped
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?run `bun run setup` first}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?run `bun run setup` first}
+      GARAGE_METRICS_TOKEN: ${GARAGE_METRICS_TOKEN:?run `bun run setup` first}
+    ports:
+      - "127.0.0.1:${GARAGE_S3_PORT:-3900}:3900"
+      - "127.0.0.1:${GARAGE_ADMIN_PORT:-3903}:3903"
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    # The image has no shell; `garage status` exits 0 once the node answers RPC.
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    profiles: [infra]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:
+  redisdata:
+  garage-meta:
+  garage-data:

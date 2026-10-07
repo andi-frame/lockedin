@@ -26,11 +26,11 @@ Legend: ⇄ parallel-safe · 🔒 touches money/time invariants (extra review: r
   - Done when: running setup twice leaves files unchanged the second time.
   - Verify: `bun run setup && bun run setup` (the second run prints "exists, skipped").
 
-- [ ] **0.3 Infra compose (profile `infra`)**
+- [x] **0.3 Infra compose (profile `infra`)**
   - Read: `docs/RUNNING.md §4–5` (mount rules are mandatory).
-  - Do: In `deploy/compose.yaml`, add services `postgres:18`, `redis:8` (`--appendonly yes`), `dxflrs/garage:v2.x` (pin the latest v2 tag; check with context7 or Docker Hub), `garage-init` (one-shot), and `axllent/mailpit`, all with health checks and named volumes only. Add `deploy/garage/garage.toml`. Write `scripts/garage-init.ts`, which calls the `garage` CLI through `docker compose exec` and is idempotent (layout, key, buckets, bucket CORS for PUT from `APP_BASE_URL`), then writes `S3_ACCESS_KEY`/`S3_SECRET_KEY` into `.env` and `deploy/env/.env.dev`.
+  - Do: In `deploy/compose.yaml`, add services `postgres:18`, `redis:8` (`--appendonly yes`), `dxflrs/garage:v2.4.1`, and `axllent/mailpit` (Garage bootstrap is a script, because the image has no shell), all with health checks and named volumes only. Add `deploy/garage/garage.toml`. Write `scripts/garage-init.ts`, which calls the `garage` CLI through `docker compose exec` and is idempotent (layout, key, buckets, bucket CORS for PUT from `APP_BASE_URL`), then writes `S3_ACCESS_KEY`/`S3_SECRET_KEY` into `.env` and `deploy/env/.env.dev`.
   - Done when: `bun run infra:up` from a fresh clone reaches healthy, and running it a second time changes nothing.
-  - Verify: `bun run infra:up && docker compose -f deploy/compose.yaml ps` (all healthy). Then `bun run garage:init` a second time and confirm it prints no-op lines. Then `aws --endpoint-url http://localhost:3900 s3 ls` or the equivalent `bun scripts/s3-smoke.ts` lists both buckets.
+  - Verify: `bun run infra:up && docker compose -f deploy/compose.yaml ps` (all healthy). Then `bun run garage:init` a second time and confirm it prints no-op lines. Then `bun run s3:smoke` lists both buckets and round-trips an object.
 
 - [ ] **0.4 Dev orchestrator**
   - Do: Write `scripts/dev.ts`, which spawns named processes with coloured prefixes, forwards Ctrl+C, and exits non-zero if any child crashes. Modes: `docker`, `hybrid`, `native`, `apps`. Native mode pre-checks `pg_isready`/TCP 5432, Redis `PING`, `ffmpeg -version`, and `vips --version`, and forces `STORAGE_DRIVER=fs`. Wire up the root scripts listed in `RUNNING.md §3` (stub the app commands until the apps exist).
