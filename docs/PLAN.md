@@ -96,7 +96,7 @@ Use *superpowers:test-driven-development* (or *tdd*) for every task in this phas
   - Do: Middleware in the order given in `ARCHITECTURE.md §3`, with the Redis rate-limit storage, idempotency middleware (key = user + route + header; stores status and body for 24 h; replays the stored response), the problem+json error handler, `/healthz`, `/readyz`, and `/metrics`.
   - Verify: `go test ./internal/http/...` (includes the idempotency replay test and the rate-limit 429 test).
 
-- [x] **2.3 Handlers** (implement the generated strict-server interface) ⇄ split by resource: auth/me, pacts/invites, check-ins/review, ledger/payout, notifications.
+- [x] **2.3 Handlers** (b563a23..a780ff9) (implement the generated strict-server interface) ⇄ split by resource: auth/me, pacts/invites, check-ins/review, ledger/payout, notifications.
   - Done when: every operation in the YAML is implemented, and every handler test asserts the authorisation rule (a non-member gets 404, not 403, so pact existence doesn't leak).
   - Verify: `go test ./internal/http/... && bun run lint`, plus `go test -race -tags=integration ./internal/http/... ./internal/service/...` (the handler tests need Postgres and Redis, so they carry the `integration` tag).
   - Deviations, decided while building: (1) the three upload operations (`createUpload`, `completeUpload`, `getAttachment`) are routed but answer `503 server.unavailable` until 4.1/4.2 add the BlobStore and the media worker, so "every operation implemented" holds for the other 28; `TestEveryContractOperationIsRouted` still proves all 31 are routed. (2) Added `POST /invites/{token}/join`, which `ARCHITECTURE §5` lacked. Without it an invitee could not become a member, and accepting needs membership.
