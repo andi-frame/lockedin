@@ -92,7 +92,7 @@ Use *superpowers:test-driven-development* (or *tdd*) for every task in this phas
   - Done when: `redocly lint api/openapi.yaml` (via `bunx @redocly/cli`) passes and the codegen output compiles.
   - Verify: `bunx @redocly/cli lint api/openapi.yaml && bun run codegen && cd apps/server && go build ./...`
 
-- [ ] **2.2 Fiber app and middleware**
+- [x] **2.2 Fiber app and middleware** (3205c30)
   - Do: Middleware in the order given in `ARCHITECTURE.md §3`, with the Redis rate-limit storage, idempotency middleware (key = user + route + header; stores status and body for 24 h; replays the stored response), the problem+json error handler, `/healthz`, `/readyz`, and `/metrics`.
   - Verify: `go test ./internal/http/...` (includes the idempotency replay test and the rate-limit 429 test).
 
