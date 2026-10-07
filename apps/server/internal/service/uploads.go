@@ -471,3 +471,24 @@ func nonZero32[T ~int](v T) *int32 {
 	n := int32(v)
 	return &n
 }
+
+// GiveUpAttachment is called when the media job has used up its retries: the uploader is told to
+// try again instead of waiting on an attachment that will never be ready. Attachments that
+// already finished are left alone.
+func (s *Service) GiveUpAttachment(ctx context.Context, id uuid.UUID) error {
+	u, err := s.uploadsOn()
+	if err != nil {
+		return err
+	}
+	a, err := s.st.GetAttachment(ctx, id)
+	if store.IsNoRows(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if a.Status != "uploaded" && a.Status != "processing" {
+		return nil
+	}
+	return s.reject(ctx, u, a, "Pemrosesan gagal. Coba unggah ulang.")
+}

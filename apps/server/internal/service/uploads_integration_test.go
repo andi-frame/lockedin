@@ -472,3 +472,29 @@ func TestCollectUploadsKeepsAttachmentsThatBelongToAProof(t *testing.T) {
 		t.Fatalf("the orphan's media object survived: %v", err)
 	}
 }
+
+func TestGiveUpAttachmentRejectsWhatCouldNotBeProcessed(t *testing.T) {
+	r := newUploadRig(t)
+	id := r.upload(r.doer.ID, "image", "image/png", []byte("0123456789"))
+	_, err := r.svc.CompleteUpload(r.ctx, r.doer.ID, id)
+	r.must(err)
+	key := *r.attachment(id).StagingKey
+
+	r.must(r.svc.GiveUpAttachment(r.ctx, id))
+	a := r.attachment(id)
+	if a.Status != "rejected" || a.RejectReason == nil || *a.RejectReason == "" {
+		t.Fatalf("row = %+v", a)
+	}
+	if _, err := r.blobs.Head(r.ctx, storage.Staging, key); !errors.Is(err, storage.ErrNotFound) {
+		t.Fatalf("staging object kept: %v", err)
+	}
+	// An attachment that already finished is left alone.
+	done := uuid.New()
+	_, err = r.st.Pool.Exec(r.ctx, `insert into attachments (id, owner_id, pact_id, kind, status, media_key, declared_bytes, stored_bytes, created_at, ready_at)
+		values ($1, $2, $3, 'image', 'ready', 'k', 1, 1, $4, $4)`, done, r.doer.ID, r.pact.ID, r.clock.Now())
+	r.must(err)
+	r.must(r.svc.GiveUpAttachment(r.ctx, done))
+	if r.attachment(done).Status != "ready" {
+		t.Fatal("a ready attachment was rejected")
+	}
+}

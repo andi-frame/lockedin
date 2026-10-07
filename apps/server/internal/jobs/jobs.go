@@ -78,6 +78,8 @@ type Handlers struct {
 	log  *slog.Logger
 	m    *Metrics
 	mail *Mail // nil: no email, the relay only writes in-app notifications
+	// nil: no uploads; media:process is not served and uploads:gc does nothing
+	uploads Uploads
 }
 
 func NewHandlers(svc Settlement, log *slog.Logger, m *Metrics) *Handlers {
@@ -103,6 +105,9 @@ func (h *Handlers) Mux() *asynq.ServeMux {
 		TypeOutboxRelay:     bare(h.relay),
 		TypeUploadsGC:       bare(h.uploadsGC),
 		TypeRemindersCutoff: bare(h.reminders),
+	}
+	if h.uploads != nil {
+		handlers[TypeMediaProcess] = h.mediaProcess
 	}
 	if h.mail != nil {
 		handlers[TypeEmailNotification] = h.emailNotification
@@ -188,7 +193,3 @@ func (h *Handlers) reminders(ctx context.Context) error {
 	}
 	return err
 }
-
-// uploadsGC is scheduled now so the cadence is fixed, but has nothing to collect until the
-// BlobStore and the upload endpoints exist (PLAN 4.1 and 4.2 fill it in).
-func (h *Handlers) uploadsGC(context.Context) error { return nil }

@@ -16,7 +16,9 @@ import (
 type Options struct {
 	Redis           asynq.RedisConnOpt
 	Svc             Settlement
-	Mail            *Mail // nil runs without email; a nil Mail.Queue gets a client on Redis
+	Mail            *Mail   // nil runs without email; a nil Mail.Queue gets a client on Redis
+	Uploads         Uploads // nil runs without media processing
+	MediaWorkers    int     // media:process jobs at once, default 2 (ARCHITECTURE §6)
 	Log             *slog.Logger
 	Metrics         *Metrics      // default: a fresh set
 	Concurrency     int           // default 10
@@ -30,7 +32,7 @@ type Options struct {
 // ShutdownTimeout to finish; unfinished tasks go back to the queue and are retried.
 //
 // ARCHITECTURE §3 gives media its own concurrency cap. asynq has one worker pool per server, so
-// that cap lives in the media:process handler (PLAN 4.2), not here.
+// media:process runs on a second server that serves only the media queue.
 func Run(ctx context.Context, o Options) error {
 	if o.Metrics == nil {
 		o.Metrics = NewMetrics()
@@ -44,6 +46,9 @@ func Run(ctx context.Context, o Options) error {
 	if o.ShutdownTimeout <= 0 {
 		o.ShutdownTimeout = 25 * time.Second
 	}
+	if o.MediaWorkers <= 0 {
+		o.MediaWorkers = mediaConcurrency
+	}
 	log := asynqLogger{o.Log}
 
 	handlers := NewHandlers(o.Svc, o.Log, o.Metrics)
@@ -56,12 +61,30 @@ func Run(ctx context.Context, o Options) error {
 		}
 		handlers.WithMail(&mail)
 	}
+	if o.Uploads != nil {
+		handlers.WithUploads(o.Uploads)
+	}
 
+	// Settlement and email share one pool. Media gets a server of its own so that its small
+	// concurrency cap is real and a backlog of transcodes can never occupy the settlement workers.
 	srv := asynq.NewServer(o.Redis, asynq.Config{
 		Concurrency:     o.Concurrency,
-		Queues:          QueueWeights,
+		Queues:          map[string]int{QueueCritical: QueueWeights[QueueCritical], QueueDefault: QueueWeights[QueueDefault]},
 		ShutdownTimeout: o.ShutdownTimeout,
 		Logger:          log,
+	})
+	mediaSrv := asynq.NewServer(o.Redis, asynq.Config{
+		Concurrency:     o.MediaWorkers,
+		Queues:          map[string]int{QueueMedia: 1},
+		ShutdownTimeout: o.ShutdownTimeout,
+		Logger:          log,
+		// Once the retries are used up the attachment is rejected, so the uploader is told.
+		ErrorHandler: asynq.ErrorHandlerFunc(func(ctx context.Context, t *asynq.Task, _ error) {
+			retried, _ := asynq.GetRetryCount(ctx)
+			if max, ok := asynq.GetMaxRetry(ctx); ok && retried >= max {
+				handlers.mediaFailed(ctx, t)
+			}
+		}),
 	})
 	sched := asynq.NewScheduler(o.Redis, &asynq.SchedulerOpts{
 		Location: time.UTC,
@@ -90,7 +113,12 @@ func Run(ctx context.Context, o Options) error {
 	if err := srv.Start(handlers.Mux()); err != nil {
 		return fmt.Errorf("start asynq server: %w", err)
 	}
+	if err := mediaSrv.Start(handlers.Mux()); err != nil {
+		srv.Shutdown()
+		return fmt.Errorf("start media server: %w", err)
+	}
 	if err := sched.Start(); err != nil {
+		mediaSrv.Shutdown()
 		srv.Shutdown()
 		return fmt.Errorf("start scheduler: %w", err)
 	}
@@ -102,6 +130,7 @@ func Run(ctx context.Context, o Options) error {
 		ln, err := net.Listen("tcp", o.MetricsAddr)
 		if err != nil {
 			sched.Shutdown()
+			mediaSrv.Shutdown()
 			srv.Shutdown()
 			return fmt.Errorf("metrics listener: %w", err)
 		}
@@ -116,7 +145,8 @@ func Run(ctx context.Context, o Options) error {
 	<-ctx.Done()
 	o.Log.Info("worker stopping")
 	sched.Shutdown()
-	srv.Shutdown() // blocks until running jobs finish or ShutdownTimeout passes
+	mediaSrv.Shutdown() // each blocks until its running jobs finish or ShutdownTimeout passes
+	srv.Shutdown()
 	if ops != nil {
 		sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
