@@ -16,7 +16,7 @@ There are three run modes, and every one is driven by **Bun scripts in the root 
 | Bun | ≥ 1.3.14 (`bun upgrade`) | all modes |
 | Docker Desktop / Engine + Compose v2 | ≥ 27 | docker, hybrid, deploy |
 | Go | ≥ 1.26 (an older `go` auto-downloads 1.26 via `GOTOOLCHAIN=auto`) | hybrid, native |
-| ffmpeg + libvips CLI (`vips`) | ffmpeg ≥ 6, vips ≥ 8.15 | hybrid and native worker (media). On Windows use `winget install Gyan.FFmpeg` and the libvips Windows binaries on `PATH`. |
+| ffmpeg + libvips CLI (`vips`) | ffmpeg ≥ 6, vips ≥ 8.15 | hybrid and native worker (media). On Windows: `winget install Gyan.FFmpeg` and `winget install libvips.libvips`. winget adds their `bin` folders to the *user* PATH, which only new terminals see. Both also provide `ffprobe` and `vipsheader`, which the worker and the media tests call. |
 | air (`go install github.com/air-verse/air@latest`) | latest | Go hot reload in hybrid/native |
 | goose, sqlc, oapi-codegen | pinned in `apps/server/tools.go` and run via `go run` | codegen and migrations |
 | PostgreSQL 18, Redis 8 | native mode only | Windows: Postgres installer, and Redis via **Memurai** or WSL. Garage has no Windows build, so native mode uses `STORAGE_DRIVER=fs`. |

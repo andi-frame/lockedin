@@ -44,7 +44,9 @@ async function nativePreflight(env: Record<string, string>) {
     checkPostgres(env.DATABASE_URL ?? "postgres://localhost:5432"),
     checkRedis(env.REDIS_URL ?? "redis://localhost:6379"),
     checkBinary("ffmpeg", [env.FFMPEG_PATH ?? "ffmpeg", "-version"], "Install ffmpeg (Windows: winget install Gyan.FFmpeg)."),
-    checkBinary("vips", [env.VIPS_PATH ?? "vips", "--version"], "Install the libvips CLI and put `vips` on PATH."),
+    checkBinary("ffprobe", [env.FFPROBE_PATH ?? "ffprobe", "-version"], "ffprobe ships with ffmpeg; put its folder on PATH."),
+    checkBinary("vips", [env.VIPS_PATH ?? "vips", "--version"], "Install the libvips CLI (Windows: winget install libvips.libvips) and put `vips` on PATH."),
+    checkBinary("vipsheader", [env.VIPSHEADER_PATH ?? "vipsheader", "--version"], "vipsheader ships with the libvips tools; put its folder on PATH."),
   ]);
   for (const r of results) (r.ok ? log.ok : log.bad)(`${r.name}: ${r.detail}`);
   const failed = results.filter((r) => !r.ok);

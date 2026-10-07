@@ -10,21 +10,22 @@ Last updated: 2026-10-07, at the end of Phase 3. This is the first thing to read
 | 1 Backend core (Go) | done | Schema, pure domain, store, pact and check-in services, settlement sweep, auth |
 | 2 API contract and HTTP | done | OpenAPI contract, Fiber app, all handlers (uploads stubbed, see §6) |
 | 3 Worker | done | 3.1 asynq worker, schedule, outbox relay, reminders, `tepatictl seed`/`pact show`, air files. 3.2 notifications and email (Mailpit) |
-| **4 Uploads and media** | **in progress** | 4.1 BlobStore drivers done (s3 and fs, Garage enforces the signed length). **4.2 upload intent, complete and processing is next** |
-| 5–9 | not started | Web app, Docker, quality gates, staging |
+| 4 Uploads and media | done | 4.1 BlobStore drivers (s3 and fs, Garage enforces the signed length). 4.2 upload endpoints, `media:process`, `uploads:gc` |
+| **5 Web foundation** | **next** | 5.1 Next.js app on Bun, 5.2 design tokens and primitives, 5.3 auth pages and app shell |
+| 6–9 | not started | Web features, Docker, quality gates, staging |
 
-The first unchecked task in `docs/PLAN.md` is **4.2**.
+The first unchecked task in `docs/PLAN.md` is **5.1**.
 
 ## 2. Branch and merge state
 
 Nothing has been pushed or merged. `main` is still at `e4f987f` (end of Phase 1). Everything since lives on **stacked** branches, each cut from the one before:
 
 ```
-main ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-handlers ─ p3.1-worker-jobs ─ p3.2-notifications-email ─ p4.1-blobstore   (HEAD)
+main ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-handlers ─ p3.1-worker-jobs ─ p3.2-notifications-email ─ p4.1-blobstore ─ p4.2-uploads   (HEAD)
 ```
 
-- Merge in that order, or merge `p4.1-blobstore` alone since it contains all the others.
-- Branch for 4.2: cut `p4.2-uploads` from `p4.1-blobstore` if it is still unmerged, otherwise from `main`.
+- Merge in that order, or merge `p4.2-uploads` alone since it contains all the others.
+- Branch for 5.1: cut `p5.1-nextjs-app` from `p4.2-uploads` if it is still unmerged, otherwise from `main`.
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -60,11 +61,12 @@ Run it all: `bun run db:migrate`, then `bun run dev:hybrid` (infra, then the API
 | `internal/config` | env parsing and validation (`caarlos0/env`), lists every missing var at once |
 | `internal/domain` | pure rules, no I/O: `Terms` (validate, canonical hash), deadlines per timezone, the check-in FSM `Transition(ci, ev, now, ctx)` returning effects, ledger clamp math, proof-doc allow-list, `Clock` (`SystemClock`, `FakeClock`), `ValidReason` |
 | `internal/store` | sqlc-generated queries and `WithTx`. Queries live in `db/queries/*.sql`, migration in `db/migrations/` |
-| `internal/service` | every state change, one transaction each. `pacts.go` (lifecycle), `checkins.go` (transitions, `SweepDeadlines`, `ClosePacts`), `payouts.go` (mark paid, confirm), `outbox.go` (`RelayOutbox`), `reminders.go` (`SendReminders`), `mailing.go` (`Claim*Email`/`Release*Email`), `read.go` (membership-filtered views, keyset pages, `my_actions`) |
+| `internal/service` | every state change, one transaction each. `pacts.go` (lifecycle), `checkins.go` (transitions, `SweepDeadlines`, `ClosePacts`), `payouts.go` (mark paid, confirm), `outbox.go` (`RelayOutbox`), `reminders.go` (`SendReminders`), `mailing.go` (`Claim*Email`/`Release*Email`), `uploads.go` (`CreateUpload`, `CompleteUpload`, `GetAttachment`, `ProcessAttachment`, `GiveUpAttachment`, `CollectUploads`), `read.go` (membership-filtered views, keyset pages, `my_actions`) |
 | `internal/auth` | argon2id, Redis sessions (hashed token), CSRF double-submit, login limiter, `RequireUser`, `UserFromContext` |
 | `internal/http` | the Fiber app. `server.go` (middleware stack), `problem.go` + `statuses.go` (errors), `idempotency.go`, `ratelimit.go`, `observe.go` (access log + Prometheus), `health.go`, `handlers*.go` + `mappers.go` + `cursor.go` (the strict-server implementation) |
 | `internal/http/api` | **generated** by oapi-codegen from `api/openapi.yaml`. Never edit |
-| `internal/jobs` | the asynq worker. `jobs.go` (task types, `Schedule()` table, `Settlement` interface, handlers), `mail.go` (email tasks and `Mail` dependencies), `worker.go` (`Run`: server + scheduler + metrics listener, graceful stop), `metrics.go` (per-instance Prometheus registry and the asynq queue collector) |
+| `internal/jobs` | the asynq worker. `jobs.go` (task types, `Schedule()` table, `Settlement` interface, handlers), `mail.go` (email tasks and `Mail` dependencies), `media.go` (`media:process`, `uploads:gc`, `MediaQueue` for the API), `worker.go` (`Run`: server + scheduler + metrics listener, graceful stop), `metrics.go` (per-instance Prometheus registry and the asynq queue collector) |
+| `internal/media` | files in, files out, no database: `sniff.go` (magic bytes to MIME and kind), `media.go` (`Processor.Process`: image to WebP 2048 plus 480 thumbnail via `vips thumbnail`, video to H.264 720p plus poster via ffmpeg/ffprobe, pdf as is; `RejectError` for unacceptable input). Tests generate their own fixtures |
 | `internal/storage` | `BlobStore` (`storage.go`: buckets `Staging`/`Media`, `ValidKey`, errors), `s3.go` (Garage via aws-sdk-go-v2, path-style, separate public endpoint for signing), `fs.go` (local dir plus HMAC-signed URLs and `ServeHTTP`), `factory.go` (`FromConfig`). `contract_test.go` is one suite run against both drivers; the s3 run needs Garage (integration tag) |
 | `internal/notify` | email, no database: `delivery.go` (which kinds are mailed, SPEC §9), `render.go` (Indonesian copy, `html/template` plus plain-text layouts in `templates/`), `smtp.go` (`SMTP` sender: STARTTLS when offered, context deadlines, header-injection checks) |
 | `internal/ctl` | logic of `tepatictl`: `SeedOverdue`, `SeedInvite`, `Show` (integration-tested) |
@@ -86,6 +88,15 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 **Phase 1**
 - The worked example in `PLAN.md` is a real integration test (`TestWorkedExample`) and ends at balance 800 before payout.
 - Penalties apply only when a check-in becomes final, never on the first rejection; an upheld dispute moves no coins (a `reversal` row exists only for a penalised check-in that later becomes approved).
+
+**Phase 4.2**
+- **Flow:** `createUpload` (checks membership, pact `active`/`settling`, declared kind and type, size limit, per-pact quota, queue depth; inserts `awaiting_upload`; returns the presigned PUT) -> browser PUTs to storage -> `completeUpload` (owner only; `Head` must match the declared size or the object is deleted and the attachment rejected; sets `uploaded`; enqueues `media:process` after the commit) -> worker -> `ready` or `rejected` -> `getAttachment` (any pact member; signed GET URLs valid 5 minutes, `thumb` for images, `poster` for videos).
+- **The real file type is sniffed from magic bytes** (`media.Sniff`), and the declared kind must match it. A PNG sent as video, SVG or HTML sent as an image, or an executable are all rejected with a reason in Indonesian. HEIC and AVIF are recognised and handed to libvips; whether they decode depends on the libvips build (the winget build was not tested with a HEIC file).
+- **`RejectError` vs other errors:** a file the tools cannot read is a rejection; a cancelled context or a missing binary is a plain error and the job retries. `TestProcessAttachmentRetriesWhenInterrupted` guards this.
+- **Idempotency:** `completeUpload` on an attachment past `awaiting_upload` just returns it; `media:process` claims `uploaded|processing` so a crashed attempt is retried; the task id is the attachment id.
+- **Media keys:** staging `<pact>/<attachment>`, media `<pact>/<attachment>.webp|.mp4|.pdf`, thumbnails `<pact>/<attachment>_thumb.webp` (video poster is `_thumb.jpg`).
+- **Limits:** raw size per kind and 40 MP are checked before and by the tools; duration is checked with ffprobe and again on the output, and ffmpeg is capped with `-t limit+1`; a transcoded video over 50 MB is rejected. The pact quota is a soft check (not atomic under concurrent uploads).
+- **Proofs and attachments:** `submitProof` already requires attachments to be `ready` and owned by the submitter in that pact (3.x); nothing about that changed.
 
 **Phase 4.1**
 - **Garage enforces the signed `Content-Length`, `Content-Type` and expiry** (403 otherwise). ADR-0005 has the evidence, including a mutation check. Presigned mode is the default; `UPLOAD_MODE=proxy` exists in config but nothing implements it. Build it only if that test ever fails in a deployment.
@@ -129,7 +140,6 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 
 ## 6. Known gaps and deferred work
 
-- Upload endpoints (above) still answer 503 until 4.2. `Attachment.urls` is never filled until then.
 - `problem.errors[]` (per-field detail) is in the contract but never populated; validation failures carry a text `detail` only. Phase 6.1 (the wizard) will want structured errors from `Terms.Validate`.
 - `Service.Today` loads all of a user's pacts and filters `active|settling` in Go. Fine now; add a status filter to the query once completed pacts pile up.
 - Server-level rejects (for example an oversize body) are handled by Fiber below the middleware, so they are not access-logged.
@@ -137,22 +147,26 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - Email: no `sent`/bounce tracking beyond `emailed_at`, no unsubscribe or per-user preferences (not in SPEC), and the `en` locale is not rendered (every email is Indonesian; `users.locale` is read but unused). Email copy lives in Go (`internal/notify/render.go`), not `messages/id.json`.
 - Production SMTP (TLS, auth) is untested against a real provider; only Mailpit and a fake server were used. `smtps://` and `user:pass@` are implemented.
 - The invite email is the only place the plaintext token is sent. If the email is lost (enqueue failure, crash after claim), the backer still has the link from the `Propose` response; there is no "resend invite" endpoint.
-- `uploads:gc` is a no-op until the BlobStore exists (4.1/4.2). The `media` concurrency cap (2) must be a semaphore in the `media:process` handler (4.2).
+- Native dev needs `ffmpeg`, `ffprobe`, `vips` and `vipsheader` on PATH. They were installed with winget on the dev machine on 2026-10-08, so only *new* terminals have them. Shells that were already open (including the one running `dev:hybrid`) do not.
+- A `go test -race ./...` of the whole module can run out of memory on the dev machine (`fatal error: runtime: cannot allocate memory` during a link). It passed with `-p 3`.
+- No ClamAV or content scanning: a PDF is only checked for the `%PDF-` header and stored as is (SPEC §8). Videos keep working only for H.264/HEVC/VP9 inputs ffmpeg can decode.
+- Uploads have no per-user rate limit beyond the global 30/min on `POST /uploads`, and no resumable upload; a dropped connection means starting that file again.
 - The worker has `/metrics` and `/healthz` only, no `/readyz`. Fine for now; add one with the compose healthchecks (7.1).
 - `tepati_settlement_transitions_total` is by job type, see §5.
 - No test-clock endpoint yet (`CLOCK_OVERRIDE`); the e2e work (5.3/6.x) needs it. The API and worker use `domain.SystemClock`.
 - context7 MCP was still not authenticated; asynq and Prometheus APIs were checked by reading module source under `~/go/pkg/mod`. If you can, authenticate it before 4.1 (aws-sdk-go-v2 and Garage).
 
-## 7. Brief for task 4.2 (upload intent, complete and processing)
+## 7. Brief for Phase 5 (web foundation)
 
-**Read first:** `docs/PLAN.md` task 4.2, `docs/ARCHITECTURE.md §6` and its `attachments` table, `docs/SPEC.md §8` (limits), `docs/adr/0005-storage-garage.md`, `internal/storage/storage.go`, and `internal/jobs/mail.go` for the shape of a handler with injected dependencies.
+**Read first:** `docs/PLAN.md` Phase 5 (tasks 5.1 to 5.3) and its opening paragraph, `.impeccable/surfaces/apps-web-src-app-app.md` (the direction contract), `docs/design/README.md`, `docs/ARCHITECTURE.md §7`, and `AGENTS.md` "UI work". Before any UI code load the *impeccable* skill, then read `~/.claude/skills/impeccable/reference/craft-floor.md`, and use *taste-skill* sections 3, 4.4-4.6, 6 and 9 as a checklist. Use context7 for Next.js 16, Tailwind v4, next-intl and TanStack Query (it needs authenticating first, see §6).
 
-**Already in place:**
-- `storage.BlobStore` with `PresignPut`, `PresignGet`, `Head`, `Get`, `Put`, `Delete`, built by `storage.FromConfig(cfg)`. `PresignedPut` carries `Method`, `URL`, `Headers` and `Expires` for the intent response.
-- The three upload operations are routed and answer `503 server.unavailable` (`createUpload`, `completeUpload`, `getAttachment`). The `attachments` table exists. Limits are in `cfg.Upload` (`ImageMaxBytes`, `VideoMaxBytes`, `VideoMaxSeconds`, `FileMaxBytes`, `MaxPerProof`), the queue backpressure threshold is `cfg.MediaQueueMax`, and tool paths are in `cfg.Media`.
-- The `media` queue (weight 1) exists and `uploads:gc` runs hourly doing nothing. The concurrency cap of 2 must be a semaphore inside the `media:process` handler (asynq has no per-queue concurrency).
-- Garage is verified to enforce length, type and expiry, so the intent can rely on the signature.
+**Backend is complete for the MVP loop** (phases 0-4): register/login, pacts and the agreement flow, check-ins and review, settlement and payouts, notifications and email, uploads and media. The OpenAPI contract is `api/openapi.yaml` and `apps/web/src/lib/api/schema.d.ts` is already generated from it (`bun run codegen`). There is **no `apps/web` yet**.
 
-**To build:** the service functions (`CreateUpload`, `CompleteUpload`, `GetAttachment`; pact-membership filtered, invariant 8), the handlers replacing the 503s, the `media:process` handler (sniff with magic bytes, vips and ffmpeg through `exec.CommandContext` with arg slices and timeouts, EXIF stripped, write to `Media`, delete the staging object), the `uploads:gc` body, the queue-depth 503, and the golden tests in `internal/media/testdata` listed in PLAN 4.2. Native dev needs `ffmpeg` and `vips` on `PATH`; check they exist before writing the tests and tell the user if not.
+**Useful for the web work:**
+- `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
+- Auth is cookie based with a CSRF header (`X-CSRF-Token`, value from the `tepati_csrf` cookie) on unsafe methods, and mutating calls take an `Idempotency-Key`. Details in `docs/adr/0010-api-conventions.md`.
+- Upload client flow: `POST /uploads` -> `PUT` the file to `put_url` with exactly the returned `headers` (the browser adds `Content-Length`) -> `POST /uploads/{id}/complete` -> poll `GET /attachments/{id}` (1 s backing off to 5 s) until `ready` or `rejected`. With the fs storage driver `put_url` points at the API (`/api/v1/blob/...`), with Garage at port 3900; CORS in dev already allows `Content-Type`.
+- Email links point at `/pacts/<id>`, `/review` and `/invite/<token>`; these routes must exist.
+- A test-clock endpoint (`CLOCK_OVERRIDE`) does not exist yet; the e2e tests in 5.3 and Phase 6 will need one or a different way to move time.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p4.2-uploads`), test first, update `docs/PLAN.md` with the commit hash, update this file and `ARCHITECTURE` when behaviour changes, and refresh the knowledge graph with `/graphify . --update` after large changes (last refreshed after Phase 2). Do not start Phase 5 in the same session unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p5.1-nextjs-app`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 5.2 in the same session as 5.1 unless asked.

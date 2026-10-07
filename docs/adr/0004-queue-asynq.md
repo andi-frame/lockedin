@@ -30,7 +30,7 @@ Use asynq with three queues:
 ## Consequences
 - Redis must run with AOF persistence (`appendonly yes`) so queued tasks survive a restart.
 - Side effects that must be emitted exactly at commit go through the outbox table.
-- asynq has no per-queue concurrency, so the `media` cap (2) is enforced inside the media handler, not by the server (implemented with PLAN 4.2).
+- asynq has no per-queue concurrency, so the `media` cap (2) comes from running a **second asynq server** that serves only the `media` queue with `Concurrency: 2` (PLAN 4.2). The first design, a semaphore inside the media handler, would have parked waiting transcodes on the shared worker pool and starved settlement. The first server serves `critical` and `default` only.
 - Periodic tasks are enqueued with `MaxRetry(0)` and a unique lock slightly shorter than their period: two worker replicas schedule the same tick once, and a failed tick is repaired by the next one, because every job re-derives its work from the database.
 - If asynq stops being maintained, River (Postgres) is the fallback. Task handlers sit behind our own `jobs` interfaces, so swapping is contained.
 - Email tasks (`email:notification`, `email:digest`, `email:invite`) are enqueued by the outbox relay after its transaction committed, never from inside one. They retry up to 5 times; the handler claims the row (`emailed_at`) before it sends and releases the claim on failure, so a retry or a duplicate task cannot send twice.
