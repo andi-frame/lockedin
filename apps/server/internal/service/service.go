@@ -15,6 +15,7 @@ import (
 type Service struct {
 	st    *store.Store
 	clock domain.Clock
+	up    *UploadDeps // nil until WithUploads; see uploads.go
 }
 
 func New(st *store.Store, clock domain.Clock) *Service {

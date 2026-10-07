@@ -50,6 +50,7 @@ type Upload struct {
 	VideoMaxSeconds int   `env:"UPLOAD_VIDEO_MAX_SECONDS" envDefault:"180"`
 	FileMaxBytes    int64 `env:"UPLOAD_FILE_MAX_BYTES" envDefault:"20971520"`
 	MaxPerProof     int   `env:"UPLOAD_MAX_PER_PROOF" envDefault:"10"`
+	PactQuotaBytes  int64 `env:"UPLOAD_PACT_QUOTA_BYTES" envDefault:"1073741824"` // stored media per pact, SPEC §8
 }
 
 type MediaTools struct {

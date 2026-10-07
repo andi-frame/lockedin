@@ -16,6 +16,9 @@ type Querier interface {
 	ActivateDuePacts(ctx context.Context, now time.Time) ([]uuid.UUID, error)
 	AddPactMember(ctx context.Context, arg AddPactMemberParams) error
 	AttachToProof(ctx context.Context, arg AttachToProofParams) (int64, error)
+	// 'processing' is claimable again so a task retried after a crash picks up where it died; asynq
+	// runs one attempt of a task at a time and the task id is unique per attachment.
+	ClaimAttachmentForProcessing(ctx context.Context, id uuid.UUID) (Attachment, error)
 	// Claims every not-yet-emailed notification of one kind for a user and pact.
 	ClaimDigestNotifications(ctx context.Context, arg ClaimDigestNotificationsParams) ([]int64, error)
 	// Claims an unused, unexpired invite that has an address for emailing, and returns what the
@@ -37,6 +40,7 @@ type Querier interface {
 	CreatePact(ctx context.Context, arg CreatePactParams) (Pact, error)
 	CreatePayout(ctx context.Context, arg CreatePayoutParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteAttachment(ctx context.Context, id uuid.UUID) error
 	FetchPendingOutbox(ctx context.Context, limit int32) ([]Outbox, error)
 	GetAttachment(ctx context.Context, id uuid.UUID) (Attachment, error)
 	GetCheckIn(ctx context.Context, id uuid.UUID) (CheckIn, error)
@@ -81,6 +85,8 @@ type Querier interface {
 	ListLedgerPage(ctx context.Context, arg ListLedgerPageParams) ([]ListLedgerPageRow, error)
 	ListMembersForPacts(ctx context.Context, pactIds []uuid.UUID) ([]ListMembersForPactsRow, error)
 	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]Notification, error)
+	// Processed but never attached to a proof, or rejected, older than the cutoff.
+	ListOrphanAttachments(ctx context.Context, arg ListOrphanAttachmentsParams) ([]Attachment, error)
 	ListPactMembers(ctx context.Context, pactID uuid.UUID) ([]ListPactMembersRow, error)
 	ListPactsForUser(ctx context.Context, userID uuid.UUID) ([]Pact, error)
 	// Keyset page, newest first. The cursor is the last row's (created_at, id).
@@ -95,9 +101,16 @@ type Querier interface {
 	ListReviewReminderCandidates(ctx context.Context, arg ListReviewReminderCandidatesParams) ([]CheckIn, error)
 	// Active pacts past their end date whose every check-in is final (SPEC §7 step 7).
 	ListSettlablePacts(ctx context.Context, arg ListSettlablePactsParams) ([]uuid.UUID, error)
+	// Slots never completed, or completed and never processed, older than the cutoff.
+	ListStaleUploads(ctx context.Context, arg ListStaleUploadsParams) ([]Attachment, error)
+	// Completed uploads whose processing task never ran (for example Redis was down at enqueue time).
+	ListStuckUploaded(ctx context.Context, arg ListStuckUploadedParams) ([]Attachment, error)
 	// My check-ins for the Today screen: dated today in each active pact's timezone, plus an
 	// earlier day that is still open because its grace period has not ended.
 	ListTodayCheckIns(ctx context.Context, arg ListTodayCheckInsParams) ([]ListTodayCheckInsRow, error)
+	MarkAttachmentReady(ctx context.Context, arg MarkAttachmentReadyParams) error
+	// Only the first call wins; a repeat of "complete" finds no row and reads the current one.
+	MarkAttachmentUploaded(ctx context.Context, id uuid.UUID) (Attachment, error)
 	MarkNotificationsRead(ctx context.Context, arg MarkNotificationsReadParams) error
 	// An invite mail row carries the plaintext invite token until it is relayed; drop it here so
 	// only the hash stays in the database.
@@ -109,11 +122,13 @@ type Querier interface {
 	PotBalance(ctx context.Context, pactID uuid.UUID) (int64, error)
 	// Balances for several pacts at once (list and Today screens).
 	PotBalances(ctx context.Context, pactIds []uuid.UUID) ([]PotBalancesRow, error)
+	RejectAttachment(ctx context.Context, arg RejectAttachmentParams) error
 	ReleaseInviteEmail(ctx context.Context, tokenHash string) error
 	ReleaseNotificationEmail(ctx context.Context, ids []int64) error
 	ResetAcceptances(ctx context.Context, pactID uuid.UUID) error
 	// Guarded status change: affects 0 rows when the pact is not in from_status.
 	SetPactStatus(ctx context.Context, arg SetPactStatusParams) (int64, error)
+	SumPactAttachmentBytes(ctx context.Context, pactID uuid.UUID) (int64, error)
 	// Writes every mutable field, guarded by the status the transition started from
 	// (optimistic check, SPEC §7). 0 rows = someone else moved it first.
 	UpdateCheckInState(ctx context.Context, arg UpdateCheckInStateParams) (int64, error)
