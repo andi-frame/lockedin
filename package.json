@@ -28,7 +28,7 @@
     "codegen": "bun scripts/codegen.ts",
     "test": "bun test scripts && cd apps/web && bun test src && cd ../server && go test ./...",
     "test:integration": "cd apps/server && go test -tags=integration -count=1 ./...",
-    "test:e2e": "bun scripts/todo.ts test:e2e 5.3",
+    "test:e2e": "bun scripts/e2e.ts",
     "lint": "bun scripts/lint.ts",
     "deploy:build": "bun scripts/todo.ts deploy:build 7.1",
     "deploy:up": "bun scripts/todo.ts deploy:up 7.2",
