@@ -18,14 +18,14 @@ The first unchecked task in `docs/PLAN.md` is **5.1**.
 
 ## 2. Branch and merge state
 
-Nothing has been merged. The seven branches below were pushed to `origin` on 2026-10-08 and pull request #1 (`p4.2-uploads` -> `main`) is open; `main` is still at `e4f987f` (end of Phase 1). Everything since lives on **stacked** branches, each cut from the one before:
+Phases 2 to 4 are **merged into `main`**: pull request #1 (`p4.2-uploads` -> `main`) was merged on 2026-10-08 with a merge commit (`054e61a`), not squashed, so every commit hash recorded in `docs/PLAN.md` is in `main`'s history. Before the merge the work lived on seven **stacked** branches, each cut from the one before:
 
 ```
-main ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-handlers ─ p3.1-worker-jobs ─ p3.2-notifications-email ─ p4.1-blobstore ─ p4.2-uploads   (HEAD)
+e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-handlers ─ p3.1-worker-jobs ─ p3.2-notifications-email ─ p4.1-blobstore ─ p4.2-uploads ─ merge 054e61a (main)
 ```
 
-- Merge in that order, or merge `p4.2-uploads` alone since it contains all the others.
-- Branch for 5.1: cut `p5.1-nextjs-app` from `p4.2-uploads` if it is still unmerged, otherwise from `main`.
+- The seven task branches still exist on `origin` and can be deleted (ask the owner first).
+- Branch for 5.1: cut `p5.1-nextjs-app` from `main`. From now on each task branch starts from `main` (or from the previous task's branch only while that one is still unmerged).
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 

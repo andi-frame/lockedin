@@ -6,8 +6,8 @@ Written 2026-10-08, at the end of Phase 4, by the agent that built Phases 2 to 4
 
 - **Tepati** is a study-pact app (two peers, a coin IOU ledger, daily proof). Folder name is `lockedin`; product name is Tepati.
 - **Done:** Phases 0 to 4. The whole backend works: auth, pacts, check-ins, review and disputes, settlement worker, payouts, notifications and email, uploads and media processing. **There is no web app yet** (`apps/web` only holds a generated `schema.d.ts`).
-- **Next task:** `docs/PLAN.md` **5.1 Next.js app on Bun**. Branch `p5.1-nextjs-app`, cut from `p4.2-uploads`. Playbook in §9.
-- **Nothing has been merged.** One pull request, https://github.com/andi-frame/lockedin/pull/1 (`p4.2-uploads` -> `main`, contains all seven branches), is open for the owner to review and merge. All work sits on 7 stacked branches (`p2.1-openapi` ... `p4.2-uploads`), pushed to `origin` (`https://github.com/andi-frame/lockedin.git`) on 2026-10-08; `main` there is still the end of Phase 1. Push new branches only when the owner asks, and never merge, force-push, or open PRs unless they ask.
+- **Next task:** `docs/PLAN.md` **5.1 Next.js app on Bun**. Branch `p5.1-nextjs-app`, cut from `main`. Playbook in §9.
+- **Phases 2 to 4 are merged into `main`** (pull request #1, https://github.com/andi-frame/lockedin/pull/1, merge commit `054e61a`, 2026-10-08, not squashed). `origin` is `https://github.com/andi-frame/lockedin.git`. The seven task branches (`p2.1-openapi` ... `p4.2-uploads`) still exist there; do not delete them unasked. The owner asked for the push and the merge explicitly each time: push, open PRs and merge only when they ask, and never force-push.
 - **First three commands in a new Git Bash terminal:**
 
 ```bash
@@ -80,7 +80,7 @@ Integration tests create a throwaway database per test and use Redis logical DBs
 
 ## 5. How work is done here (the loop)
 
-1. `git checkout -b p<phase>.<task>-<slug>` from the previous task's branch (they are stacked).
+1. `git checkout main && git pull --ff-only`, then `git checkout -b p<phase>.<task>-<slug>`. (Phases 2 to 4 were stacked on each other because nothing was merged until the end; start from `main` now, and stack only if a previous task is still unmerged.)
 2. Read the task in `docs/PLAN.md` and the docs it points to. Use the contract first: API change = edit `api/openapi.yaml`, then `bun run codegen`; DB change = new goose migration, then sqlc queries, then codegen; behaviour change = update `docs/SPEC.md` in the same branch.
 3. **Test first**: write the failing test, watch it fail for the right reason, then implement. For logic that must not silently regress, do a **mutation check**: break the code on purpose and confirm the test fails (done for the Garage length test and the EXIF-strip test; both are in PLAN/ADR). Money, time and state-machine code needs table-driven unit tests *and* an integration test against real Postgres.
 4. Commit in small, reviewable steps: `feat(p4.2): ...`, `fix(p3.2): ...`, `docs(p4.2): ...`. Keep a PR under about 600 changed lines excluding generated code (`p2.3` broke this; it is split into three commits).
@@ -112,7 +112,7 @@ Definition of done is in `AGENTS.md`. UI changes additionally need Playwright sc
 
 ## 7. Where each completed task lives
 
-All on local branches; `main` is `e4f987f` (end of Phase 1). Commit ranges are also in `docs/PLAN.md`.
+All merged into `main` through PR #1; the original task branches are kept on `origin`. Commit ranges are also in `docs/PLAN.md`.
 
 | Task | Branch | Commits | What it delivers, and the proof |
 |---|---|---|---|
@@ -143,7 +143,7 @@ If your tool wants its own instruction file (`GEMINI.md`, `.codex/...`), make it
 
 ## 9. Playbook for the next task: 5.1 Next.js app on Bun
 
-1. `git checkout -b p5.1-nextjs-app` (from `p4.2-uploads`). `source scripts/dev-env.sh`. `bun run infra:up`, `bun run db:migrate`, `bun run dev:hybrid`.
+1. `git checkout main && git pull --ff-only && git checkout -b p5.1-nextjs-app`. `source scripts/dev-env.sh`. `bun run infra:up`, `bun run db:migrate`, `bun run dev:hybrid`.
 2. Read `docs/PLAN.md` Phase 5 (opening paragraph and 5.1), `docs/ARCHITECTURE.md §7`, `docs/adr/0010-api-conventions.md`, `docs/STATUS.md §7`. For anything visual also the direction contract (§2 item 9).
 3. Create `apps/web` per PLAN 5.1: TypeScript strict, App Router with `src/`, `bun --bun next dev`, Tailwind v4 (`@tailwindcss/postcss`), ESLint, `next/font` Geist and Geist Mono, next-intl (default `id`, no URL prefix), TanStack Query provider, an `openapi-fetch` client using the existing `src/lib/api/schema.d.ts`, with CSRF (`X-CSRF-Token` from the `tepati_csrf` cookie) and `Idempotency-Key` helpers. Server-side fetches use `API_INTERNAL_URL` and forward cookies; dev rewrites send `/api/*` to `http://localhost:8080`.
 4. `scripts/dev.ts` starts the web app only if it exists (`appSpecs` there prints "web (PLAN 5.1)" as missing today). Wire `apps/web` into `dev:hybrid`, `lint` and `test` (`scripts/lint.ts`, root `package.json`).
@@ -154,7 +154,7 @@ Things the web app must provide because the backend already points at them: rout
 
 ## 10. Questions that are the owner's to answer (do not decide silently)
 
-- Merge strategy for the stacked branches (merge `p4.2-uploads` alone, or one PR per branch) and when to push.
+- Whether to delete the seven merged task branches on `origin`, and whether later PRs should be merged with merge commits (as PR #1 was, to keep the hashes in `docs/PLAN.md` valid) or squashed.
 - Whether to install Go 1.26 system-wide (removes the `dev-env.sh` Go workaround).
 - A real SMTP provider and TLS settings for staging and production.
 - HEIC/AVIF handling: the sniffer accepts them, but decoding depends on the libvips build and was not tested with a real HEIC file.
