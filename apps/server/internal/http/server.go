@@ -5,9 +5,11 @@ package http
 
 import (
 	"log/slog"
+	nethttp "net/http"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
@@ -33,6 +35,11 @@ type Deps struct {
 	Handlers api.StrictServerInterface
 	Checks   []ReadyCheck
 	Limits   Limits
+	// Blob serves the fs storage driver's signed URLs under /api/v1/blob/ (dev only; nil
+	// with the s3 driver). BlobMaxBytes is the largest upload it must accept: Fiber has one
+	// body limit for the whole app, so it is raised to that and JSON routes are re-capped.
+	Blob         nethttp.Handler
+	BlobMaxBytes int
 }
 
 // New builds the app. Middleware order (ARCHITECTURE §3):
@@ -49,7 +56,7 @@ func New(d Deps) *fiber.App {
 	app := fiber.New(fiber.Config{
 		AppName:      "tepati-api",
 		ErrorHandler: errorHandler(d.Log),
-		BodyLimit:    maxJSONBytes,
+		BodyLimit:    bodyLimit(d),
 		// Behind Caddy (or the Next dev proxy) the client IP is in X-Forwarded-For,
 		// but only trust it from a proxy on a private or loopback address.
 		ProxyHeader:      fiber.HeaderXForwardedFor,
@@ -71,6 +78,12 @@ func New(d Deps) *fiber.App {
 	for _, rl := range rateLimiters(d.Redis, d.Limits) {
 		app.Use(rl)
 	}
+	if d.Blob != nil {
+		// Before authenticate: the signature in the URL is the credential, and the body is a
+		// raw file, not JSON.
+		app.All(basePath+"/blob/*", adaptor.HTTPHandler(d.Blob))
+		app.Use(basePath, jsonSizeCap())
+	}
 	app.Use(basePath, authenticate(d.Sessions), jsonBodies(), idempotency(d.Redis, d.Log))
 
 	registerOps(app, d.Checks, m, d.Log)
@@ -79,6 +92,23 @@ func New(d Deps) *fiber.App {
 	}
 	routes.fill(app)
 	return app
+}
+
+func bodyLimit(d Deps) int {
+	if d.Blob != nil && d.BlobMaxBytes > maxJSONBytes {
+		return d.BlobMaxBytes
+	}
+	return maxJSONBytes
+}
+
+// jsonSizeCap keeps the 1 MB cap on API routes when bodyLimit had to be raised for blob uploads.
+func jsonSizeCap() fiber.Handler {
+	return func(c fiber.Ctx) error {
+		if len(c.Body()) > maxJSONBytes {
+			return problemError(api.RequestTooLarge, "the request body is too large")
+		}
+		return c.Next()
+	}
 }
 
 func corsDev(origin string) fiber.Handler {
