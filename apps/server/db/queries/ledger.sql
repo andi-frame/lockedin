@@ -12,11 +12,22 @@ select * from ledger_entries where idempotency_key = $1;
 -- name: PotBalance :one
 select coalesce(sum(amount), 0)::bigint as balance from ledger_entries where pact_id = $1;
 
--- Passbook page, newest first, with the running balance after each line.
+-- Balances for several pacts at once (list and Today screens).
+-- name: PotBalances :many
+select pact_id, coalesce(sum(amount), 0)::bigint as balance from ledger_entries
+where pact_id = any(sqlc.arg(pact_ids)::uuid[])
+group by pact_id;
+
+-- Passbook page, newest first, with the running balance after each line. The window
+-- runs over the whole pact ledger before the cursor filter, so every page agrees.
+-- The check-in join only adds the day and member a line is about.
 -- name: ListLedgerPage :many
 select * from (
-  select l.*, (sum(l.amount) over (order by l.id))::bigint as balance_after
+  select l.id, l.pact_id, l.kind, l.amount, l.check_in_id, l.reverses_entry_id, l.idempotency_key, l.note, l.created_at,
+         (sum(l.amount) over (order by l.id))::bigint as balance_after,
+         c.local_date as check_in_local_date, c.member_id as check_in_member_id
   from ledger_entries l
+  left join check_ins c on c.id = l.check_in_id
   where l.pact_id = sqlc.arg(pact_id)
 ) page
 where sqlc.narg(before_id)::bigint is null or page.id < sqlc.narg(before_id)::bigint
@@ -29,6 +40,9 @@ insert into payouts (pact_id, amount) values ($1, $2) on conflict (pact_id) do n
 -- name: GetPayout :one
 select * from payouts where pact_id = $1;
 
+-- name: ListPayoutsForPacts :many
+select * from payouts where pact_id = any(sqlc.arg(pact_ids)::uuid[]);
+
 -- name: MarkPayoutPaid :execrows
 update payouts set marked_paid_at = now(), marked_paid_note = $2 where pact_id = $1 and marked_paid_at is null;
 
@@ -40,9 +54,14 @@ insert into notifications (user_id, kind, payload) values ($1, $2, $3);
 
 -- name: ListNotifications :many
 select * from notifications
-where user_id = sqlc.arg(user_id) and (sqlc.narg(before_id)::bigint is null or id < sqlc.narg(before_id)::bigint)
+where user_id = sqlc.arg(user_id)
+  and (sqlc.narg(before_id)::bigint is null or id < sqlc.narg(before_id)::bigint)
+  and (not sqlc.arg(unread_only)::boolean or read_at is null)
 order by id desc
 limit sqlc.arg(max_rows);
+
+-- name: CountUnreadNotifications :one
+select count(*) from notifications where user_id = $1 and read_at is null;
 
 -- name: MarkNotificationsRead :exec
 update notifications set read_at = now() where user_id = sqlc.arg(user_id) and id = any(sqlc.arg(ids)::bigint[]) and read_at is null;

@@ -22,6 +22,8 @@ type Querier interface {
 	CountCheckInsForPact(ctx context.Context, pactID uuid.UUID) (int64, error)
 	CountNonFinalCheckIns(ctx context.Context, pactID uuid.UUID) (int64, error)
 	CountOpenPactsForUser(ctx context.Context, userID uuid.UUID) (int64, error)
+	CountReviewQueue(ctx context.Context, reviewerID uuid.UUID) (int64, error)
+	CountUnreadNotifications(ctx context.Context, userID uuid.UUID) (int64, error)
 	CreateAttachment(ctx context.Context, arg CreateAttachmentParams) (Attachment, error)
 	CreateInvite(ctx context.Context, arg CreateInviteParams) error
 	CreatePact(ctx context.Context, arg CreatePactParams) (Pact, error)
@@ -60,21 +62,35 @@ type Querier interface {
 	ListDecisions(ctx context.Context, checkInID uuid.UUID) ([]ListDecisionsRow, error)
 	// Every check-in with a passed deadline, oldest deadline first (SPEC §7 steps 1-5).
 	ListDueCheckInIDs(ctx context.Context, arg ListDueCheckInIDsParams) ([]uuid.UUID, error)
-	// Passbook page, newest first, with the running balance after each line.
+	// Passbook page, newest first, with the running balance after each line. The window
+	// runs over the whole pact ledger before the cursor filter, so every page agrees.
+	// The check-in join only adds the day and member a line is about.
 	ListLedgerPage(ctx context.Context, arg ListLedgerPageParams) ([]ListLedgerPageRow, error)
+	ListMembersForPacts(ctx context.Context, pactIds []uuid.UUID) ([]ListMembersForPactsRow, error)
 	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]Notification, error)
-	ListOpenCheckInsForMember(ctx context.Context, arg ListOpenCheckInsForMemberParams) ([]ListOpenCheckInsForMemberRow, error)
 	ListPactMembers(ctx context.Context, pactID uuid.UUID) ([]ListPactMembersRow, error)
 	ListPactsForUser(ctx context.Context, userID uuid.UUID) ([]Pact, error)
+	// Keyset page, newest first. The cursor is the last row's (created_at, id).
+	ListPactsForUserPage(ctx context.Context, arg ListPactsForUserPageParams) ([]Pact, error)
+	ListPayoutsForPacts(ctx context.Context, pactIds []uuid.UUID) ([]Payout, error)
 	ListProofs(ctx context.Context, checkInID uuid.UUID) ([]Proof, error)
-	ListReviewQueue(ctx context.Context, reviewerID uuid.UUID) ([]ListReviewQueueRow, error)
+	// Keyset page ordered by (review_deadline, id), soonest first. The proof word count and
+	// attachment count come from the latest proof version.
+	ListReviewQueuePage(ctx context.Context, arg ListReviewQueuePageParams) ([]ListReviewQueuePageRow, error)
 	// Active pacts past their end date whose every check-in is final (SPEC §7 step 7).
 	ListSettlablePacts(ctx context.Context, arg ListSettlablePactsParams) ([]uuid.UUID, error)
+	// My check-ins for the Today screen: dated today in each active pact's timezone, plus an
+	// earlier day that is still open because its grace period has not ended.
+	ListTodayCheckIns(ctx context.Context, arg ListTodayCheckInsParams) ([]ListTodayCheckInsRow, error)
 	MarkNotificationsRead(ctx context.Context, arg MarkNotificationsReadParams) error
 	MarkOutboxDispatched(ctx context.Context, ids []int64) error
 	MarkPayoutPaid(ctx context.Context, arg MarkPayoutPaidParams) (int64, error)
+	// My nearest unfinished deadline per pact (open days only).
+	NextDeadlines(ctx context.Context, arg NextDeadlinesParams) ([]NextDeadlinesRow, error)
 	// Pot balance is always the sum of the ledger (SPEC §6 L1).
 	PotBalance(ctx context.Context, pactID uuid.UUID) (int64, error)
+	// Balances for several pacts at once (list and Today screens).
+	PotBalances(ctx context.Context, pactIds []uuid.UUID) ([]PotBalancesRow, error)
 	ResetAcceptances(ctx context.Context, pactID uuid.UUID) error
 	// Guarded status change: affects 0 rows when the pact is not in from_status.
 	SetPactStatus(ctx context.Context, arg SetPactStatusParams) (int64, error)

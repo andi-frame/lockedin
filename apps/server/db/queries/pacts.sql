@@ -22,6 +22,15 @@ join pact_members m on m.pact_id = p.id
 where m.user_id = $1
 order by p.created_at desc;
 
+-- Keyset page, newest first. The cursor is the last row's (created_at, id).
+-- name: ListPactsForUserPage :many
+select p.* from pacts p
+join pact_members m on m.pact_id = p.id and m.user_id = sqlc.arg(user_id)
+where sqlc.narg(before_at)::timestamptz is null
+   or (p.created_at, p.id) < (sqlc.narg(before_at)::timestamptz, sqlc.narg(before_id)::uuid)
+order by p.created_at desc, p.id desc
+limit sqlc.arg(max_rows);
+
 -- name: CountOpenPactsForUser :one
 select count(*) from pacts p
 join pact_members m on m.pact_id = p.id
@@ -73,6 +82,12 @@ select m.*, u.display_name, u.email from pact_members m
 join users u on u.id = m.user_id
 where m.pact_id = $1
 order by m.role;
+
+-- name: ListMembersForPacts :many
+select m.*, u.display_name, u.email from pact_members m
+join users u on u.id = m.user_id
+where m.pact_id = any(sqlc.arg(pact_ids)::uuid[])
+order by m.pact_id, m.role;
 
 -- name: GetPactMember :one
 select * from pact_members where pact_id = $1 and user_id = $2;

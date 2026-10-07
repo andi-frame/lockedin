@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const confirmPayout = `-- name: ConfirmPayout :execrows
@@ -23,6 +24,17 @@ func (q *Queries) ConfirmPayout(ctx context.Context, pactID uuid.UUID) (int64, e
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const countUnreadNotifications = `-- name: CountUnreadNotifications :one
+select count(*) from notifications where user_id = $1 and read_at is null
+`
+
+func (q *Queries) CountUnreadNotifications(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countUnreadNotifications, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const createPayout = `-- name: CreatePayout :exec
@@ -181,9 +193,12 @@ func (q *Queries) InsertOutbox(ctx context.Context, arg InsertOutboxParams) erro
 }
 
 const listLedgerPage = `-- name: ListLedgerPage :many
-select id, pact_id, kind, amount, check_in_id, reverses_entry_id, idempotency_key, note, created_at, balance_after from (
-  select l.id, l.pact_id, l.kind, l.amount, l.check_in_id, l.reverses_entry_id, l.idempotency_key, l.note, l.created_at, (sum(l.amount) over (order by l.id))::bigint as balance_after
+select id, pact_id, kind, amount, check_in_id, reverses_entry_id, idempotency_key, note, created_at, balance_after, check_in_local_date, check_in_member_id from (
+  select l.id, l.pact_id, l.kind, l.amount, l.check_in_id, l.reverses_entry_id, l.idempotency_key, l.note, l.created_at,
+         (sum(l.amount) over (order by l.id))::bigint as balance_after,
+         c.local_date as check_in_local_date, c.member_id as check_in_member_id
   from ledger_entries l
+  left join check_ins c on c.id = l.check_in_id
   where l.pact_id = $1
 ) page
 where $2::bigint is null or page.id < $2::bigint
@@ -198,19 +213,23 @@ type ListLedgerPageParams struct {
 }
 
 type ListLedgerPageRow struct {
-	ID              int64
-	PactID          uuid.UUID
-	Kind            string
-	Amount          int64
-	CheckInID       *uuid.UUID
-	ReversesEntryID *int64
-	IdempotencyKey  string
-	Note            *string
-	CreatedAt       time.Time
-	BalanceAfter    int64
+	ID               int64
+	PactID           uuid.UUID
+	Kind             string
+	Amount           int64
+	CheckInID        *uuid.UUID
+	ReversesEntryID  *int64
+	IdempotencyKey   string
+	Note             *string
+	CreatedAt        time.Time
+	BalanceAfter     int64
+	CheckInLocalDate pgtype.Date
+	CheckInMemberID  *uuid.UUID
 }
 
-// Passbook page, newest first, with the running balance after each line.
+// Passbook page, newest first, with the running balance after each line. The window
+// runs over the whole pact ledger before the cursor filter, so every page agrees.
+// The check-in join only adds the day and member a line is about.
 func (q *Queries) ListLedgerPage(ctx context.Context, arg ListLedgerPageParams) ([]ListLedgerPageRow, error) {
 	rows, err := q.db.Query(ctx, listLedgerPage, arg.PactID, arg.BeforeID, arg.MaxRows)
 	if err != nil {
@@ -231,6 +250,8 @@ func (q *Queries) ListLedgerPage(ctx context.Context, arg ListLedgerPageParams) 
 			&i.Note,
 			&i.CreatedAt,
 			&i.BalanceAfter,
+			&i.CheckInLocalDate,
+			&i.CheckInMemberID,
 		); err != nil {
 			return nil, err
 		}
@@ -244,19 +265,27 @@ func (q *Queries) ListLedgerPage(ctx context.Context, arg ListLedgerPageParams) 
 
 const listNotifications = `-- name: ListNotifications :many
 select id, user_id, kind, payload, read_at, created_at from notifications
-where user_id = $1 and ($2::bigint is null or id < $2::bigint)
+where user_id = $1
+  and ($2::bigint is null or id < $2::bigint)
+  and (not $3::boolean or read_at is null)
 order by id desc
-limit $3
+limit $4
 `
 
 type ListNotificationsParams struct {
-	UserID   uuid.UUID
-	BeforeID *int64
-	MaxRows  int32
+	UserID     uuid.UUID
+	BeforeID   *int64
+	UnreadOnly bool
+	MaxRows    int32
 }
 
 func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]Notification, error) {
-	rows, err := q.db.Query(ctx, listNotifications, arg.UserID, arg.BeforeID, arg.MaxRows)
+	rows, err := q.db.Query(ctx, listNotifications,
+		arg.UserID,
+		arg.BeforeID,
+		arg.UnreadOnly,
+		arg.MaxRows,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -270,6 +299,37 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 			&i.Kind,
 			&i.Payload,
 			&i.ReadAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPayoutsForPacts = `-- name: ListPayoutsForPacts :many
+select pact_id, amount, marked_paid_at, marked_paid_note, confirmed_at, created_at from payouts where pact_id = any($1::uuid[])
+`
+
+func (q *Queries) ListPayoutsForPacts(ctx context.Context, pactIds []uuid.UUID) ([]Payout, error) {
+	rows, err := q.db.Query(ctx, listPayoutsForPacts, pactIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Payout{}
+	for rows.Next() {
+		var i Payout
+		if err := rows.Scan(
+			&i.PactID,
+			&i.Amount,
+			&i.MarkedPaidAt,
+			&i.MarkedPaidNote,
+			&i.ConfirmedAt,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -332,4 +392,36 @@ func (q *Queries) PotBalance(ctx context.Context, pactID uuid.UUID) (int64, erro
 	var balance int64
 	err := row.Scan(&balance)
 	return balance, err
+}
+
+const potBalances = `-- name: PotBalances :many
+select pact_id, coalesce(sum(amount), 0)::bigint as balance from ledger_entries
+where pact_id = any($1::uuid[])
+group by pact_id
+`
+
+type PotBalancesRow struct {
+	PactID  uuid.UUID
+	Balance int64
+}
+
+// Balances for several pacts at once (list and Today screens).
+func (q *Queries) PotBalances(ctx context.Context, pactIds []uuid.UUID) ([]PotBalancesRow, error) {
+	rows, err := q.db.Query(ctx, potBalances, pactIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PotBalancesRow{}
+	for rows.Next() {
+		var i PotBalancesRow
+		if err := rows.Scan(&i.PactID, &i.Balance); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

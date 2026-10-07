@@ -111,7 +111,12 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 
 // Redis returns a client on logical DB 15 of the dev Redis (REDIS_URL), flushed
 // before and after the test. Tests in one package must not run Redis tests in parallel.
-func Redis(t testing.TB) *redis.Client {
+func Redis(t testing.TB) *redis.Client { t.Helper(); return RedisIn(t, 15) }
+
+// RedisIn is Redis on another logical DB. `go test ./...` runs packages in parallel and
+// each flushes its DB, so every package that uses Redis in tests takes its own index
+// (auth: 15, http: 14).
+func RedisIn(t testing.TB, db int) *redis.Client {
 	t.Helper()
 	raw := os.Getenv("REDIS_URL")
 	if raw == "" {
@@ -124,7 +129,7 @@ func Redis(t testing.TB) *redis.Client {
 	if err != nil {
 		t.Fatalf("testdb: redis url: %v", err)
 	}
-	opt.DB = 15
+	opt.DB = db
 	rdb := redis.NewClient(opt)
 	ctx := context.Background()
 	if err := rdb.FlushDB(ctx).Err(); err != nil {

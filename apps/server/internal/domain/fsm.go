@@ -219,6 +219,10 @@ func validReason(r string) bool {
 	return utf8.RuneCountInString(strings.TrimSpace(r)) >= minReasonRunes
 }
 
+// ValidReason reports whether a written reason is long enough (SPEC §5). It is exported
+// so the API can hold dispute resolutions to it for both outcomes, as SPEC §2 asks.
+func ValidReason(r string) bool { return validReason(r) }
+
 func ptr(t time.Time) *time.Time { return &t }
 
 func (t *transition) submit() error {

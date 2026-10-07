@@ -360,6 +360,57 @@ func (q *Queries) IncrementRestDaysUsed(ctx context.Context, arg IncrementRestDa
 	return err
 }
 
+const listMembersForPacts = `-- name: ListMembersForPacts :many
+select m.pact_id, m.user_id, m.role, m.line_color, m.accepted_terms_hash, m.accepted_at, m.signature_name, m.rest_days_used, u.display_name, u.email from pact_members m
+join users u on u.id = m.user_id
+where m.pact_id = any($1::uuid[])
+order by m.pact_id, m.role
+`
+
+type ListMembersForPactsRow struct {
+	PactID            uuid.UUID
+	UserID            uuid.UUID
+	Role              string
+	LineColor         string
+	AcceptedTermsHash *string
+	AcceptedAt        *time.Time
+	SignatureName     *string
+	RestDaysUsed      int32
+	DisplayName       string
+	Email             string
+}
+
+func (q *Queries) ListMembersForPacts(ctx context.Context, pactIds []uuid.UUID) ([]ListMembersForPactsRow, error) {
+	rows, err := q.db.Query(ctx, listMembersForPacts, pactIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListMembersForPactsRow{}
+	for rows.Next() {
+		var i ListMembersForPactsRow
+		if err := rows.Scan(
+			&i.PactID,
+			&i.UserID,
+			&i.Role,
+			&i.LineColor,
+			&i.AcceptedTermsHash,
+			&i.AcceptedAt,
+			&i.SignatureName,
+			&i.RestDaysUsed,
+			&i.DisplayName,
+			&i.Email,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPactMembers = `-- name: ListPactMembers :many
 select m.pact_id, m.user_id, m.role, m.line_color, m.accepted_terms_hash, m.accepted_at, m.signature_name, m.rest_days_used, u.display_name, u.email from pact_members m
 join users u on u.id = m.user_id
@@ -420,6 +471,67 @@ order by p.created_at desc
 
 func (q *Queries) ListPactsForUser(ctx context.Context, userID uuid.UUID) ([]Pact, error) {
 	rows, err := q.db.Query(ctx, listPactsForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Pact{}
+	for rows.Next() {
+		var i Pact
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.CreatedBy,
+			&i.BackerID,
+			&i.Terms,
+			&i.TermsVersion,
+			&i.TermsHash,
+			&i.Timezone,
+			&i.StartsOn,
+			&i.EndsOn,
+			&i.OverridesUsed,
+			&i.ScheduledAt,
+			&i.SettledAt,
+			&i.CompletedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPactsForUserPage = `-- name: ListPactsForUserPage :many
+select p.id, p.title, p.description, p.status, p.created_by, p.backer_id, p.terms, p.terms_version, p.terms_hash, p.timezone, p.starts_on, p.ends_on, p.overrides_used, p.scheduled_at, p.settled_at, p.completed_at, p.created_at, p.updated_at from pacts p
+join pact_members m on m.pact_id = p.id and m.user_id = $1
+where $2::timestamptz is null
+   or (p.created_at, p.id) < ($2::timestamptz, $3::uuid)
+order by p.created_at desc, p.id desc
+limit $4
+`
+
+type ListPactsForUserPageParams struct {
+	UserID   uuid.UUID
+	BeforeAt *time.Time
+	BeforeID *uuid.UUID
+	MaxRows  int32
+}
+
+// Keyset page, newest first. The cursor is the last row's (created_at, id).
+func (q *Queries) ListPactsForUserPage(ctx context.Context, arg ListPactsForUserPageParams) ([]Pact, error) {
+	rows, err := q.db.Query(ctx, listPactsForUserPage,
+		arg.UserID,
+		arg.BeforeAt,
+		arg.BeforeID,
+		arg.MaxRows,
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -169,3 +169,21 @@ func TestEffectStringFallback(t *testing.T) {
 		t.Fatal("plain kinds print as-is")
 	}
 }
+
+func TestValidReasonCountsCharactersAfterTrimming(t *testing.T) {
+	for reason, want := range map[string]bool{
+		"":                  false,
+		"          ":        false, // spaces only
+		"kurang":            false,
+		"123456789":         false, // 9
+		"1234567890":        true,
+		"  1234567890  ":    true,
+		"bukti belum jelas": true,
+		"é é é é é":         false, // 9 characters even though it is more than 9 bytes
+		"é é é é é!":        true,
+	} {
+		if got := ValidReason(reason); got != want {
+			t.Errorf("ValidReason(%q) = %v, want %v", reason, got, want)
+		}
+	}
+}
