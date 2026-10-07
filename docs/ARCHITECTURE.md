@@ -297,10 +297,10 @@ client                         api                          garage              
 ```
 
 - **Defence in depth on size:** (1) a client pre-check, (2) the intent rejects declared bytes over the limit, (3) the signed `Content-Length` header means Garage rejects a mismatched PUT, (4) `complete` HEADs the object and rejects a mismatch, (5) the worker re-checks actual pixels and duration, (6) the post-transcode size is capped. Caddy also caps any request body to the API at 2 MB.
-- **Garage presign caveat:** verify in integration test `TestPresignedPutRejectsWrongLength` that Garage enforces a signed `Content-Length`. If it does not, switch the `storage` driver option `UPLOAD_MODE=proxy`: the client PUTs to `/api/v1/uploads/{id}/body`, which streams to Garage through `io.LimitReader(max+1)`. Caddy then allows a larger body only on that route. Both modes must exist behind the same interface.
+- **Garage presign caveat (checked 2026-10-07, see ADR-0005):** `TestPresignedPutRejectsWrongLength` shows Garage enforces the signed `Content-Length`, so presigned mode is the default. The proxy fallback below is only needed if that ever changes. If it does not, switch the `storage` driver option `UPLOAD_MODE=proxy`: the client PUTs to `/api/v1/uploads/{id}/body`, which streams to Garage through `io.LimitReader(max+1)`. Caddy then allows a larger body only on that route. Both modes must exist behind the same interface.
 - Lifecycle: a periodic job deletes `awaiting_upload`/`uploaded` attachments older than 24 h and staging objects older than 24 h. Orphan `ready` attachments (never attached to a proof) are deleted after 7 days.
 - Media is served via short-lived signed GET URLs (never public buckets). Only pact members can obtain them.
-- The `fs` storage driver (for no-Docker mode) implements the same interface. It uses an HMAC-signed local URL `/api/v1/blob/{key}?sig=` and is not for production.
+- The `fs` storage driver (for no-Docker mode) implements the same interface. It uses an HMAC-signed local URL `/api/v1/blob/{bucket}/{key}?m=&exp=&len=&ct=&sig=` (method, expiry, and for PUT the length and content type are all signed), served by `FS.ServeHTTP` mounted by the API ahead of the session gate. Fiber has a single body limit, so with this driver it is raised to the largest upload limit and JSON routes are re-capped at 1 MB. It is not for production.
 
 ## 7. Frontend design (Next.js)
 

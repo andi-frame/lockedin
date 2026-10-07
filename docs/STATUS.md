@@ -10,21 +10,21 @@ Last updated: 2026-10-07, at the end of Phase 3. This is the first thing to read
 | 1 Backend core (Go) | done | Schema, pure domain, store, pact and check-in services, settlement sweep, auth |
 | 2 API contract and HTTP | done | OpenAPI contract, Fiber app, all handlers (uploads stubbed, see §6) |
 | 3 Worker | done | 3.1 asynq worker, schedule, outbox relay, reminders, `tepatictl seed`/`pact show`, air files. 3.2 notifications and email (Mailpit) |
-| **4 Uploads and media** | **next** | 4.1 BlobStore drivers, 4.2 upload intent, complete and processing |
+| **4 Uploads and media** | **in progress** | 4.1 BlobStore drivers done (s3 and fs, Garage enforces the signed length). **4.2 upload intent, complete and processing is next** |
 | 5–9 | not started | Web app, Docker, quality gates, staging |
 
-The first unchecked task in `docs/PLAN.md` is **4.1**.
+The first unchecked task in `docs/PLAN.md` is **4.2**.
 
 ## 2. Branch and merge state
 
 Nothing has been pushed or merged. `main` is still at `e4f987f` (end of Phase 1). Everything since lives on **stacked** branches, each cut from the one before:
 
 ```
-main ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-handlers ─ p3.1-worker-jobs ─ p3.2-notifications-email   (HEAD)
+main ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-handlers ─ p3.1-worker-jobs ─ p3.2-notifications-email ─ p4.1-blobstore   (HEAD)
 ```
 
-- Merge in that order, or merge `p3.2-notifications-email` alone since it contains all the others.
-- Branch for 4.1: cut `p4.1-blobstore` from `p3.2-notifications-email` if it is still unmerged, otherwise from `main`.
+- Merge in that order, or merge `p4.1-blobstore` alone since it contains all the others.
+- Branch for 4.2: cut `p4.2-uploads` from `p4.1-blobstore` if it is still unmerged, otherwise from `main`.
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -65,6 +65,7 @@ Run it all: `bun run db:migrate`, then `bun run dev:hybrid` (infra, then the API
 | `internal/http` | the Fiber app. `server.go` (middleware stack), `problem.go` + `statuses.go` (errors), `idempotency.go`, `ratelimit.go`, `observe.go` (access log + Prometheus), `health.go`, `handlers*.go` + `mappers.go` + `cursor.go` (the strict-server implementation) |
 | `internal/http/api` | **generated** by oapi-codegen from `api/openapi.yaml`. Never edit |
 | `internal/jobs` | the asynq worker. `jobs.go` (task types, `Schedule()` table, `Settlement` interface, handlers), `mail.go` (email tasks and `Mail` dependencies), `worker.go` (`Run`: server + scheduler + metrics listener, graceful stop), `metrics.go` (per-instance Prometheus registry and the asynq queue collector) |
+| `internal/storage` | `BlobStore` (`storage.go`: buckets `Staging`/`Media`, `ValidKey`, errors), `s3.go` (Garage via aws-sdk-go-v2, path-style, separate public endpoint for signing), `fs.go` (local dir plus HMAC-signed URLs and `ServeHTTP`), `factory.go` (`FromConfig`). `contract_test.go` is one suite run against both drivers; the s3 run needs Garage (integration tag) |
 | `internal/notify` | email, no database: `delivery.go` (which kinds are mailed, SPEC §9), `render.go` (Indonesian copy, `html/template` plus plain-text layouts in `templates/`), `smtp.go` (`SMTP` sender: STARTTLS when offered, context deadlines, header-injection checks) |
 | `internal/ctl` | logic of `tepatictl`: `SeedOverdue`, `SeedInvite`, `Show` (integration-tested) |
 | `internal/testdb` | per-test database and Redis helpers (integration tag) |
@@ -85,6 +86,13 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 **Phase 1**
 - The worked example in `PLAN.md` is a real integration test (`TestWorkedExample`) and ends at balance 800 before payout.
 - Penalties apply only when a check-in becomes final, never on the first rejection; an upheld dispute moves no coins (a `reversal` row exists only for a penalised check-in that later becomes approved).
+
+**Phase 4.1**
+- **Garage enforces the signed `Content-Length`, `Content-Type` and expiry** (403 otherwise). ADR-0005 has the evidence, including a mutation check. Presigned mode is the default; `UPLOAD_MODE=proxy` exists in config but nothing implements it. Build it only if that test ever fails in a deployment.
+- **One `BlobStore` interface, buckets as constants** (`Staging`, `Media`); the s3 driver maps them to `S3_BUCKET_STAGING`/`S3_BUCKET_MEDIA`. Keys must pass `storage.ValidKey` (letters, digits, `.`, `_`, `-`, single `/`). Generate keys from uuids; never from user input.
+- **`PresignedPut.Headers` must be sent by the client as given** (at least `Content-Type`); the browser adds `Content-Length` itself. The upload intent response in 4.2 should return these headers.
+- **The fs driver is for native dev.** Its URLs point at `http://localhost:$API_PORT/api/v1/blob/...` and are signed with `SESSION_SECRET`. The API mounts `FS.ServeHTTP` before the session gate only when the driver is fs (`Deps.Blob`).
+- **`cmd/api` builds the store but nothing consumes it yet**; 4.2 passes it to the upload handlers, and `cmd/worker` will need `storage.FromConfig` for `media:process`.
 
 **Phase 3.2**
 - **Email is event-driven, not scheduled.** After `RelayOutbox` commits, the `outbox:relay` handler enqueues `email:notification` (one per Immediate kind), `email:digest` (proof submitted) and `email:invite` on the `default` queue. The service returns `RelayResult{Notifications (with ids), Invites, Skipped}` for this. If the enqueue fails (Redis down) it is logged and counted in `tepati_emails_total{result="enqueue_failed"}`, not retried: the in-app notification exists, only the email is lost.
@@ -121,7 +129,7 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 
 ## 6. Known gaps and deferred work
 
-- Upload endpoints (above). `Attachment.urls` is never filled until the BlobStore exists.
+- Upload endpoints (above) still answer 503 until 4.2. `Attachment.urls` is never filled until then.
 - `problem.errors[]` (per-field detail) is in the contract but never populated; validation failures carry a text `detail` only. Phase 6.1 (the wizard) will want structured errors from `Terms.Validate`.
 - `Service.Today` loads all of a user's pacts and filters `active|settling` in Go. Fine now; add a status filter to the query once completed pacts pile up.
 - Server-level rejects (for example an oversize body) are handled by Fiber below the middleware, so they are not access-logged.
@@ -135,16 +143,16 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - No test-clock endpoint yet (`CLOCK_OVERRIDE`); the e2e work (5.3/6.x) needs it. The API and worker use `domain.SystemClock`.
 - context7 MCP was still not authenticated; asynq and Prometheus APIs were checked by reading module source under `~/go/pkg/mod`. If you can, authenticate it before 4.1 (aws-sdk-go-v2 and Garage).
 
-## 7. Brief for Phase 4 (uploads and media)
+## 7. Brief for task 4.2 (upload intent, complete and processing)
 
-**Read first:** `docs/PLAN.md` tasks 4.1 and 4.2, `docs/ARCHITECTURE.md §6` (upload pipeline), `docs/SPEC.md §8`, `docs/adr/0005` (storage), and `internal/jobs/jobs.go` for how a task type is registered.
+**Read first:** `docs/PLAN.md` task 4.2, `docs/ARCHITECTURE.md §6` and its `attachments` table, `docs/SPEC.md §8` (limits), `docs/adr/0005-storage-garage.md`, `internal/storage/storage.go`, and `internal/jobs/mail.go` for the shape of a handler with injected dependencies.
 
 **Already in place:**
-- Garage is in the infra compose and `bun run garage:init` plus `bun run s3:smoke` exist (Phase 0). `UPLOAD_MODE`, the S3 and `STORAGE_*` variables are in config and `deploy/env/.env.example`.
-- The three upload operations (`createUpload`, `completeUpload`, `getAttachment`) are routed and answer `503 server.unavailable` until 4.1/4.2 fill them in. `attachments` table exists; `Attachment.urls` is never filled.
-- The `media` queue exists with weight 1; `uploads:gc` is scheduled hourly and does nothing. The `media` concurrency cap (2) must be a semaphore inside the `media:process` handler because asynq has no per-queue concurrency.
-- Handlers take a small interface and a `Mail`-style dependency struct (see `jobs/mail.go`); copy that shape for the media handler so it can be faked in unit tests.
+- `storage.BlobStore` with `PresignPut`, `PresignGet`, `Head`, `Get`, `Put`, `Delete`, built by `storage.FromConfig(cfg)`. `PresignedPut` carries `Method`, `URL`, `Headers` and `Expires` for the intent response.
+- The three upload operations are routed and answer `503 server.unavailable` (`createUpload`, `completeUpload`, `getAttachment`). The `attachments` table exists. Limits are in `cfg.Upload` (`ImageMaxBytes`, `VideoMaxBytes`, `VideoMaxSeconds`, `FileMaxBytes`, `MaxPerProof`), the queue backpressure threshold is `cfg.MediaQueueMax`, and tool paths are in `cfg.Media`.
+- The `media` queue (weight 1) exists and `uploads:gc` runs hourly doing nothing. The concurrency cap of 2 must be a semaphore inside the `media:process` handler (asynq has no per-queue concurrency).
+- Garage is verified to enforce length, type and expiry, so the intent can rely on the signature.
 
-**To build:** 4.1 the `storage.BlobStore` interface with `s3` and `fs` drivers and `TestPresignedPutRejectsWrongLength` against Garage (record the result in ADR-0005; if Garage does not enforce the signed length, `UPLOAD_MODE=proxy` becomes the default). 4.2 the endpoints and the `media:process` handler with golden tests under `internal/media/testdata` (EXIF stripped, wrong type rejected, 200 s video rejected, 1080p to 720p). ffmpeg and vips are called through `exec.CommandContext` with arg slices and timeouts.
+**To build:** the service functions (`CreateUpload`, `CompleteUpload`, `GetAttachment`; pact-membership filtered, invariant 8), the handlers replacing the 503s, the `media:process` handler (sniff with magic bytes, vips and ffmpeg through `exec.CommandContext` with arg slices and timeouts, EXIF stripped, write to `Media`, delete the staging object), the `uploads:gc` body, the queue-depth 503, and the golden tests in `internal/media/testdata` listed in PLAN 4.2. Native dev needs `ffmpeg` and `vips` on `PATH`; check they exist before writing the tests and tell the user if not.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p4.1-blobstore`), test first, update `docs/PLAN.md` with the commit hash, update this file and `ARCHITECTURE` when behaviour changes, and refresh the knowledge graph with `/graphify . --update` after large changes (it was last refreshed after Phase 2). Do not start 4.2 in the same session as 4.1 unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p4.2-uploads`), test first, update `docs/PLAN.md` with the commit hash, update this file and `ARCHITECTURE` when behaviour changes, and refresh the knowledge graph with `/graphify . --update` after large changes (last refreshed after Phase 2). Do not start Phase 5 in the same session unless asked.

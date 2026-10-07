@@ -25,3 +25,10 @@ Proof often includes photos and videos from phones, and a raw phone video can be
 - The worker image is built on Debian slim and bundles ffmpeg and libvips. Native dev needs both tools on `PATH`.
 - Media URLs are short-lived signed GETs. Nothing is public.
 - Limits are configured through env vars (see `docs/SPEC.md §8`).
+
+## Verification: Garage enforces the signed upload (2026-10-07)
+`TestPresignedPutRejectsWrongLength` (in the shared contract suite, `internal/storage/contract_test.go`, run against Garage by `s3_integration_test.go`) presigns a PUT for N bytes and then sends N+8 and N-5 bytes. Garage rejects both with `403` and stores nothing. The same suite shows it also rejects a different `Content-Type` and an expired URL. To check the test is not vacuous, the presign was temporarily changed to omit `ContentLength`: the shorter body was then accepted (`200`) and the test failed.
+
+So the signature does pin the length. **`UPLOAD_MODE=presigned` stays the default** and the proxy mode is not implemented. If a deployment ever puts something in front of Garage that rewrites or drops those headers, run this test against it first; only then build the proxy endpoint (`/uploads/{id}/body` behind `io.LimitReader(max+1)`).
+
+Driver notes: the s3 client uses path-style addressing and signs presigned URLs for `S3_PUBLIC_ENDPOINT`, a separate client from the one the server uses (`S3_ENDPOINT`). The AWS SDK's default request checksums are switched off (`WhenRequired`).

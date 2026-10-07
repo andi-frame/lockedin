@@ -120,10 +120,12 @@ Use *superpowers:test-driven-development* (or *tdd*) for every task in this phas
 
 ## Phase 4: Uploads and media
 
-- [ ] **4.1 BlobStore drivers**
+- [x] **4.1 BlobStore drivers** (2ee6dce..de7c8b6)
   - Do: Implement the `storage.BlobStore` interface (`PresignPut`, `PresignGet`, `Head`, `Get`, `Put`, `Delete`) with an `s3` driver (aws-sdk-go-v2, path-style, separate public endpoint for signing) and an `fs` driver (HMAC-signed local URLs served by `/api/v1/blob/*`).
   - Done when: integration test `TestPresignedPutRejectsWrongLength` runs against Garage, and its result is recorded in `docs/adr/0005` (append a note). If Garage does not enforce the signed length, implement `UPLOAD_MODE=proxy` and make it the default.
   - Verify: `go test -tags=integration ./internal/storage/...`
+  - Result: verified 2026-10-07 against the local Garage. `TestPresignedPutRejectsWrongLength` passes (Garage answers `403` to a longer and to a shorter body), and a mutation check (presigning without the length) makes it fail with a `200`, so the test does detect the problem. **Garage enforces the signed length**, so `UPLOAD_MODE=presigned` stays the default and the proxy mode is not built. Recorded in ADR-0005.
+  - Deviations, decided while building: (1) One contract suite (`contract_test.go`) runs against both drivers, so the fs driver cannot drift from the s3 one. It also checks content type, expiry, bucket separation and key validation. (2) `fs` also needed the HTTP side: `FS.ServeHTTP` verifies the HMAC and is mounted by the API at `/api/v1/blob/*` (before the session gate; the signature is the credential). Fiber has one body limit per app, so with the fs driver it is raised to the largest upload limit and JSON routes are re-capped at 1 MB by `jsonSizeCap`. (3) Keys are restricted to `[A-Za-z0-9._-]` segments joined by `/` (`ValidKey`), which is the path-traversal defence for fs. (4) The s3 driver turns off the SDK's default CRC32 checksums (`WhenRequired`) so presigned URLs need no header the browser cannot compute, and spools non-seekable readers to a temp file because signing over plain HTTP needs a seekable body. (5) `Delete` of a missing object is not an error, for both drivers.
 
 - [ ] **4.2 Upload intent, complete, and processing** 🔒 (limits)
   - Do: Implement the endpoints and the `media:process` handler as specified in `ARCHITECTURE.md §6` and `SPEC.md §8`. Use ffmpeg and vips through `exec.CommandContext` with arg slices and timeouts, sniff types, enforce limits, and add the queue backpressure 503.
