@@ -1,0 +1,19 @@
+{
+  "Meta": {
+    "title": "Tepati",
+    "description": "Tepati janji belajarmu. Dua teman, satu kesepakatan, satu buku koin."
+  },
+  "Home": {
+    "name": "Tepati",
+    "tagline": "Janji belajar yang dijaga berdua.",
+    "building": "Aplikasinya sedang dibangun. Halaman masuk dan Hari ini menyusul."
+  },
+  "Errors": {
+    "unknown": "Terjadi kesalahan. Coba lagi sebentar lagi.",
+    "network": "Tidak bisa terhubung ke server. Periksa koneksimu lalu coba lagi.",
+    "auth.unauthenticated": "Sesimu sudah berakhir. Masuk lagi untuk melanjutkan.",
+    "rate_limited": "Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.",
+    "server.internal": "Ada masalah di sisi kami. Coba lagi sebentar lagi.",
+    "server.unavailable": "Server sedang sibuk. Coba lagi sebentar lagi."
+  }
+}
