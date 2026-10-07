@@ -1,19 +1,47 @@
-// Command worker runs background jobs (asynq). Queues arrive in PLAN phase 3.
+// Command worker runs the background jobs (asynq): settlement sweeps, the outbox relay and
+// reminders. See internal/jobs for the schedule.
 package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 
+	"github.com/hibiken/asynq"
+
 	"github.com/andi-frame/lockedin/apps/server/internal/app"
 	"github.com/andi-frame/lockedin/apps/server/internal/config"
+	"github.com/andi-frame/lockedin/apps/server/internal/domain"
+	"github.com/andi-frame/lockedin/apps/server/internal/jobs"
+	"github.com/andi-frame/lockedin/apps/server/internal/service"
+	"github.com/andi-frame/lockedin/apps/server/internal/store"
 )
 
 func main() {
-	os.Exit(app.Main("worker", func(ctx context.Context, _ config.Config, log *slog.Logger) error {
-		log.Info("worker skeleton ready")
-		<-ctx.Done()
-		return nil
-	}))
+	os.Exit(app.Main("worker", run))
+}
+
+func run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
+	pool, err := store.Connect(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	redisOpt, err := asynq.ParseRedisURI(cfg.RedisURL)
+	if err != nil {
+		return fmt.Errorf("REDIS_URL: %w", err)
+	}
+
+	opts := jobs.Options{
+		Redis:       redisOpt,
+		Svc:         service.New(store.NewStore(pool), domain.SystemClock{}),
+		Log:         log,
+		Concurrency: cfg.WorkerConcurrency,
+	}
+	if cfg.WorkerMetricsPort > 0 {
+		opts.MetricsAddr = fmt.Sprintf(":%d", cfg.WorkerMetricsPort)
+	}
+	return jobs.Run(ctx, opts)
 }
