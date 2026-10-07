@@ -78,7 +78,7 @@ Audience: human developers and coding agents. Read `PRODUCT.md` (why) and `docs/
 │       │   ├── media/            # sniffing, ffmpeg/vips wrappers, limits
 │       │   ├── storage/          # BlobStore interface: s3 (Garage) and fs drivers
 │       │   ├── auth/             # argon2id, sessions, CSRF
-│       │   └── notify/           # in-app + SMTP email
+│       │   └── notify/           # email copy, SPEC §9 delivery table, SMTP sender
 │       ├── db/migrations/        # goose SQL migrations
 │       ├── db/queries/           # sqlc .sql files
 │       └── sqlc.yaml
@@ -226,6 +226,7 @@ create table notifications (id bigserial primary key, user_id uuid not null, kin
 create table outbox (id bigserial primary key, topic text not null, payload jsonb not null, created_at timestamptz not null default now(), dispatched_at timestamptz);
 -- one row per (check-in, reminder kind) already sent; makes the 5-minute reminder job idempotent
 create table reminders_sent (check_in_id uuid not null references check_ins(id) on delete cascade, kind text not null, sent_at timestamptz not null default now(), primary key (check_in_id, kind));
+-- email dedupe (migration 20261009000001): notifications.emailed_at and pact_invites.emailed_at are set when an email task claims the row, cleared if the send fails
 ```
 
 Enforce append-only at the database level too:
@@ -347,7 +348,7 @@ SESSION_SECRET=…                     API_INTERNAL_URL=http://localhost:8080   
 ## 10. Observability
 
 - Logging uses `log/slog` JSON with `request_id`, `user_id`, and `pact_id`, and the web uses pino-style JSON. Never log proof bodies or tokens.
-- `/metrics` (Prometheus) on the API and worker exposes request latency, asynq queue sizes, settlement transitions by type, and media processing time and failures. The worker's listener is `WORKER_METRICS_PORT` (default 9091) and serves `tepati_asynq_queue_tasks{queue,state}`, `tepati_asynq_queue_latency_seconds{queue}`, `tepati_settlement_transitions_total{type=deadline|activated|closed}`, `tepati_outbox_relayed_total`, `tepati_outbox_skipped_total`, `tepati_reminders_queued_total`, and `tepati_job_runs_total{task,result}` with `tepati_job_duration_seconds{task}`. Media metrics arrive with PLAN 4.2.
+- `/metrics` (Prometheus) on the API and worker exposes request latency, asynq queue sizes, settlement transitions by type, and media processing time and failures. The worker's listener is `WORKER_METRICS_PORT` (default 9091) and serves `tepati_asynq_queue_tasks{queue,state}`, `tepati_asynq_queue_latency_seconds{queue}`, `tepati_settlement_transitions_total{type=deadline|activated|closed}`, `tepati_outbox_relayed_total`, `tepati_outbox_skipped_total`, `tepati_reminders_queued_total`, `tepati_emails_total{result=sent|skipped|failed|enqueue_failed}`, and `tepati_job_runs_total{task,result}` with `tepati_job_duration_seconds{task}`. Media metrics arrive with PLAN 4.2.
 - asynqmon UI (dev and staging only, behind basic auth in staging).
 
 ## 11. Testing strategy

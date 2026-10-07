@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-07, after task 3.1 (Phase 3 is in progress). This is the first thing to read when you start a new session. `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-07, at the end of Phase 3. This is the first thing to read when you start a new session. `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -9,22 +9,23 @@ Last updated: 2026-10-07, after task 3.1 (Phase 3 is in progress). This is the f
 | 0 Repository foundation | done | Bun workspace, env scripts, infra compose, dev orchestrator |
 | 1 Backend core (Go) | done | Schema, pure domain, store, pact and check-in services, settlement sweep, auth |
 | 2 API contract and HTTP | done | OpenAPI contract, Fiber app, all handlers (uploads stubbed, see §6) |
-| **3 Worker** | **in progress** | 3.1 done (asynq worker, schedule, outbox relay, reminders, `tepatictl seed`/`pact show`, air files). **3.2 notifications and email is next** |
-| 4–9 | not started | Uploads, web app, Docker, quality gates, staging |
+| 3 Worker | done | 3.1 asynq worker, schedule, outbox relay, reminders, `tepatictl seed`/`pact show`, air files. 3.2 notifications and email (Mailpit) |
+| **4 Uploads and media** | **next** | 4.1 BlobStore drivers, 4.2 upload intent, complete and processing |
+| 5–9 | not started | Web app, Docker, quality gates, staging |
 
-The first unchecked task in `docs/PLAN.md` is **3.2**.
+The first unchecked task in `docs/PLAN.md` is **4.1**.
 
 ## 2. Branch and merge state
 
 Nothing has been pushed or merged. `main` is still at `e4f987f` (end of Phase 1). Everything since lives on **stacked** branches, each cut from the one before:
 
 ```
-main ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-handlers ─ p3.1-worker-jobs   (HEAD)
+main ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-handlers ─ p3.1-worker-jobs ─ p3.2-notifications-email   (HEAD)
 ```
 
-- Merge in that order, or merge `p3.1-worker-jobs` alone since it contains all the others.
-- Branch for 3.2: cut `p3.2-notifications-email` from `p3.1-worker-jobs` if it is still unmerged, otherwise from `main`.
-- `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs).
+- Merge in that order, or merge `p3.2-notifications-email` alone since it contains all the others.
+- Branch for 4.1: cut `p4.1-blobstore` from `p3.2-notifications-email` if it is still unmerged, otherwise from `main`.
+- `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
 ## 3. How to verify the current state
@@ -59,15 +60,16 @@ Run it all: `bun run db:migrate`, then `bun run dev:hybrid` (infra, then the API
 | `internal/config` | env parsing and validation (`caarlos0/env`), lists every missing var at once |
 | `internal/domain` | pure rules, no I/O: `Terms` (validate, canonical hash), deadlines per timezone, the check-in FSM `Transition(ci, ev, now, ctx)` returning effects, ledger clamp math, proof-doc allow-list, `Clock` (`SystemClock`, `FakeClock`), `ValidReason` |
 | `internal/store` | sqlc-generated queries and `WithTx`. Queries live in `db/queries/*.sql`, migration in `db/migrations/` |
-| `internal/service` | every state change, one transaction each. `pacts.go` (lifecycle), `checkins.go` (transitions, `SweepDeadlines`, `ClosePacts`), `payouts.go` (mark paid, confirm), `outbox.go` (`RelayOutbox`), `reminders.go` (`SendReminders`), `read.go` (membership-filtered views, keyset pages, `my_actions`) |
+| `internal/service` | every state change, one transaction each. `pacts.go` (lifecycle), `checkins.go` (transitions, `SweepDeadlines`, `ClosePacts`), `payouts.go` (mark paid, confirm), `outbox.go` (`RelayOutbox`), `reminders.go` (`SendReminders`), `mailing.go` (`Claim*Email`/`Release*Email`), `read.go` (membership-filtered views, keyset pages, `my_actions`) |
 | `internal/auth` | argon2id, Redis sessions (hashed token), CSRF double-submit, login limiter, `RequireUser`, `UserFromContext` |
 | `internal/http` | the Fiber app. `server.go` (middleware stack), `problem.go` + `statuses.go` (errors), `idempotency.go`, `ratelimit.go`, `observe.go` (access log + Prometheus), `health.go`, `handlers*.go` + `mappers.go` + `cursor.go` (the strict-server implementation) |
 | `internal/http/api` | **generated** by oapi-codegen from `api/openapi.yaml`. Never edit |
-| `internal/jobs` | the asynq worker. `jobs.go` (task types, `Schedule()` table, `Settlement` interface, handlers), `worker.go` (`Run`: server + scheduler + metrics listener, graceful stop), `metrics.go` (per-instance Prometheus registry and the asynq queue collector) |
+| `internal/jobs` | the asynq worker. `jobs.go` (task types, `Schedule()` table, `Settlement` interface, handlers), `mail.go` (email tasks and `Mail` dependencies), `worker.go` (`Run`: server + scheduler + metrics listener, graceful stop), `metrics.go` (per-instance Prometheus registry and the asynq queue collector) |
+| `internal/notify` | email, no database: `delivery.go` (which kinds are mailed, SPEC §9), `render.go` (Indonesian copy, `html/template` plus plain-text layouts in `templates/`), `smtp.go` (`SMTP` sender: STARTTLS when offered, context deadlines, header-injection checks) |
 | `internal/ctl` | logic of `tepatictl`: `SeedOverdue`, `SeedInvite`, `Show` (integration-tested) |
 | `internal/testdb` | per-test database and Redis helpers (integration tag) |
 | `cmd/api` | wired and working: Postgres, Redis, services, handlers, readiness checks, graceful shutdown |
-| `cmd/worker` | wired and working: store, service with `SystemClock`, `jobs.Run`. `WORKER_CONCURRENCY`, `WORKER_METRICS_PORT` |
+| `cmd/worker` | wired and working: store, service with `SystemClock`, SMTP sender (`SMTP_URL`, `MAIL_FROM`), `APP_BASE_URL` for links, `jobs.Run`. `WORKER_CONCURRENCY`, `WORKER_METRICS_PORT` |
 | `cmd/tepatictl` | `version`, `seed --scenario overdue\|invite`, `pact show <id>` |
 
 ### Contract and web types
@@ -83,6 +85,15 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 **Phase 1**
 - The worked example in `PLAN.md` is a real integration test (`TestWorkedExample`) and ends at balance 800 before payout.
 - Penalties apply only when a check-in becomes final, never on the first rejection; an upheld dispute moves no coins (a `reversal` row exists only for a penalised check-in that later becomes approved).
+
+**Phase 3.2**
+- **Email is event-driven, not scheduled.** After `RelayOutbox` commits, the `outbox:relay` handler enqueues `email:notification` (one per Immediate kind), `email:digest` (proof submitted) and `email:invite` on the `default` queue. The service returns `RelayResult{Notifications (with ids), Invites, Skipped}` for this. If the enqueue fails (Redis down) it is logged and counted in `tepati_emails_total{result="enqueue_failed"}`, not retried: the in-app notification exists, only the email is lost.
+- **Claim, send, release.** `Service.Claim*Email` sets `emailed_at` in the statement that reads the row, so a retried or duplicated task finds nothing to send. A failed send calls `Release*Email` so the asynq retry (5 attempts, backoff) can send. A crash between claim and send loses one email, never doubles one.
+- **The invite token and the outbox.** `Propose` with an address writes outbox topic `invite_mail` with `{pact_id, email, token}`. The relay hands it to the email task and `MarkOutboxDispatched` runs `payload - 'token'` in the same statement, so the plaintext is in Postgres only until the next relay pass (seconds). The token also sits in the asynq task payload (Redis) until the email is sent; the task has `Retention(0)` so finished tasks leave no copy. A link-only invite (no address) writes nothing.
+- **Digest.** `email:digest` is `Unique(window+timeout)` and `ProcessIn(5 min)`, so a burst of `proof_submitted` events becomes one email per (user, pact). A submission that lands while that digest is being sent waits for the next one (it still shows in-app).
+- **Which kinds are mailed** is `notify.delivery` in `internal/notify/delivery.go`, matching the SPEC §9 table: terms changed/signed, proof submitted (digest), rejected, overridden, auto-approved, dispute opened, pact settled. Adding a kind there without copy in `render.go` fails `TestEveryEmailedKindHasCopy`.
+- **Links** use `APP_BASE_URL`: `/pacts/<id>`, `/review`, `/invite/<token>`. Phase 5/6 must serve those routes.
+- **Recipient name** falls back to "teman" (invitees have no account).
 
 **Phase 3.1**
 - **The schedule** is the table in `jobs.Schedule()`: sweep and activate every 1 min and close every 5 min on `critical`; outbox relay every 5 s and reminders every 5 min on `default`; `uploads:gc` hourly on `media`. Periodic tasks run with `MaxRetry(0)` and a unique lock just under their period (two replicas enqueue once). The next tick is the retry, because every job re-derives its work from the database.
@@ -115,27 +126,25 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - `Service.Today` loads all of a user's pacts and filters `active|settling` in Go. Fine now; add a status filter to the query once completed pacts pile up.
 - Server-level rejects (for example an oversize body) are handled by Fiber below the middleware, so they are not access-logged.
 - Idempotency fails open if Redis is down (logged); the DB's own idempotency keys and status guards still protect money.
-- Notifications are written (the relay) and read (the API), but **no email is sent yet**: that is 3.2. `Propose` stores the invite email address but nothing emits an event for it, so 3.2 must add one (an outbox row written in `Propose`'s transaction).
+- Email: no `sent`/bounce tracking beyond `emailed_at`, no unsubscribe or per-user preferences (not in SPEC), and the `en` locale is not rendered (every email is Indonesian; `users.locale` is read but unused). Email copy lives in Go (`internal/notify/render.go`), not `messages/id.json`.
+- Production SMTP (TLS, auth) is untested against a real provider; only Mailpit and a fake server were used. `smtps://` and `user:pass@` are implemented.
+- The invite email is the only place the plaintext token is sent. If the email is lost (enqueue failure, crash after claim), the backer still has the link from the `Propose` response; there is no "resend invite" endpoint.
 - `uploads:gc` is a no-op until the BlobStore exists (4.1/4.2). The `media` concurrency cap (2) must be a semaphore in the `media:process` handler (4.2).
 - The worker has `/metrics` and `/healthz` only, no `/readyz`. Fine for now; add one with the compose healthchecks (7.1).
 - `tepati_settlement_transitions_total` is by job type, see §5.
 - No test-clock endpoint yet (`CLOCK_OVERRIDE`); the e2e work (5.3/6.x) needs it. The API and worker use `domain.SystemClock`.
-- context7 MCP was still not authenticated; asynq and Prometheus APIs were checked by reading module source under `~/go/pkg/mod`. If you can, authenticate it before 3.2 (it will need an SMTP library).
+- context7 MCP was still not authenticated; asynq and Prometheus APIs were checked by reading module source under `~/go/pkg/mod`. If you can, authenticate it before 4.1 (aws-sdk-go-v2 and Garage).
 
-## 7. Brief for task 3.2 (notifications and email)
+## 7. Brief for Phase 4 (uploads and media)
 
-**Read first:** `docs/PLAN.md` task 3.2, `docs/SPEC.md §9` (the trigger table), `ARCHITECTURE §3` (never enqueue inside a transaction), and `internal/jobs/jobs.go` plus `internal/service/outbox.go` to see how 3.1 left things.
+**Read first:** `docs/PLAN.md` tasks 4.1 and 4.2, `docs/ARCHITECTURE.md §6` (upload pipeline), `docs/SPEC.md §8`, `docs/adr/0005` (storage), and `internal/jobs/jobs.go` for how a task type is registered.
 
-**Already built:**
-- Every transition writes an outbox row (`topic = "notify"`, payload `service.Notification`: `user_id`, `kind`, `pact_id`, optional `check_in_id`). `Service.RelayOutbox` turns them into `notifications` rows and **returns the delivered `[]service.Notification`**; the job (`Handlers.relay` in `internal/jobs/jobs.go`) currently ignores that list. 3.2 enqueues an email task for the kinds that need email, **after** `RelayOutbox` returned (the transaction has committed by then).
-- Kinds emitted: `member_joined`, `terms_changed`, `terms_signed`, `pact_scheduled`, `pact_settled`, `proof_submitted`, `proof_edited`, `proof_approved`, `proof_rejected`, `proof_auto_approved`, `proof_overridden`, `rejection_final`, `rest_declared`, `day_missed`, `dispute_opened`, `dispute_upheld`, `dispute_dismissed`, `payout_marked_paid`, `payout_confirmed`, and from the reminder job `reminder_cutoff_3h`, `reminder_cutoff_30m`, `review_deadline_soon`.
-- The queue `default` (weight 3) exists for email tasks; add a task type in `internal/jobs` and register it in `Handlers.Mux()`. Give `Handlers` a mailer dependency behind an interface so it can be faked.
-- Config: `SMTP_URL` (default `smtp://localhost:1025`, Mailpit), `MAIL_FROM`, and `APP_BASE_URL` for links. Mailpit UI is `http://localhost:8025`.
+**Already in place:**
+- Garage is in the infra compose and `bun run garage:init` plus `bun run s3:smoke` exist (Phase 0). `UPLOAD_MODE`, the S3 and `STORAGE_*` variables are in config and `deploy/env/.env.example`.
+- The three upload operations (`createUpload`, `completeUpload`, `getAttachment`) are routed and answer `503 server.unavailable` until 4.1/4.2 fill them in. `attachments` table exists; `Attachment.urls` is never filled.
+- The `media` queue exists with weight 1; `uploads:gc` is scheduled hourly and does nothing. The `media` concurrency cap (2) must be a semaphore inside the `media:process` handler because asynq has no per-queue concurrency.
+- Handlers take a small interface and a `Mail`-style dependency struct (see `jobs/mail.go`); copy that shape for the media handler so it can be faked in unit tests.
 
-**To build:**
-- Email per SPEC §9: invite received (to the invitee address, not a user), terms changed or accepted, proof submitted (digest), rejected or overridden or auto-approved, dispute opened, pact settled with payout due. In-app only: the reminders. Indonesian `html/template` plus a plain-text fallback, peer-to-peer tone. In-app notification copy lives in the web app (`messages/id.json`, Phase 5/6); the API stores kinds and ids only.
-- **The invite email needs a new event.** `Service.Propose(ctx, actor, pactID, email)` stores the address in `pact_invites` but writes no outbox row, and the plaintext invite token exists only in `Propose`'s return value (only its hash is stored). So 3.2 must have `Propose`'s transaction write an outbox row carrying what the mailer needs, and the token must reach the mailer without sitting in clear text in a long-lived place. Decide that deliberately (an ADR line) and prefer a short-lived payload that is cleared after sending. `tepatictl seed --scenario invite` already creates the proposed pact with an invite addressed to `seed-invitee@tepati.test` and prints the link; for the Mailpit check to show an email, the seed must go through the same event.
-- Email sending must be idempotent per notification (a retried asynq task must not double-send): keep a `sent_at`-style marker or a dedupe key.
-- Verify (PLAN 3.2): Mailpit shows the invite email after `bun run db:seed -- invite`.
+**To build:** 4.1 the `storage.BlobStore` interface with `s3` and `fs` drivers and `TestPresignedPutRejectsWrongLength` against Garage (record the result in ADR-0005; if Garage does not enforce the signed length, `UPLOAD_MODE=proxy` becomes the default). 4.2 the endpoints and the `media:process` handler with golden tests under `internal/media/testdata` (EXIF stripped, wrong type rejected, 200 s video rejected, 1080p to 720p). ffmpeg and vips are called through `exec.CommandContext` with arg slices and timeouts.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p3.2-notifications-email`), test first, update `docs/PLAN.md` with the commit hash, update this file and `ARCHITECTURE` when behaviour changes, and refresh the knowledge graph with `/graphify . --update` after large changes. Do not start Phase 4 in the same session unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p4.1-blobstore`), test first, update `docs/PLAN.md` with the commit hash, update this file and `ARCHITECTURE` when behaviour changes, and refresh the knowledge graph with `/graphify . --update` after large changes (it was last refreshed after Phase 2). Do not start 4.2 in the same session as 4.1 unless asked.
