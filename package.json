@@ -1,0 +1,38 @@
+{
+  "name": "tepati",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/*"],
+  "engines": {
+    "bun": ">=1.3.14"
+  },
+  "scripts": {
+    "setup": "bun scripts/setup.ts",
+    "infra:up": "bun scripts/infra.ts up",
+    "infra:down": "bun scripts/infra.ts down",
+    "infra:reset": "bun scripts/infra.ts reset",
+    "infra:status": "bun scripts/infra.ts status",
+    "garage:init": "bun scripts/garage-init.ts",
+    "s3:smoke": "bun scripts/s3-smoke.ts",
+    "dev:docker": "bun scripts/dev.ts docker",
+    "dev:hybrid": "bun scripts/dev.ts hybrid",
+    "dev:native": "bun scripts/dev.ts native",
+    "dev:apps": "bun scripts/dev.ts apps",
+    "db:migrate": "bun scripts/todo.ts db:migrate 1.2",
+    "db:rollback": "bun scripts/todo.ts db:rollback 1.2",
+    "db:new": "bun scripts/todo.ts db:new 1.2",
+    "db:seed": "bun scripts/todo.ts db:seed 3.1",
+    "codegen": "bun scripts/todo.ts codegen 1.4",
+    "test": "bun test scripts",
+    "test:integration": "bun scripts/todo.ts test:integration 1.5",
+    "test:e2e": "bun scripts/todo.ts test:e2e 5.3",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "deploy:build": "bun scripts/todo.ts deploy:build 7.1",
+    "deploy:up": "bun scripts/todo.ts deploy:up 7.2",
+    "deploy:scale": "bun scripts/todo.ts deploy:scale 7.2"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.9.0"
+  }
+}

@@ -15,7 +15,7 @@ Legend: ⇄ parallel-safe · 🔒 touches money/time invariants (extra review: r
 
 ## Phase 0: Repository foundation
 
-- [ ] **0.1 Workspace skeleton**
+- [x] **0.1 Workspace skeleton**
   - Read: `docs/ARCHITECTURE.md §2`, `docs/RUNNING.md §3–4`.
   - Do: Create the root `package.json` (Bun workspace: `apps/web`, `scripts`), `.gitattributes` (LF for `*.sh *.toml *.go *.ts *.tsx *.yaml *.yml Caddyfile Dockerfile*`), `.editorconfig`, `.gitignore` (env files, `.data/`, `node_modules`, `.next`, `tmp/`, `graphify-out/cache`), and an empty `apps/`, `api/`, and `deploy/` tree as in the layout.
   - Done when: `bun install` succeeds on a clean clone.
