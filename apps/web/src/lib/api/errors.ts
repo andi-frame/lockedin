@@ -63,10 +63,13 @@ export class ApiError extends Error {
   }
 }
 
+// next-intl reads "." in a message key as nesting, so API codes like "auth.email_taken" are stored
+// as "auth_email_taken" in messages/*.json.
+const toKey = (code: string) => code.replaceAll(".", "_");
 const known = new Set(Object.keys(idMessages.Errors));
 
 // Key into the `Errors` namespace of messages/*.json. Codes the web has no copy for yet degrade to
 // a generic line instead of leaking the English title.
 export function errorMessageKey(code: string): string {
-  return known.has(code) ? code : "unknown";
+  return known.has(toKey(code)) ? toKey(code) : "unknown";
 }

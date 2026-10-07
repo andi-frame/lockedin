@@ -122,8 +122,10 @@ describe("ApiError", () => {
 });
 
 describe("errorMessageKey", () => {
-  test("maps a known code to its message key", () => {
-    expect(errorMessageKey("auth.unauthenticated")).toBe("auth.unauthenticated");
+  // next-intl forbids "." in message keys (it means nesting), so dots become underscores.
+  test("maps a known code to its message key, with underscores for dots", () => {
+    expect(errorMessageKey("auth.unauthenticated")).toBe("auth_unauthenticated");
+    expect(errorMessageKey("rate_limited")).toBe("rate_limited");
   });
   test("falls back to unknown for a code the web does not know", () => {
     expect(errorMessageKey("something.new")).toBe("unknown");

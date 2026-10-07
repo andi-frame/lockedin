@@ -11,9 +11,48 @@
   "Errors": {
     "unknown": "Something went wrong. Try again in a moment.",
     "network": "Can't reach the server. Check your connection and try again.",
-    "auth.unauthenticated": "Your session has ended. Sign in again to continue.",
+    "auth_unauthenticated": "Your session has ended. Sign in again to continue.",
     "rate_limited": "Too many requests. Wait a moment and try again.",
-    "server.internal": "Something broke on our side. Try again in a moment.",
-    "server.unavailable": "The server is busy. Try again in a moment."
+    "server_internal": "Something broke on our side. Try again in a moment.",
+    "server_unavailable": "The server is busy. Try again in a moment."
+  },
+  "Common": {
+    "close": "Close",
+    "loading": "Loading",
+    "dismissToast": "Dismiss notification"
+  },
+  "Status": {
+    "open": "Open",
+    "submitted": "Awaiting review",
+    "approved": "Approved",
+    "auto_approved": "Auto-approved",
+    "rejected": "Rejected",
+    "disputed": "Disputed",
+    "missed": "Missed",
+    "rest": "Rest day"
+  },
+  "Amount": {
+    "unit": "coins",
+    "debit": "debit",
+    "credit": "credit",
+    "debitMark": "D",
+    "creditMark": "C",
+    "approx": "≈"
+  },
+  "Countdown": {
+    "left": "left",
+    "over": "over",
+    "spoken": "{hours} hours {minutes} minutes left",
+    "spokenExpired": "The deadline has passed"
+  },
+  "Role": {
+    "backer": "Backer",
+    "doer": "Doer"
+  },
+  "Theme": {
+    "label": "Theme",
+    "system": "Match system",
+    "light": "Light",
+    "dark": "Dark"
   }
 }
