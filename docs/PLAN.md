@@ -70,11 +70,11 @@ Use *superpowers:test-driven-development* (or *tdd*) for every task in this phas
   - Done when: integration tests (`internal/testdb`, real Postgres) show that accepting a stale hash fails with `pact.terms_mismatch`, a double accept is idempotent, and check-in counts equal the scheduled dates.
   - Verify: `go test -tags=integration ./internal/service/...`
 
-- [ ] **1.6 Services: check-in transitions and settlement** 🔒
+- [x] **1.6 Services: check-in transitions and settlement** 🔒
   - Do: `SubmitProof`, `DeclareRest`, `Approve`, `Reject`, `Override`, `Dispute`, `ResolveDispute`, and `SweepDeadlines(now, batch)`. Each one runs a single tx: lock the check-in (expected status), call `domain.Transition`, apply effects (ledger insert with idempotency key, under the pact row lock for clamps), insert the decision row, and insert outbox notifications. `ClosePacts(now)` handles settling and the payout entry.
   - Done when the integration tests show:
     - Two concurrent `SweepDeadlines` calls produce exactly one penalty per check-in.
-    - A dispute upheld after a final rejection writes a `reversal`.
+    - A penalised check-in that ends up approved writes a `reversal` (the FSM never penalises before a dispute resolves, so the test crafts that state directly; an upheld dispute itself moves no coins).
     - The pot never goes below the floor and never above the cap.
     - Overrides beyond `max_overrides` fail.
     - The worked example in `SPEC.md` (30-day pact, 4 misses at 50 coins, 1 backer miss) ends with the expected balance.
