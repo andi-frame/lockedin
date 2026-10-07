@@ -187,6 +187,24 @@ type InsertCheckInsParams struct {
 	SubmitDeadline time.Time
 }
 
+const insertReminderSent = `-- name: InsertReminderSent :execrows
+insert into reminders_sent (check_in_id, kind) values ($1, $2) on conflict do nothing
+`
+
+type InsertReminderSentParams struct {
+	CheckInID uuid.UUID
+	Kind      string
+}
+
+// 0 rows = this reminder was already sent (possibly by another worker).
+func (q *Queries) InsertReminderSent(ctx context.Context, arg InsertReminderSentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertReminderSent, arg.CheckInID, arg.Kind)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const listCheckInsForPact = `-- name: ListCheckInsForPact :many
 select id, pact_id, member_id, reviewer_id, local_date, status, is_final, cutoff_at, submit_deadline, submitted_at, review_deadline, decided_at, dispute_deadline, disputed_at, resolution_deadline, override_deadline, penalty_applied, created_at, updated_at from check_ins
 where pact_id = $1 and local_date between $2 and $3
@@ -201,6 +219,70 @@ type ListCheckInsForPactParams struct {
 
 func (q *Queries) ListCheckInsForPact(ctx context.Context, arg ListCheckInsForPactParams) ([]CheckIn, error) {
 	rows, err := q.db.Query(ctx, listCheckInsForPact, arg.PactID, arg.FromDate, arg.ToDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CheckIn{}
+	for rows.Next() {
+		var i CheckIn
+		if err := rows.Scan(
+			&i.ID,
+			&i.PactID,
+			&i.MemberID,
+			&i.ReviewerID,
+			&i.LocalDate,
+			&i.Status,
+			&i.IsFinal,
+			&i.CutoffAt,
+			&i.SubmitDeadline,
+			&i.SubmittedAt,
+			&i.ReviewDeadline,
+			&i.DecidedAt,
+			&i.DisputeDeadline,
+			&i.DisputedAt,
+			&i.ResolutionDeadline,
+			&i.OverrideDeadline,
+			&i.PenaltyApplied,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCutoffReminderCandidates = `-- name: ListCutoffReminderCandidates :many
+select c.id, c.pact_id, c.member_id, c.reviewer_id, c.local_date, c.status, c.is_final, c.cutoff_at, c.submit_deadline, c.submitted_at, c.review_deadline, c.decided_at, c.dispute_deadline, c.disputed_at, c.resolution_deadline, c.override_deadline, c.penalty_applied, c.created_at, c.updated_at from check_ins c
+join pacts p on p.id = c.pact_id
+where p.status = 'active' and c.status = 'open'
+  and c.cutoff_at > $1::timestamptz and c.cutoff_at <= $2::timestamptz
+  and not exists (select 1 from reminders_sent r where r.check_in_id = c.id and r.kind = $3::text)
+order by c.cutoff_at
+limit $4
+`
+
+type ListCutoffReminderCandidatesParams struct {
+	FromAt  time.Time
+	ToAt    time.Time
+	Kind    string
+	MaxRows int32
+}
+
+// Reminders (SPEC §9). Open check-ins of active pacts whose cutoff falls in (from_at, to_at]
+// and that were not yet reminded with this kind.
+func (q *Queries) ListCutoffReminderCandidates(ctx context.Context, arg ListCutoffReminderCandidatesParams) ([]CheckIn, error) {
+	rows, err := q.db.Query(ctx, listCutoffReminderCandidates,
+		arg.FromAt,
+		arg.ToAt,
+		arg.Kind,
+		arg.MaxRows,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -353,6 +435,64 @@ func (q *Queries) ListReviewQueuePage(ctx context.Context, arg ListReviewQueuePa
 			&i.PactTitle,
 			&i.WordCount,
 			&i.AttachmentCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReviewReminderCandidates = `-- name: ListReviewReminderCandidates :many
+select c.id, c.pact_id, c.member_id, c.reviewer_id, c.local_date, c.status, c.is_final, c.cutoff_at, c.submit_deadline, c.submitted_at, c.review_deadline, c.decided_at, c.dispute_deadline, c.disputed_at, c.resolution_deadline, c.override_deadline, c.penalty_applied, c.created_at, c.updated_at from check_ins c
+join pacts p on p.id = c.pact_id
+where p.status = 'active' and c.status = 'submitted'
+  and c.review_deadline > $1::timestamptz and c.review_deadline <= $2::timestamptz
+  and not exists (select 1 from reminders_sent r where r.check_in_id = c.id and r.kind = 'review_deadline_soon')
+order by c.review_deadline
+limit $3
+`
+
+type ListReviewReminderCandidatesParams struct {
+	FromAt  time.Time
+	ToAt    time.Time
+	MaxRows int32
+}
+
+// Submitted check-ins whose review deadline falls in (from_at, to_at] and whose reviewer
+// was not yet reminded.
+func (q *Queries) ListReviewReminderCandidates(ctx context.Context, arg ListReviewReminderCandidatesParams) ([]CheckIn, error) {
+	rows, err := q.db.Query(ctx, listReviewReminderCandidates, arg.FromAt, arg.ToAt, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CheckIn{}
+	for rows.Next() {
+		var i CheckIn
+		if err := rows.Scan(
+			&i.ID,
+			&i.PactID,
+			&i.MemberID,
+			&i.ReviewerID,
+			&i.LocalDate,
+			&i.Status,
+			&i.IsFinal,
+			&i.CutoffAt,
+			&i.SubmitDeadline,
+			&i.SubmittedAt,
+			&i.ReviewDeadline,
+			&i.DecidedAt,
+			&i.DisputeDeadline,
+			&i.DisputedAt,
+			&i.ResolutionDeadline,
+			&i.OverrideDeadline,
+			&i.PenaltyApplied,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

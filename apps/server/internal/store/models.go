@@ -154,6 +154,12 @@ type Proof struct {
 	CreatedAt time.Time
 }
 
+type RemindersSent struct {
+	CheckInID uuid.UUID
+	Kind      string
+	SentAt    time.Time
+}
+
 type User struct {
 	ID              uuid.UUID
 	Email           string

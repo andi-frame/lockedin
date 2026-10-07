@@ -101,3 +101,29 @@ select count(*) from check_ins where pact_id = $1 and not is_final;
 
 -- name: CountCheckInsForPact :one
 select count(*) from check_ins where pact_id = $1;
+
+-- Reminders (SPEC §9). Open check-ins of active pacts whose cutoff falls in (from_at, to_at]
+-- and that were not yet reminded with this kind.
+-- name: ListCutoffReminderCandidates :many
+select c.* from check_ins c
+join pacts p on p.id = c.pact_id
+where p.status = 'active' and c.status = 'open'
+  and c.cutoff_at > sqlc.arg(from_at)::timestamptz and c.cutoff_at <= sqlc.arg(to_at)::timestamptz
+  and not exists (select 1 from reminders_sent r where r.check_in_id = c.id and r.kind = sqlc.arg(kind)::text)
+order by c.cutoff_at
+limit sqlc.arg(max_rows);
+
+-- Submitted check-ins whose review deadline falls in (from_at, to_at] and whose reviewer
+-- was not yet reminded.
+-- name: ListReviewReminderCandidates :many
+select c.* from check_ins c
+join pacts p on p.id = c.pact_id
+where p.status = 'active' and c.status = 'submitted'
+  and c.review_deadline > sqlc.arg(from_at)::timestamptz and c.review_deadline <= sqlc.arg(to_at)::timestamptz
+  and not exists (select 1 from reminders_sent r where r.check_in_id = c.id and r.kind = 'review_deadline_soon')
+order by c.review_deadline
+limit sqlc.arg(max_rows);
+
+-- 0 rows = this reminder was already sent (possibly by another worker).
+-- name: InsertReminderSent :execrows
+insert into reminders_sent (check_in_id, kind) values ($1, $2) on conflict do nothing;

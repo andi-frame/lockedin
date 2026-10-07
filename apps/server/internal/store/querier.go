@@ -57,8 +57,13 @@ type Querier interface {
 	InsertNotification(ctx context.Context, arg InsertNotificationParams) error
 	InsertOutbox(ctx context.Context, arg InsertOutboxParams) error
 	InsertProof(ctx context.Context, arg InsertProofParams) (Proof, error)
+	// 0 rows = this reminder was already sent (possibly by another worker).
+	InsertReminderSent(ctx context.Context, arg InsertReminderSentParams) (int64, error)
 	ListAttachmentsForProof(ctx context.Context, proofID *uuid.UUID) ([]Attachment, error)
 	ListCheckInsForPact(ctx context.Context, arg ListCheckInsForPactParams) ([]CheckIn, error)
+	// Reminders (SPEC §9). Open check-ins of active pacts whose cutoff falls in (from_at, to_at]
+	// and that were not yet reminded with this kind.
+	ListCutoffReminderCandidates(ctx context.Context, arg ListCutoffReminderCandidatesParams) ([]CheckIn, error)
 	ListDecisions(ctx context.Context, checkInID uuid.UUID) ([]ListDecisionsRow, error)
 	// Every check-in with a passed deadline, oldest deadline first (SPEC §7 steps 1-5).
 	ListDueCheckInIDs(ctx context.Context, arg ListDueCheckInIDsParams) ([]uuid.UUID, error)
@@ -77,6 +82,9 @@ type Querier interface {
 	// Keyset page ordered by (review_deadline, id), soonest first. The proof word count and
 	// attachment count come from the latest proof version.
 	ListReviewQueuePage(ctx context.Context, arg ListReviewQueuePageParams) ([]ListReviewQueuePageRow, error)
+	// Submitted check-ins whose review deadline falls in (from_at, to_at] and whose reviewer
+	// was not yet reminded.
+	ListReviewReminderCandidates(ctx context.Context, arg ListReviewReminderCandidatesParams) ([]CheckIn, error)
 	// Active pacts past their end date whose every check-in is final (SPEC §7 step 7).
 	ListSettlablePacts(ctx context.Context, arg ListSettlablePactsParams) ([]uuid.UUID, error)
 	// My check-ins for the Today screen: dated today in each active pact's timezone, plus an
