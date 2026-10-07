@@ -1,0 +1,10 @@
+Halo {{.Name}},
+
+{{.Heading}}
+{{range .Lines}}
+{{.}}
+{{end}}{{if .URL}}
+{{.Action}}: {{.URL}}
+{{end}}
+--
+{{.Footer}}
