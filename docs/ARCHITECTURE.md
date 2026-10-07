@@ -233,7 +233,7 @@ create trigger ledger_no_update before update or delete on ledger_entries for ea
 
 ## 5. HTTP API (summary; the full contract is `api/openapi.yaml`)
 
-Base path `/api/v1`. Authentication uses session cookies. Errors use `problem+json`.
+Base path `/api/v1`. Authentication uses session cookies. Errors use `problem+json`, with the status of every `code` listed under `ErrorCode` in the contract. `/healthz`, `/readyz`, and `/metrics` sit at the origin root. Go code is generated into `internal/http/api` (`bun run codegen`), and the web types into `apps/web/src/lib/api/schema.d.ts`.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -243,7 +243,8 @@ Base path `/api/v1`. Authentication uses session cookies. Errors use `problem+js
 | GET/POST | `/pacts` | list mine / create draft |
 | GET/PATCH | `/pacts/{id}` | detail / edit terms (draft/proposed only) |
 | POST | `/pacts/{id}/propose` | send invite (returns invite link) |
-| GET | `/invites/{token}` | preview terms for the invitee |
+| GET | `/invites/{token}` | preview terms for the invitee (public: the token is the credential) |
+| POST | `/invites/{token}/join` | the invitee takes the doer slot; the terms hash changes, so they then call `accept` |
 | POST | `/pacts/{id}/accept` | body `{terms_hash, signature_name}` |
 | GET | `/pacts/{id}/ledger?cursor=` | passbook lines with running balance (window function) |
 | GET | `/pacts/{id}/check-ins?from=&to=` | calendar |

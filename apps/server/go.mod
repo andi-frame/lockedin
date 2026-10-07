@@ -7,12 +7,14 @@ require (
 	github.com/gofiber/fiber/v3 v3.5.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
+	github.com/oapi-codegen/runtime v1.7.0
 	github.com/redis/go-redis/v9 v9.23.0
 	golang.org/x/crypto v0.57.0
 )
 
 require (
 	github.com/andybalholm/brotli v1.2.2 // indirect
+	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/gofiber/schema v1.8.3 // indirect
 	github.com/gofiber/utils/v2 v2.4.1 // indirect

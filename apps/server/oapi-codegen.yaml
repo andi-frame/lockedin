@@ -1,0 +1,11 @@
+# Go side of the contract in api/openapi.yaml. Run through `bun run codegen`,
+# which passes the spec path and the output file.
+package: api
+generate:
+  fiber-v3-server: true
+  strict-server: true
+  models: true
+output-options:
+  # Health checks are hand-written at the origin root, outside /api/v1.
+  exclude-tags:
+    - ops
