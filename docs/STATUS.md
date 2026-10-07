@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-07, at the end of Phase 3. This is the first thing to read when you start a new session. `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-08, at the end of Phase 4 (the backend is complete). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -8,7 +8,7 @@ Last updated: 2026-10-07, at the end of Phase 3. This is the first thing to read
 |---|---|---|
 | 0 Repository foundation | done | Bun workspace, env scripts, infra compose, dev orchestrator |
 | 1 Backend core (Go) | done | Schema, pure domain, store, pact and check-in services, settlement sweep, auth |
-| 2 API contract and HTTP | done | OpenAPI contract, Fiber app, all handlers (uploads stubbed, see §6) |
+| 2 API contract and HTTP | done | OpenAPI contract, Fiber app, all 31 operations |
 | 3 Worker | done | 3.1 asynq worker, schedule, outbox relay, reminders, `tepatictl seed`/`pact show`, air files. 3.2 notifications and email (Mailpit) |
 | 4 Uploads and media | done | 4.1 BlobStore drivers (s3 and fs, Garage enforces the signed length). 4.2 upload endpoints, `media:process`, `uploads:gc` |
 | **5 Web foundation** | **next** | 5.1 Next.js app on Bun, 5.2 design tokens and primitives, 5.3 auth pages and app shell |
@@ -31,10 +31,10 @@ main ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-handlers ─ p3.1-worke
 
 ## 3. How to verify the current state
 
-Prerequisite on this Windows machine: Go auto-switching is broken (installed Go 1.25.3, `go.mod` needs 1.26.0). Before any Go command, `bun run lint`, `bun run test`, or `bun run codegen`, run in the shell:
+Prerequisite on this Windows machine: Go auto-switching is broken (installed Go 1.25.3, `go.mod` needs 1.26.0), and ffmpeg/libvips (winget) are only on the PATH of terminals opened after they were installed. Before any Go command, `bun run lint`, `bun run test`, or `bun run codegen`, run in the shell:
 
 ```bash
-export PATH="/c/Users/andif/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.0.windows-amd64/bin:$PATH" GOTOOLCHAIN=local
+source scripts/dev-env.sh   # prepends the Go 1.26 toolchain and the ffmpeg/libvips bin dirs, prints what it found
 ```
 
 Infra must be up (`bun run infra:up`): Postgres, Redis, Garage, Mailpit. Then:
@@ -46,11 +46,11 @@ bun run codegen -- --check                                    # generated code i
 cd apps/server && go test -race -count=1 -tags=integration ./...   # everything, real Postgres + Redis
 ```
 
-Last result (2026-10-07, end of 3.1): all of the above green; `internal/domain` coverage 99.5%.
+Last result (2026-10-08, end of 4.2): all of the above green. For the integration run use `go test -race -p 3 -count=1 -tags=integration ./...`: without `-p 3` the linker ran out of memory once on this machine. The media tests skip (with a message) when ffmpeg/libvips are not on PATH, so check the output does not say SKIP before trusting a green run.
 
 Integration tests create a throwaway database per test (`tepati_test_<random>`, dropped afterwards) and use Redis logical DBs: **auth uses 15, http uses 14, jobs uses 13**. Packages run in parallel and each flushes its DB, so **a new package that uses Redis in tests must take its own index** (`testdb.RedisIn(t, n)`; next free is 12).
 
-Run it all: `bun run db:migrate`, then `bun run dev:hybrid` (infra, then the API and the worker through air; no web app yet). In a second shell, `bun run db:seed` creates an active pact with overdue check-ins, and `bun run ctl -- pact show <id>` shows the worker marking them `missed` within about a minute. Worker metrics: `curl localhost:9091/metrics`. Stop `dev:hybrid` with Ctrl+C (when it runs in a background shell, kill the `air` and `tmp/*.exe` processes). The Go toolchain `PATH` fix above must be in the shell that starts `dev:hybrid`, because air runs `go build`.
+Run it all: `bun run db:migrate`, then `bun run dev:hybrid` (infra, then the API and the worker through air; no web app yet). In a second shell, `bun run db:seed` creates an active pact with overdue check-ins, and `bun run ctl -- pact show <id>` shows the worker marking them `missed` within about a minute. Worker metrics: `curl localhost:9091/metrics`. Stop `dev:hybrid` with Ctrl+C (when it runs in a background shell, kill the `air` and `tmp/*.exe` processes). `source scripts/dev-env.sh` must have been run in the shell that starts `dev:hybrid`, because air runs `go build` and the worker calls ffmpeg/vips.
 
 ## 4. What exists
 
@@ -101,9 +101,9 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 **Phase 4.1**
 - **Garage enforces the signed `Content-Length`, `Content-Type` and expiry** (403 otherwise). ADR-0005 has the evidence, including a mutation check. Presigned mode is the default; `UPLOAD_MODE=proxy` exists in config but nothing implements it. Build it only if that test ever fails in a deployment.
 - **One `BlobStore` interface, buckets as constants** (`Staging`, `Media`); the s3 driver maps them to `S3_BUCKET_STAGING`/`S3_BUCKET_MEDIA`. Keys must pass `storage.ValidKey` (letters, digits, `.`, `_`, `-`, single `/`). Generate keys from uuids; never from user input.
-- **`PresignedPut.Headers` must be sent by the client as given** (at least `Content-Type`); the browser adds `Content-Length` itself. The upload intent response in 4.2 should return these headers.
+- **`PresignedPut.Headers` must be sent by the client as given** (at least `Content-Type`); the browser adds `Content-Length` itself. The upload intent response returns them.
 - **The fs driver is for native dev.** Its URLs point at `http://localhost:$API_PORT/api/v1/blob/...` and are signed with `SESSION_SECRET`. The API mounts `FS.ServeHTTP` before the session gate only when the driver is fs (`Deps.Blob`).
-- **`cmd/api` builds the store but nothing consumes it yet**; 4.2 passes it to the upload handlers, and `cmd/worker` will need `storage.FromConfig` for `media:process`.
+- **`cmd/api` and `cmd/worker` both call `storage.FromConfig`** and pass the store to the service with `WithUploads` (4.2).
 
 **Phase 3.2**
 - **Email is event-driven, not scheduled.** After `RelayOutbox` commits, the `outbox:relay` handler enqueues `email:notification` (one per Immediate kind), `email:digest` (proof submitted) and `email:invite` on the `default` queue. The service returns `RelayResult{Notifications (with ids), Invites, Skipped}` for this. If the enqueue fails (Redis down) it is logged and counted in `tepati_emails_total{result="enqueue_failed"}`, not retried: the in-app notification exists, only the email is lost.
@@ -125,7 +125,7 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 
 **Phase 2**
 - **Join endpoint added.** `POST /invites/{token}/join` did not exist in `ARCHITECTURE §5`, but an invitee must become a member before they can accept. Joining re-keys the doer slot in the terms, which changes `terms_hash` and clears signatures, so the invitee then accepts the new hash.
-- **Uploads stubbed.** `createUpload`, `completeUpload`, `getAttachment` are routed but answer `503 server.unavailable` until PLAN 4.1/4.2. So 28 of 31 operations are implemented.
+- **Uploads were stubbed in Phase 2** (`503 server.unavailable`) and are implemented in 4.2. They still answer 503 when the service has no storage configured (`ErrUploadsOff`).
 - **Dispute resolution needs a reason for both outcomes** (SPEC §2). The domain only enforces it for dismiss, so the handler enforces it for uphold via `domain.ValidReason`. If SPEC changes, change the handler.
 - **New error codes**: `pact.not_doer`, `request.too_large`, `request.unsupported_media_type`, `method_not_allowed`. Decision actions `submit` and `finalize` were added to the contract enum because the database already allows them.
 - **Editing terms**: either member may edit while `proposed` (SPEC §3), so `PATCH /pacts/{id}` has no backer-only check. On a running pact it is `409 pact.invalid_state`.
@@ -154,7 +154,7 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - The worker has `/metrics` and `/healthz` only, no `/readyz`. Fine for now; add one with the compose healthchecks (7.1).
 - `tepati_settlement_transitions_total` is by job type, see §5.
 - No test-clock endpoint yet (`CLOCK_OVERRIDE`); the e2e work (5.3/6.x) needs it. The API and worker use `domain.SystemClock`.
-- context7 MCP was still not authenticated; asynq and Prometheus APIs were checked by reading module source under `~/go/pkg/mod`. If you can, authenticate it before 4.1 (aws-sdk-go-v2 and Garage).
+- context7 MCP was never authenticated in these sessions; asynq, Prometheus and aws-sdk-go-v2 APIs were checked by reading module source under `~/go/pkg/mod`. For Phase 5 (Next.js 16, Tailwind v4, next-intl, Tiptap 3) read the official docs, or authenticate context7, before relying on memory of those APIs.
 
 ## 7. Brief for Phase 5 (web foundation)
 
