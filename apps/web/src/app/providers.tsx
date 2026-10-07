@@ -2,6 +2,8 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
+import { Toaster } from "@/components/ui/toast";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { ApiError } from "@/lib/api/errors";
 
 // Retrying a 4xx never helps (the answer is the answer); network blips and 5xx get two more tries.
@@ -17,5 +19,12 @@ export function Providers({ children }: { children: ReactNode }) {
         defaultOptions: { queries: { staleTime: 30_000, retry: shouldRetry, refetchOnWindowFocus: false } },
       }),
   );
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={client}>
+      <TooltipProvider>
+        {children}
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
 }
