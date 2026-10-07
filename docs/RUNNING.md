@@ -41,14 +41,15 @@ bun run setup                     # copies deploy/env/*.example → .env files i
 | `bun run garage:init` | idempotent: assigns the layout, creates key `tepati-app` and buckets `tepati-staging`/`tepati-media`, grants permissions, sets CORS on the staging bucket. The S3 key pair is generated once into `.env` (and `deploy/env/.env.dev`) and *imported*, so it survives `infra:reset` |
 | `bun run s3:smoke` | lists both buckets and does a put/get/delete round-trip with the app key |
 | `bun run db:migrate` / `db:rollback` / `db:new <name>` | goose against `DATABASE_URL` |
-| `bun run db:seed` | `tepatictl seed`: 2 demo users and 1 active pact with synthetic history (labelled synthetic) |
+| `bun run db:seed [-- overdue\|invite]` | `tepatictl seed --scenario …`. `overdue` (default): an active pact that started 3 days ago with check-ins past their deadline, which a running worker marks `missed` within a minute or two. `invite`: a proposed pact with an open invite link (PLAN 3.2's email). Both reuse the users `seed-backer@tepati.test` and `seed-doer@tepati.test` (password `tepati-seed-1234`) and print the pact id |
+| `bun run ctl -- <args>` | `tepatictl` with `.env` loaded, for example `bun run ctl -- pact show <id>` (members, every check-in, the ledger, the balance) |
 | `bun run codegen` | sqlc, then OpenAPI → Go strict server (`internal/http/api`) and web types (`apps/web/src/lib/api/schema.d.ts`). `-- --check` fails if regenerating changes a tracked file (run it after committing) |
 | `bun run dev:docker` | infra + apps in Docker with `compose.dev.yaml` (hot reload) |
 | `bun run dev:hybrid` | `infra:up` then runs web (`bun --bun next dev`), api (`air -c .air.api.toml`), and worker (`air -c .air.worker.toml`) natively with prefixed, coloured logs. Ctrl+C stops all three. |
 | `bun run dev:native` | the same as hybrid but skips Docker and checks that local Postgres, Redis, ffmpeg, and vips respond first, listing every missing one. Forces `STORAGE_DRIVER=fs`. Put native hosts/ports (e.g. `DATABASE_URL=postgres://…@localhost:5432/tepati`) in an optional, gitignored `.env.native`, which overrides `.env` in this mode only. |
 | `bun run dev:apps` | only the three app processes (when infra is already running anywhere) |
 | `bun run test` | Go unit tests and web unit tests |
-| `bun run test:integration` | Go integration tests (`-tags=integration`) against the **running dev infra** (`bun run infra:up`): each test gets a throwaway Postgres database, and Redis tests use their own logical DB (auth 15, http 14). Add `-race` when running `go test` by hand |
+| `bun run test:integration` | Go integration tests (`-tags=integration`) against the **running dev infra** (`bun run infra:up`): each test gets a throwaway Postgres database, and Redis tests use their own logical DB (auth 15, http 14, jobs 13). Add `-race` when running `go test` by hand |
 | `bun run test:e2e` | Playwright against `dev:docker` with the test clock enabled |
 | `bun run lint` | tsc `--noEmit` for scripts, Redocly lint of `api/openapi.yaml`, `gofmt -l`, `go vet` (eslint joins in PLAN 5.1) |
 | `bun run go:tool <tool> …` | runs goose / sqlc / oapi-codegen pinned in `apps/server/tools/go.mod` (Go downloads the 1.26 toolchain for that module automatically) |
@@ -61,7 +62,7 @@ Ports in dev: web `3000`, api `8080`, Postgres `55432` (Docker; 5432/5433 stay f
 
 If `go build` fails with `compile: version "go1.26.0" does not match go tool version "go1.25.3"`, the machine has an older system Go and the automatic toolchain switch is broken. Put the cached 1.26 toolchain first on `PATH` (path shown in `docs/STATUS.md §3`) and set `GOTOOLCHAIN=local`, or install Go 1.26 system-wide. `bun run lint|test|codegen` shell out to `go`, so they need it too.
 
-Until `.air.api.toml` and `.air.worker.toml` exist (PLAN 3.1), `dev:hybrid` does not start the api or worker. Build and run the API by hand with `.env` loaded.
+`dev:hybrid` starts the api (`apps/server/.air.api.toml`) and the worker (`.air.worker.toml`); air builds into `apps/server/tmp/` (gitignored). The worker serves Prometheus metrics and `/healthz` on `WORKER_METRICS_PORT` (default 9091; `0` turns it off). That port, like the API's `/metrics`, must never be exposed publicly. Set `AIR_POLL=1` in `.env` to make air poll for changes (needed for bind mounts on Windows/macOS).
 
 ## 4. Compose structure and **mount rules**
 

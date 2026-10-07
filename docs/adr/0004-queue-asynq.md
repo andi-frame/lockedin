@@ -25,9 +25,11 @@ Use asynq with three queues:
 | `default` | notifications and email | 3 |
 | `media` | transcoding | 1, plus its own concurrency cap |
 
-`cmd/worker` registers periodic tasks through `asynq.PeriodicTaskManager`. Every handler is idempotent.
+`cmd/worker` registers periodic tasks with `asynq.Scheduler` (the schedule is a fixed table in `internal/jobs`, so `PeriodicTaskManager`'s dynamic reloading is not needed). Every handler is idempotent.
 
 ## Consequences
 - Redis must run with AOF persistence (`appendonly yes`) so queued tasks survive a restart.
 - Side effects that must be emitted exactly at commit go through the outbox table.
+- asynq has no per-queue concurrency, so the `media` cap (2) is enforced inside the media handler, not by the server (implemented with PLAN 4.2).
+- Periodic tasks are enqueued with `MaxRetry(0)` and a unique lock slightly shorter than their period: two worker replicas schedule the same tick once, and a failed tick is repaired by the next one, because every job re-derives its work from the database.
 - If asynq stops being maintained, River (Postgres) is the fallback. Task handlers sit behind our own `jobs` interfaces, so swapping is contained.

@@ -105,10 +105,12 @@ Use *superpowers:test-driven-development* (or *tdd*) for every task in this phas
 
 ## Phase 3: Worker
 
-- [ ] **3.1 asynq server, scheduler, and outbox relay** 🔒
+- [x] **3.1 asynq server, scheduler, and outbox relay** 🔒 (ab82852..736cbcc)
   - Do: In `cmd/worker`, set up queues `critical`/`default`/`media` (weights 6/3/1) with periodic tasks `settlement:sweep` (every 1 min), `pacts:activate` (every 1 min), `pacts:close` (every 5 min), `outbox:relay` (every 5 s), `uploads:gc` (hourly), and `reminders:cutoff` (every 5 min, which enqueues unique reminder tasks for 3 h and 30 min before cutoff). Shut down gracefully.
   - Also: add `apps/server/.air.worker.toml` and `.air.api.toml` (`scripts/dev.ts` starts a process only when its air file exists, so `dev:hybrid` runs neither today), and `tepatictl seed` / `pact show` (see `docs/STATUS.md §7`).
   - Verify: `go test -tags=integration ./internal/jobs/...`. Then run `bun run dev:hybrid`, use `tepatictl seed --scenario overdue` to create a pact with an overdue check-in, and confirm it becomes `missed` with a ledger row within 2 minutes (inspect via `tepatictl pact show <id>`).
+  - Result: verified live on 2026-10-07. `bun run db:seed` made an active pact with 3 overdue days; the worker marked all 6 check-ins `missed` within 35 s, wrote the `doer_miss`/`backer_miss` ledger rows, and relayed the `day_missed` notifications. `go test -race -tags=integration ./...` green.
+  - Deviations, decided while building: (1) `reminders:cutoff` calls `service.SendReminders` directly instead of enqueueing a unique task per reminder. Dedupe is a new table `reminders_sent (check_in_id, kind)` written in the same transaction as the outbox row, which is stronger than asynq's TTL-based uniqueness and survives a Redis flush. It also sends the reviewer's 2 h `review_deadline_soon` reminder from SPEC §9. (2) The schedule uses `asynq.Scheduler`, not `PeriodicTaskManager` (the table is fixed; ADR-0004 updated). (3) `uploads:gc` is scheduled and handled, but does nothing until the BlobStore exists (4.1/4.2). (4) The `media` concurrency cap of 2 cannot be set per queue in asynq; it will be a semaphore in the `media:process` handler (4.2). (5) `RelayOutbox` only writes notifications. It returns the ones it delivered so 3.2 can enqueue emails after the commit.
 
 - [ ] **3.2 Notifications and email** ⇄
   - Do: In-app notifications, plus SMTP email (Mailpit in dev) using Indonesian templates (`html/template`, plain text fallback) for the triggers in `SPEC.md §9`.

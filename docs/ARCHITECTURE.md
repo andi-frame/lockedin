@@ -126,7 +126,7 @@ The access log sits outside `recover` on purpose, so a panic is logged as the 50
 
 - The API is stateless, so scale with `--scale api=N`; Caddy load-balances (`lb_policy least_conn`).
 - Use a `pgxpool` per instance (`max_conns = 4 × vCPU`). Add PgBouncer (transaction mode) only when `instances × max_conns > 80% of max_connections`.
-- Heavy or slow work (media transcoding, emails, settlement) **never** runs in a request. It goes to asynq queues with priorities `critical: 6` (settlement), `default: 3` (notifications), `media: 1` (transcode), and a separate worker concurrency for `media` (2) to protect the CPU.
+- Heavy or slow work (media transcoding, emails, settlement) **never** runs in a request. It goes to asynq queues with priorities `critical: 6` (settlement), `default: 3` (notifications), `media: 1` (transcode), and a separate worker concurrency for `media` (2) to protect the CPU. asynq has one worker pool per server and no per-queue cap, so the media cap is a semaphore inside the `media:process` handler (PLAN 4.2); the server itself runs the three queues with weights 6/3/1 and `WORKER_CONCURRENCY` (default 10).
 - Cache read-heavy aggregates in Redis (pot balance, the Today summary per user) with a 30 s TTL plus explicit invalidation on ledger or check-in writes. Postgres stays the truth.
 - Use backpressure on media: if the `media` queue size exceeds `MEDIA_QUEUE_MAX` (default 500), the upload-intent endpoint returns `503` with `Retry-After`.
 
@@ -224,6 +224,8 @@ create table payouts (
 
 create table notifications (id bigserial primary key, user_id uuid not null, kind text not null, payload jsonb not null, read_at timestamptz, created_at timestamptz not null default now());
 create table outbox (id bigserial primary key, topic text not null, payload jsonb not null, created_at timestamptz not null default now(), dispatched_at timestamptz);
+-- one row per (check-in, reminder kind) already sent; makes the 5-minute reminder job idempotent
+create table reminders_sent (check_in_id uuid not null references check_ins(id) on delete cascade, kind text not null, sent_at timestamptz not null default now(), primary key (check_in_id, kind));
 ```
 
 Enforce append-only at the database level too:
@@ -334,6 +336,7 @@ S3_BUCKET_STAGING=tepati-staging     S3_BUCKET_MEDIA=tepati-media      S3_PUBLIC
 STORAGE_DRIVER=s3|fs                 FS_STORAGE_DIR=./.data/blobs       UPLOAD_MODE=presigned|proxy
 UPLOAD_IMAGE_MAX_BYTES=15728640      UPLOAD_VIDEO_MAX_BYTES=209715200   UPLOAD_VIDEO_MAX_SECONDS=180
 UPLOAD_FILE_MAX_BYTES=20971520       MEDIA_QUEUE_MAX=500
+WORKER_CONCURRENCY=10                WORKER_METRICS_PORT=9091   # 0 disables the worker's /metrics listener
 FFMPEG_PATH=ffmpeg                   VIPS_PATH=vips
 SMTP_URL=smtp://localhost:1025       MAIL_FROM="Tepati <no-reply@tepati.local>"
 SESSION_SECRET=…                     API_INTERNAL_URL=http://localhost:8080   # used by Next server-side
@@ -344,7 +347,7 @@ SESSION_SECRET=…                     API_INTERNAL_URL=http://localhost:8080   
 ## 10. Observability
 
 - Logging uses `log/slog` JSON with `request_id`, `user_id`, and `pact_id`, and the web uses pino-style JSON. Never log proof bodies or tokens.
-- `/metrics` (Prometheus) on the API and worker exposes request latency, asynq queue sizes, settlement transitions by type, and media processing time and failures.
+- `/metrics` (Prometheus) on the API and worker exposes request latency, asynq queue sizes, settlement transitions by type, and media processing time and failures. The worker's listener is `WORKER_METRICS_PORT` (default 9091) and serves `tepati_asynq_queue_tasks{queue,state}`, `tepati_asynq_queue_latency_seconds{queue}`, `tepati_settlement_transitions_total{type=deadline|activated|closed}`, `tepati_outbox_relayed_total`, `tepati_outbox_skipped_total`, `tepati_reminders_queued_total`, and `tepati_job_runs_total{task,result}` with `tepati_job_duration_seconds{task}`. Media metrics arrive with PLAN 4.2.
 - asynqmon UI (dev and staging only, behind basic auth in staging).
 
 ## 11. Testing strategy
