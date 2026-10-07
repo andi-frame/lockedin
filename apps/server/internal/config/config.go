@@ -56,6 +56,8 @@ type MediaTools struct {
 	FFmpeg  string `env:"FFMPEG_PATH" envDefault:"ffmpeg"`
 	FFprobe string `env:"FFPROBE_PATH" envDefault:"ffprobe"`
 	Vips    string `env:"VIPS_PATH" envDefault:"vips"`
+	// vipsheader reads image sizes without decoding; it ships with the libvips tools.
+	VipsHeader string `env:"VIPSHEADER_PATH" envDefault:"vipsheader"`
 }
 
 func (c Config) IsProduction() bool { return c.Env == "production" }
