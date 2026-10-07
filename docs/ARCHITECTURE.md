@@ -313,6 +313,7 @@ client                         api                          garage              
 - **i18n:** next-intl, default `id`, and `en` available. No locale prefix in the URL. Locale comes from user settings or the `tepati_locale` cookie. All copy lives in `messages/*.json` and is never hard-coded.
 - **PWA:** manifest plus a service worker for installability and a camera `capture` input. Offline support is not an MVP goal.
 - **Formatting:** amounts use `Intl.NumberFormat('id-ID')`. Coins are shown as `1.000 koin` with the IDR equivalent `≈ Rp1.000.000`. Debit and credit always carry a sign and a D/K label as well as colour.
+- **Tokens and theme:** `apps/web/src/styles/tokens.css` holds every colour as one OKLCH `light-dark()` pair (light theme from the direction contract, a designed dark "desk lamp" theme), radius 6/10, shadows and keyframes; the default Tailwind palette, radii and shadows are removed. The theme follows the system or the `tepati_theme` cookie. `tokens.test.ts` enforces WCAG AA for the text pairs. Primitives live in `src/components/ui`, domain components (`Amount`, `Countdown`, `StatusChip`, `MemberLine`) in `src/components`.
 - **Design source of truth:** `.impeccable/surfaces/apps-web-src-app-app.md` (direction contract), then `DESIGN.md` once it is written. See `docs/design/README.md` for the workflow.
 
 ## 8. Auth and security
