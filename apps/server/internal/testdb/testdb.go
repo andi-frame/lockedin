@@ -22,6 +22,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/andi-frame/lockedin/apps/server/internal/store"
 )
@@ -106,6 +107,34 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 	}
 	return nil
+}
+
+// Redis returns a client on logical DB 15 of the dev Redis (REDIS_URL), flushed
+// before and after the test. Tests in one package must not run Redis tests in parallel.
+func Redis(t testing.TB) *redis.Client {
+	t.Helper()
+	raw := os.Getenv("REDIS_URL")
+	if raw == "" {
+		raw = readRootEnv("REDIS_URL")
+	}
+	if raw == "" {
+		t.Skip("no REDIS_URL; run `bun run infra:up`")
+	}
+	opt, err := redis.ParseURL(raw)
+	if err != nil {
+		t.Fatalf("testdb: redis url: %v", err)
+	}
+	opt.DB = 15
+	rdb := redis.NewClient(opt)
+	ctx := context.Background()
+	if err := rdb.FlushDB(ctx).Err(); err != nil {
+		t.Fatalf("testdb: redis: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = rdb.FlushDB(context.Background()).Err()
+		_ = rdb.Close()
+	})
+	return rdb
 }
 
 // readRootEnv reads one key from the repo root .env so `go test` works without Bun.

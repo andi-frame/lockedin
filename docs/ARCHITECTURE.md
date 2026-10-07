@@ -35,7 +35,7 @@ Audience: human developers and coding agents. Read `PRODUCT.md` (why) and `docs/
 |---|---|---|---|
 | `edge` | Caddy 2 | 1 (prod) | certificates volume |
 | `web` | Next.js (latest 16.x) on Bun ≥ 1.3.14, React 19, TS | horizontal | none |
-| `api` | Go 1.25+, Fiber v3, pgx v5, sqlc | horizontal | none |
+| `api` | Go 1.26+, Fiber v3, pgx v5, sqlc | horizontal | none |
 | `worker` | same Go module, `cmd/worker`, asynq | horizontal (the scheduler is singleton via asynq's leader-less PeriodicTaskManager plus idempotent jobs) | none |
 | `migrate` | goose, one-shot | — | — |
 | `postgres` | PostgreSQL 18 (official image) | 1 primary | named volume |

@@ -41,7 +41,7 @@ Legend: ⇄ parallel-safe · 🔒 touches money/time invariants (extra review: r
 Use *superpowers:test-driven-development* (or *tdd*) for every task in this phase.
 
 - [x] **1.1 Go module, config, logging**
-  - Do: `apps/server/go.mod` (Go 1.25). `internal/config` uses `caarlos0/env` and validates on start, and the error lists every missing var. Logging uses slog JSON. `cmd/api`, `cmd/worker`, and `cmd/tepatictl` each print their version and exit cleanly on SIGTERM. Pin goose, sqlc, and oapi-codegen as `tool` directives in a separate module `apps/server/tools/go.mod` (keeps the server module small and on Go 1.25; run them with `bun run go:tool <name>`).
+  - Do: `apps/server/go.mod` (Go 1.26; the 2026 ecosystem — go-redis, sqlc — requires it). `internal/config` uses `caarlos0/env` and validates on start, and the error lists every missing var. Logging uses slog JSON. `cmd/api`, `cmd/worker`, and `cmd/tepatictl` each print their version and exit cleanly on SIGTERM. Pin goose, sqlc, and oapi-codegen as `tool` directives in a separate module `apps/server/tools/go.mod` (keeps the server module's dependency graph small; run them with `bun run go:tool <name>`).
   - Verify: `cd apps/server && go build ./... && go vet ./...`
 
 - [x] **1.2 Migrations: initial schema**
@@ -80,7 +80,7 @@ Use *superpowers:test-driven-development* (or *tdd*) for every task in this phas
     - The worked example in `SPEC.md` (30-day pact, 4 misses at 50 coins, 1 backer miss) ends with the expected balance.
   - Verify: `go test -race -tags=integration ./internal/service/...`
 
-- [ ] **1.7 Auth** ⇄ (with 1.5/1.6 once 1.4 is done)
+- [x] **1.7 Auth** ⇄ (with 1.5/1.6 once 1.4 is done)
   - Do: Register and login (argon2id), Redis sessions (hashed token), logout, the `RequireUser` middleware, CSRF double-submit, and a login rate limit.
   - Verify: `go test ./internal/auth/... && go test -tags=integration ./internal/auth/...`
 

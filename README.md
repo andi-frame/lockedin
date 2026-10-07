@@ -15,7 +15,7 @@
 
 ## Stack
 
-Next.js 16 on Bun · Go 1.25 + Fiber v3 · PostgreSQL 18 · Redis 8 + asynq · Garage (S3) · Caddy · Docker Compose (dev / staging / prod) plus hybrid and native modes.
+Next.js 16 on Bun · Go 1.26 + Fiber v3 · PostgreSQL 18 · Redis 8 + asynq · Garage (S3) · Caddy · Docker Compose (dev / staging / prod) plus hybrid and native modes.
 
 ## Quick start (once Phase 0 is implemented)
 

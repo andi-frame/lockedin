@@ -15,7 +15,7 @@ There are three run modes, and every one is driven by **Bun scripts in the root 
 |---|---|---|
 | Bun | ≥ 1.3.14 (`bun upgrade`) | all modes |
 | Docker Desktop / Engine + Compose v2 | ≥ 27 | docker, hybrid, deploy |
-| Go | ≥ 1.25 | hybrid, native |
+| Go | ≥ 1.26 (an older `go` auto-downloads 1.26 via `GOTOOLCHAIN=auto`) | hybrid, native |
 | ffmpeg + libvips CLI (`vips`) | ffmpeg ≥ 6, vips ≥ 8.15 | hybrid and native worker (media). On Windows use `winget install Gyan.FFmpeg` and the libvips Windows binaries on `PATH`. |
 | air (`go install github.com/air-verse/air@latest`) | latest | Go hot reload in hybrid/native |
 | goose, sqlc, oapi-codegen | pinned in `apps/server/tools.go` and run via `go run` | codegen and migrations |
