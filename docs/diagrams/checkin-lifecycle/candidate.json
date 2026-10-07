@@ -1,0 +1,205 @@
+{
+  "schema_version": 2,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Tepati — Check-in Lifecycle",
+    "output": "docs/diagrams/checkin-lifecycle/checkin-lifecycle.html",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Doer submits"
+    },
+    {
+      "id": "review",
+      "label": "Review + power"
+    },
+    {
+      "id": "dispute",
+      "label": "Dispute"
+    },
+    {
+      "id": "terminal",
+      "label": "Final"
+    }
+  ],
+  "states": [
+    {
+      "id": "open",
+      "type": "start",
+      "label": "open",
+      "sublabel": "before cutoff",
+      "lane": "main",
+      "col": 0,
+      "step": "01"
+    },
+    {
+      "id": "submitted",
+      "type": "waiting",
+      "label": "submitted",
+      "sublabel": "awaiting reviewer",
+      "lane": "main",
+      "col": 1,
+      "step": "02"
+    },
+    {
+      "id": "auto",
+      "type": "decision",
+      "label": "auto_approved",
+      "sublabel": "override window",
+      "lane": "review",
+      "col": 2
+    },
+    {
+      "id": "rejected",
+      "type": "decision",
+      "label": "rejected",
+      "sublabel": "reason required",
+      "lane": "review",
+      "col": 3
+    },
+    {
+      "id": "disputed",
+      "type": "waiting",
+      "label": "disputed",
+      "sublabel": "backer resolves",
+      "lane": "dispute",
+      "col": 3
+    },
+    {
+      "id": "rest",
+      "type": "neutral",
+      "label": "rest",
+      "sublabel": "no penalty",
+      "lane": "terminal",
+      "col": 0
+    },
+    {
+      "id": "missed",
+      "type": "failure",
+      "label": "missed",
+      "sublabel": "penalty",
+      "lane": "terminal",
+      "col": 1
+    },
+    {
+      "id": "approved",
+      "type": "success",
+      "label": "approved",
+      "sublabel": "no penalty",
+      "lane": "terminal",
+      "col": 2
+    },
+    {
+      "id": "rejected_final",
+      "type": "failure",
+      "label": "rejected (final)",
+      "sublabel": "penalty",
+      "lane": "terminal",
+      "col": 3
+    }
+  ],
+  "transitions": [
+    {
+      "from": "open",
+      "to": "submitted",
+      "label": "submit"
+    },
+    {
+      "from": "submitted",
+      "to": "approved",
+      "label": "approve"
+    },
+    {
+      "from": "submitted",
+      "to": "auto",
+      "label": "review timeout",
+      "variant": "dashed"
+    },
+    {
+      "from": "submitted",
+      "to": "rejected",
+      "label": "reject"
+    },
+    {
+      "from": "open",
+      "to": "rest",
+      "label": "declare rest"
+    },
+    {
+      "from": "open",
+      "to": "missed",
+      "label": "cutoff+grace",
+      "variant": "dashed"
+    },
+    {
+      "from": "auto",
+      "to": "approved",
+      "label": "window ends",
+      "variant": "dashed"
+    },
+    {
+      "from": "auto",
+      "to": "rejected_final",
+      "label": "override",
+      "variant": "security"
+    },
+    {
+      "from": "rejected",
+      "to": "submitted",
+      "label": "resubmit",
+      "variant": "dashed"
+    },
+    {
+      "from": "rejected",
+      "to": "disputed",
+      "label": "dispute"
+    },
+    {
+      "from": "rejected",
+      "to": "rejected_final",
+      "label": "no dispute",
+      "variant": "dashed"
+    },
+    {
+      "from": "disputed",
+      "to": "rejected_final",
+      "label": "dismiss",
+      "variant": "security"
+    },
+    {
+      "from": "disputed",
+      "to": "approved",
+      "label": "uphold / expire"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "Coins move only at final",
+      "items": [
+        "missed / rejected (final): doer penalty or backer bonus",
+        "Dispute upheld after penalty: reversal entry",
+        "Idempotency key per check-in"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Backer power",
+      "items": [
+        "Override auto-approval, limited per pact",
+        "Overrides cannot be disputed",
+        "Every action logged in decisions"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "System transitions",
+      "items": [
+        "Settlement sweep runs every minute",
+        "Same service code as API actions"
+      ]
+    }
+  ]
+}

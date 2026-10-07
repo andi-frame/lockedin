@@ -1,0 +1,95 @@
+# Running Tepati: dev, staging, production
+
+There are three run modes, and every one is driven by **Bun scripts in the root `package.json`**. Bun is cross-platform, so the same commands work on Windows (PowerShell or Git Bash), macOS, and Linux without `make`.
+
+| Mode | Infra (Postgres, Redis, Garage, Mailpit) | Apps (web, api, worker) | Command |
+|---|---|---|---|
+| **docker** | Docker | Docker (hot reload via source mounts) | `bun run dev:docker` |
+| **hybrid** (recommended for daily dev) | Docker | native processes on the host | `bun run dev:hybrid` |
+| **native** | installed on the host, no Docker | native | `bun run dev:native` |
+| staging / production | Docker | Docker (built images, no source mounts) | `bun run deploy:up -- --env staging\|production` |
+
+## 1. Prerequisites
+
+| Tool | Version | Needed for |
+|---|---|---|
+| Bun | ≥ 1.3.14 (`bun upgrade`) | all modes |
+| Docker Desktop / Engine + Compose v2 | ≥ 27 | docker, hybrid, deploy |
+| Go | ≥ 1.25 | hybrid, native |
+| ffmpeg + libvips CLI (`vips`) | ffmpeg ≥ 6, vips ≥ 8.15 | hybrid and native worker (media). On Windows use `winget install Gyan.FFmpeg` and the libvips Windows binaries on `PATH`. |
+| air (`go install github.com/air-verse/air@latest`) | latest | Go hot reload in hybrid/native |
+| goose, sqlc, oapi-codegen | pinned in `apps/server/tools.go` and run via `go run` | codegen and migrations |
+| PostgreSQL 18, Redis 8 | native mode only | Windows: Postgres installer, and Redis via **Memurai** or WSL. Garage has no Windows build, so native mode uses `STORAGE_DRIVER=fs`. |
+
+## 2. First-time setup
+
+```bash
+bun install                       # installs the workspace (web + scripts)
+bun run setup                     # copies deploy/env/*.example → .env files if missing, generates secrets, runs codegen
+```
+
+`bun run setup` is idempotent and never overwrites an existing `.env*`.
+
+## 3. Commands (root `package.json` → `scripts/*.ts`)
+
+| Command | What it does |
+|---|---|
+| `bun run infra:up` | `docker compose -f deploy/compose.yaml --profile infra up -d`, waits for health, runs `garage:init` |
+| `bun run infra:down` | stops infra, **keeping volumes** |
+| `bun run infra:reset` | stops infra and **deletes volumes** (asks for confirmation; `--yes` to skip) |
+| `bun run garage:init` | idempotent: assigns the layout, creates key `tepati-app` and buckets `tepati-staging`/`tepati-media`, grants permissions, writes the key to `.env.local` |
+| `bun run db:migrate` / `db:rollback` / `db:new <name>` | goose against `DATABASE_URL` |
+| `bun run db:seed` | `tepatictl seed`: 2 demo users and 1 active pact with synthetic history (labelled synthetic) |
+| `bun run codegen` | OpenAPI → Go + TS, then sqlc |
+| `bun run dev:docker` | infra + apps in Docker with `compose.dev.yaml` (hot reload) |
+| `bun run dev:hybrid` | `infra:up` then runs web (`bun --bun next dev`), api (`air -c .air.api.toml`), and worker (`air -c .air.worker.toml`) natively with prefixed, coloured logs. Ctrl+C stops all three. |
+| `bun run dev:native` | the same as hybrid but skips Docker and checks that local Postgres, Redis, ffmpeg, and vips respond first, with clear messages if not. Forces `STORAGE_DRIVER=fs`. |
+| `bun run dev:apps` | only the three app processes (when infra is already running anywhere) |
+| `bun run test` | Go unit tests and web unit tests |
+| `bun run test:integration` | Go integration tests (testcontainers; Docker required) |
+| `bun run test:e2e` | Playwright against `dev:docker` with the test clock enabled |
+| `bun run lint` | golangci-lint, eslint, tsc `--noEmit`, and a check that generated code is fresh |
+| `bun run deploy:build -- --env staging` | builds and tags images `tepati-web`/`tepati-server:<git sha>` |
+| `bun run deploy:up -- --env staging` | `docker compose -f deploy/compose.yaml -f deploy/compose.prod.yaml --env-file deploy/env/.env.staging --profile infra --profile app --profile edge up -d`, then runs `migrate` |
+
+Ports in dev: web `3000`, api `8080`, Postgres `5432`, Redis `6379`, Garage S3 `3900` (admin `3903`), Mailpit UI `8025` (SMTP `1025`), asynqmon `8081`. Override them in `.env` if a port is taken.
+
+## 4. Compose structure and **mount rules**
+
+- `deploy/compose.yaml` (base) defines every service with **profiles**: `infra` (postgres, redis, garage, garage-init, mailpit), `app` (migrate, api, worker, web), `edge` (caddy), and `tools` (asynqmon).
+- `deploy/compose.dev.yaml` adds source bind mounts and dev commands.
+- `deploy/compose.prod.yaml` sets built images, `restart: unless-stopped`, resource limits, and no source mounts. Mailpit is replaced by real SMTP and asynqmon sits behind auth.
+
+### Mount rules (read before touching compose)
+
+1. **Database, Redis, and Garage data use named volumes only** (`pgdata`, `redisdata`, `garage-meta`, `garage-data`, `caddy-data`). Never bind-mount them to a host path. On Windows, bind mounts break Postgres permissions (`chmod` on NTFS), are slow, and risk corruption.
+2. **Never mount host `node_modules` or `.next` into Linux containers.** In dev, mount `apps/web` and then shadow them with anonymous or named volumes:
+   ```yaml
+   volumes:
+     - ../apps/web:/app/apps/web
+     - web-node-modules:/app/node_modules
+     - web-next:/app/apps/web/.next
+   ```
+   Host binaries (Windows/macOS) are not Linux binaries, so native modules would break.
+3. **Go caches go into named volumes** (`go-mod:/go/pkg/mod`, `go-build:/root/.cache/go-build`) so rebuilds stay fast and nothing is written into the repo.
+4. **File watching on Windows/macOS bind mounts needs polling.** Set `WATCHPACK_POLLING=true` for Next, and set `poll = true` with `poll_interval = 500` in `.air.*.toml` when `AIR_POLL=1`. The dev compose file sets both.
+5. **Config files mount read-only**: `./garage/garage.toml:/etc/garage.toml:ro` and `./caddy/Caddyfile:/etc/caddy/Caddyfile:ro`.
+6. **Relative paths in compose resolve from `deploy/`**, the compose file's directory. Always run compose with `-f deploy/...` from the repo root, or use the Bun scripts, which do this for you.
+7. **Line endings:** `.gitattributes` forces `eol=lf` for `*.sh`, `*.toml`, `Caddyfile`, and Dockerfiles. CRLF in a shell entrypoint breaks containers with `exec format error` or `\r: not found`.
+8. **Production images contain the built artefact only.** There are no source mounts and no dev volumes, and the containers run as non-root (`USER 10001`). Writable paths are tmpfs (`/tmp`) and the named volumes above.
+9. **Uploads are never written to the container filesystem.** The worker streams staging→media through `/tmp` (tmpfs, sized 1 GB in prod) and cleans up in a `defer`.
+
+## 5. Garage specifics
+
+- The config is `deploy/garage/garage.toml`, single-node, with `replication_factor = 1`. `rpc_secret`, `admin_token`, and `metrics_token` come from env via `GARAGE_RPC_SECRET` etc. (Garage v2 supports `*_file` and env overrides; see the Garage docs via context7).
+- `garage-init` is a one-shot service using the same image. It runs `garage status`, then `garage layout assign -z dc1 -c 10G <node>`, `garage layout apply --version N` (only if no layout exists), and `garage key import`/`key create`, `bucket create`, and `bucket allow`. Each step is guarded so a re-run is a no-op.
+- CORS on the `tepati-staging` bucket must allow `PUT` from `APP_BASE_URL` (set via the S3 `PutBucketCors` API in `garage:init`).
+- In hybrid and native mode, the browser reaches Garage at `http://localhost:3900`. In Docker prod, Caddy exposes it at `https://media.<domain>` or under `/s3/*`, so set `S3_PUBLIC_ENDPOINT` accordingly.
+
+## 6. Staging and production
+
+- Staging and production use the same compose files with different env files: `deploy/env/.env.staging` and `.env.production`, created from the examples and **never committed**.
+- `bun run deploy:up` order: infra (healthy), then `migrate` (one-shot, must exit 0), then api, worker, and web, then edge.
+- Scale stateless services with `bun run deploy:scale -- api=3 web=2 worker=2`.
+- Backups: a nightly `pg_dump` sidecar (`profile backup`) writes to the Garage bucket `tepati-backups` with 14 daily and 8 weekly copies. The restore procedure lives in `docs/RUNBOOK.md` (Phase 6).
+- Zero-downtime deploys: migrations must be backward compatible (expand → deploy → contract). Pull new images, then `up -d` service by service, with Caddy health checks taking care of the switch.

@@ -1,0 +1,29 @@
+# deps / builds
+node_modules/
+.next/
+dist/
+tmp/
+apps/server/bin/
+
+# env & secrets (only *.example is committed)
+.env
+.env.*
+!.env*.example
+deploy/env/.env.*
+!deploy/env/.env*.example
+
+# local data
+.data/
+
+# tool caches
+graphify-out/cache/
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/build/
+*.log
+
+# archify run receipts (machine-local paths)
+docs/diagrams/**/*.browser-check.json
+docs/diagrams/**/*.delivery.json
+docs/diagrams/**/*.finalize.json
+docs/diagrams/**/*.finalize-summary.json

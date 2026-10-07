@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Tepati — Proof Upload & Compression",
+    "output": "docs/diagrams/upload-sequence/upload-sequence.html",
+    "column_fit": "spread",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    {
+      "id": "client",
+      "type": "frontend",
+      "label": "Browser",
+      "sublabel": "proof editor"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "api",
+      "sublabel": "Fiber"
+    },
+    {
+      "id": "redis",
+      "type": "messagebus",
+      "label": "asynq",
+      "sublabel": "media queue"
+    },
+    {
+      "id": "garage",
+      "type": "cloud",
+      "label": "Garage",
+      "sublabel": "S3"
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "worker",
+      "sublabel": "ffmpeg + vips"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 260,
+      "label": "Intent"
+    },
+    {
+      "from": 270,
+      "to": 370,
+      "label": "Upload"
+    },
+    {
+      "from": 380,
+      "to": 560,
+      "label": "Process"
+    }
+  ],
+  "messages": [
+    {
+      "id": "intent",
+      "from": "client",
+      "to": "api",
+      "y": 165,
+      "label": "POST /uploads (kind, size)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "url",
+      "from": "api",
+      "to": "client",
+      "y": 235,
+      "label": "presigned PUT after limit checks",
+      "variant": "return"
+    },
+    {
+      "id": "put",
+      "from": "client",
+      "to": "garage",
+      "y": 285,
+      "label": "PUT staging/{id}",
+      "variant": "emphasis"
+    },
+    {
+      "id": "complete",
+      "from": "client",
+      "to": "api",
+      "y": 320,
+      "label": "POST /uploads/{id}/complete"
+    },
+    {
+      "id": "head",
+      "from": "api",
+      "to": "garage",
+      "y": 345,
+      "label": "HEAD size check",
+      "variant": "security"
+    },
+    {
+      "id": "enqueue",
+      "from": "api",
+      "to": "redis",
+      "y": 395,
+      "label": "media:process",
+      "variant": "dashed"
+    },
+    {
+      "id": "dequeue",
+      "from": "redis",
+      "to": "worker",
+      "y": 420,
+      "label": "task"
+    },
+    {
+      "id": "get",
+      "from": "worker",
+      "to": "garage",
+      "y": 450,
+      "label": "GET raw"
+    },
+    {
+      "id": "store",
+      "from": "worker",
+      "to": "garage",
+      "y": 510,
+      "label": "PUT compressed media, no EXIF"
+    },
+    {
+      "id": "poll",
+      "from": "client",
+      "to": "api",
+      "y": 540,
+      "label": "poll status: ready or rejected",
+      "variant": "dashed"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "api",
+      "from": 165,
+      "to": 235,
+      "type": "backend"
+    },
+    {
+      "participant": "api",
+      "from": 320,
+      "to": 395,
+      "type": "backend"
+    },
+    {
+      "participant": "worker",
+      "from": 420,
+      "to": 512,
+      "type": "backend"
+    }
+  ]
+}

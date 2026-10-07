@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Tepati — Service Architecture",
+    "output": "docs/diagrams/architecture/tepati-architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "Browser (PWA)",
+      "sublabel": "doer + backer",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "edge",
+      "type": "security",
+      "label": "Caddy",
+      "sublabel": "TLS, same origin",
+      "pos": [
+        270,
+        300
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "tag": "edge"
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "web",
+      "sublabel": "Next.js 16 on Bun",
+      "pos": [
+        270,
+        130
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "api",
+      "sublabel": "Go + Fiber v3",
+      "pos": [
+        520,
+        300
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "tag": "stateless"
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "PostgreSQL 18",
+      "sublabel": "truth + ledger",
+      "pos": [
+        790,
+        300
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "redis",
+      "type": "database",
+      "label": "Redis 8",
+      "sublabel": "sessions, limits, asynq",
+      "pos": [
+        520,
+        470
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "worker",
+      "sublabel": "asynq: settle, media, mail",
+      "pos": [
+        790,
+        470
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "garage",
+      "type": "cloud",
+      "label": "Garage (S3)",
+      "sublabel": "staging + media",
+      "pos": [
+        40,
+        640
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "mail",
+      "type": "external",
+      "label": "SMTP",
+      "sublabel": "Mailpit in dev",
+      "pos": [
+        1040,
+        470
+      ],
+      "size": [
+        130,
+        60
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "browser-edge",
+      "from": "browser",
+      "to": "edge",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge-web",
+      "from": "edge",
+      "to": "web",
+      "label": "/* pages",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "edge-api",
+      "from": "edge",
+      "to": "api",
+      "label": "/api/*",
+      "variant": "emphasis"
+    },
+    {
+      "id": "web-api",
+      "from": "web",
+      "to": "api",
+      "label": "SSR fetch",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "top"
+    },
+    {
+      "id": "api-pg",
+      "from": "api",
+      "to": "pg",
+      "label": "SQL (pgx)"
+    },
+    {
+      "id": "api-redis",
+      "from": "api",
+      "to": "redis",
+      "label": "enqueue",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "redis-worker",
+      "from": "redis",
+      "to": "worker",
+      "label": "tasks"
+    },
+    {
+      "id": "worker-pg",
+      "from": "worker",
+      "to": "pg",
+      "label": "tx + ledger",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "worker-mail",
+      "from": "worker",
+      "to": "mail",
+      "label": "email"
+    },
+    {
+      "id": "browser-garage",
+      "from": "browser",
+      "to": "garage",
+      "label": "presigned PUT",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "worker-garage",
+      "from": "worker",
+      "to": "garage",
+      "label": "compress + move",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "right"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Request path",
+      "items": [
+        "Caddy serves web and api on one origin",
+        "api is stateless; scale with replicas",
+        "OpenAPI contract generates Go + TS types"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Background work",
+      "items": [
+        "asynq queues: critical, default, media",
+        "Settlement sweep every minute",
+        "Media compressed off the request path"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Money truth",
+      "items": [
+        "Append-only ledger in Postgres",
+        "Pot balance = SUM(amount)",
+        "Coins are an IOU; no real money"
+      ]
+    }
+  ]
+}
