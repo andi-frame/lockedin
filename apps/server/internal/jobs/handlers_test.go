@@ -154,7 +154,7 @@ func TestTransitionsAreCountedByType(t *testing.T) {
 		sweeps:   []int{0},
 		activate: []uuid.UUID{uuid.New(), uuid.New()},
 		closed:   []uuid.UUID{uuid.New()},
-		relay:    service.RelayResult{Notifications: make([]service.Notification, 4), Skipped: 1},
+		relay:    service.RelayResult{Notifications: make([]service.DeliveredNotification, 4), Skipped: 1},
 		remind:   5,
 	}
 	h, m := newTestHandlers(f)

@@ -16,6 +16,14 @@ type Querier interface {
 	ActivateDuePacts(ctx context.Context, now time.Time) ([]uuid.UUID, error)
 	AddPactMember(ctx context.Context, arg AddPactMemberParams) error
 	AttachToProof(ctx context.Context, arg AttachToProofParams) (int64, error)
+	// Claims every not-yet-emailed notification of one kind for a user and pact.
+	ClaimDigestNotifications(ctx context.Context, arg ClaimDigestNotificationsParams) ([]int64, error)
+	// Claims an unused, unexpired invite that has an address for emailing, and returns what the
+	// mail needs. No row: no address, already mailed, used, expired or unknown.
+	ClaimInviteEmail(ctx context.Context, arg ClaimInviteEmailParams) (ClaimInviteEmailRow, error)
+	// Claims one notification for emailing and returns what the mail needs. No row: already
+	// claimed or sent, or the notification is gone.
+	ClaimNotificationEmail(ctx context.Context, id int64) (ClaimNotificationEmailRow, error)
 	ConfirmPayout(ctx context.Context, pactID uuid.UUID) (int64, error)
 	CountAcceptances(ctx context.Context, arg CountAcceptancesParams) (int64, error)
 	CountAttachmentsByStatus(ctx context.Context, arg CountAttachmentsByStatusParams) ([]CountAttachmentsByStatusRow, error)
@@ -54,7 +62,7 @@ type Querier interface {
 	InsertDecision(ctx context.Context, arg InsertDecisionParams) error
 	// Idempotent insert: returns no row (pgx.ErrNoRows) when the key already exists (SPEC §6 L3).
 	InsertLedgerEntry(ctx context.Context, arg InsertLedgerEntryParams) (LedgerEntry, error)
-	InsertNotification(ctx context.Context, arg InsertNotificationParams) error
+	InsertNotification(ctx context.Context, arg InsertNotificationParams) (int64, error)
 	InsertOutbox(ctx context.Context, arg InsertOutboxParams) error
 	InsertProof(ctx context.Context, arg InsertProofParams) (Proof, error)
 	// 0 rows = this reminder was already sent (possibly by another worker).
@@ -91,6 +99,8 @@ type Querier interface {
 	// earlier day that is still open because its grace period has not ended.
 	ListTodayCheckIns(ctx context.Context, arg ListTodayCheckInsParams) ([]ListTodayCheckInsRow, error)
 	MarkNotificationsRead(ctx context.Context, arg MarkNotificationsReadParams) error
+	// An invite mail row carries the plaintext invite token until it is relayed; drop it here so
+	// only the hash stays in the database.
 	MarkOutboxDispatched(ctx context.Context, ids []int64) error
 	MarkPayoutPaid(ctx context.Context, arg MarkPayoutPaidParams) (int64, error)
 	// My nearest unfinished deadline per pact (open days only).
@@ -99,6 +109,8 @@ type Querier interface {
 	PotBalance(ctx context.Context, pactID uuid.UUID) (int64, error)
 	// Balances for several pacts at once (list and Today screens).
 	PotBalances(ctx context.Context, pactIds []uuid.UUID) ([]PotBalancesRow, error)
+	ReleaseInviteEmail(ctx context.Context, tokenHash string) error
+	ReleaseNotificationEmail(ctx context.Context, ids []int64) error
 	ResetAcceptances(ctx context.Context, pactID uuid.UUID) error
 	// Guarded status change: affects 0 rows when the pact is not in from_status.
 	SetPactStatus(ctx context.Context, arg SetPactStatusParams) (int64, error)

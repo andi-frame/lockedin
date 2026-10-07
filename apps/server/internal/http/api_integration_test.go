@@ -589,11 +589,11 @@ func TestNotificationsOverHTTP(t *testing.T) {
 	andi, bima := s.register("Andi"), s.register("Bima")
 	ctx := context.Background()
 	for _, k := range []string{"proof_rejected", "day_missed", "pact_settled"} {
-		if err := s.st.InsertNotification(ctx, store.InsertNotificationParams{UserID: bima.id, Kind: k, Payload: []byte(`{"pact_id":"` + uuid.NewString() + `"}`)}); err != nil {
+		if _, err := s.st.InsertNotification(ctx, store.InsertNotificationParams{UserID: bima.id, Kind: k, Payload: []byte(`{"pact_id":"` + uuid.NewString() + `"}`)}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := s.st.InsertNotification(ctx, store.InsertNotificationParams{UserID: andi.id, Kind: "proof_submitted", Payload: []byte(`{}`)}); err != nil {
+	if _, err := s.st.InsertNotification(ctx, store.InsertNotificationParams{UserID: andi.id, Kind: "proof_submitted", Payload: []byte(`{}`)}); err != nil {
 		t.Fatal(err)
 	}
 

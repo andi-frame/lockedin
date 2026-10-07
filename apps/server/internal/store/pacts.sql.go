@@ -89,6 +89,42 @@ func (q *Queries) AddPactMember(ctx context.Context, arg AddPactMemberParams) er
 	return err
 }
 
+const claimInviteEmail = `-- name: ClaimInviteEmail :one
+with c as (
+  update pact_invites set emailed_at = now()
+  where token_hash = $1 and emailed_at is null and used_at is null and email is not null and expires_at > $2
+  returning pact_invites.pact_id, pact_invites.email, pact_invites.expires_at
+)
+select c.email::text as email, c.expires_at, p.title, u.display_name as backer_name
+from c join pacts p on p.id = c.pact_id join users u on u.id = p.backer_id
+`
+
+type ClaimInviteEmailParams struct {
+	TokenHash string
+	ExpiresAt time.Time
+}
+
+type ClaimInviteEmailRow struct {
+	Email      string
+	ExpiresAt  time.Time
+	Title      string
+	BackerName string
+}
+
+// Claims an unused, unexpired invite that has an address for emailing, and returns what the
+// mail needs. No row: no address, already mailed, used, expired or unknown.
+func (q *Queries) ClaimInviteEmail(ctx context.Context, arg ClaimInviteEmailParams) (ClaimInviteEmailRow, error) {
+	row := q.db.QueryRow(ctx, claimInviteEmail, arg.TokenHash, arg.ExpiresAt)
+	var i ClaimInviteEmailRow
+	err := row.Scan(
+		&i.Email,
+		&i.ExpiresAt,
+		&i.Title,
+		&i.BackerName,
+	)
+	return i, err
+}
+
 const countAcceptances = `-- name: CountAcceptances :one
 select count(*) from pact_members where pact_id = $1 and accepted_terms_hash = $2
 `
@@ -196,7 +232,7 @@ func (q *Queries) CreatePact(ctx context.Context, arg CreatePactParams) (Pact, e
 }
 
 const getInvite = `-- name: GetInvite :one
-select token_hash, pact_id, email, expires_at, used_at, created_at from pact_invites where token_hash = $1
+select token_hash, pact_id, email, expires_at, used_at, created_at, emailed_at from pact_invites where token_hash = $1
 `
 
 func (q *Queries) GetInvite(ctx context.Context, tokenHash string) (PactInvite, error) {
@@ -209,6 +245,7 @@ func (q *Queries) GetInvite(ctx context.Context, tokenHash string) (PactInvite, 
 		&i.ExpiresAt,
 		&i.UsedAt,
 		&i.CreatedAt,
+		&i.EmailedAt,
 	)
 	return i, err
 }
@@ -602,6 +639,15 @@ func (q *Queries) ListSettlablePacts(ctx context.Context, arg ListSettlablePacts
 		return nil, err
 	}
 	return items, nil
+}
+
+const releaseInviteEmail = `-- name: ReleaseInviteEmail :exec
+update pact_invites set emailed_at = null where token_hash = $1
+`
+
+func (q *Queries) ReleaseInviteEmail(ctx context.Context, tokenHash string) error {
+	_, err := q.db.Exec(ctx, releaseInviteEmail, tokenHash)
+	return err
 }
 
 const resetAcceptances = `-- name: ResetAcceptances :exec

@@ -37,7 +37,31 @@ type Notification struct {
 	CheckInID *uuid.UUID `json:"check_in_id,omitempty"`
 }
 
-const topicNotify = "notify"
+const (
+	topicNotify     = "notify"
+	topicInviteMail = "invite_mail"
+)
+
+// InviteMail is the outbox payload for an invite email. It carries the plaintext token because
+// the mailer needs it to build the link, and the database keeps only its hash. The relay drops
+// the token from the row when it dispatches it (MarkOutboxDispatched), so the plaintext lives
+// from Propose until the next relay pass, normally seconds.
+type InviteMail struct {
+	PactID uuid.UUID `json:"pact_id"`
+	Email  string    `json:"email"`
+	Token  string    `json:"token,omitempty"`
+}
+
+func enqueueInviteMail(ctx context.Context, q *store.Queries, m InviteMail) error {
+	payload, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	if err := q.InsertOutbox(ctx, store.InsertOutboxParams{Topic: topicInviteMail, Payload: payload}); err != nil {
+		return fmt.Errorf("outbox: %w", err)
+	}
+	return nil
+}
 
 // enqueueNotification writes to the outbox inside the caller's transaction, so a
 // notification exists if and only if the change that caused it committed.

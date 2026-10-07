@@ -49,8 +49,8 @@ update payouts set marked_paid_at = now(), marked_paid_note = $2 where pact_id =
 -- name: ConfirmPayout :execrows
 update payouts set confirmed_at = now() where pact_id = $1 and confirmed_at is null;
 
--- name: InsertNotification :exec
-insert into notifications (user_id, kind, payload) values ($1, $2, $3);
+-- name: InsertNotification :one
+insert into notifications (user_id, kind, payload) values ($1, $2, $3) returning id;
 
 -- name: ListNotifications :many
 select * from notifications
@@ -73,4 +73,26 @@ insert into outbox (topic, payload) values ($1, $2);
 select * from outbox where dispatched_at is null order by id limit $1 for update skip locked;
 
 -- name: MarkOutboxDispatched :exec
-update outbox set dispatched_at = now() where id = any(sqlc.arg(ids)::bigint[]);
+-- An invite mail row carries the plaintext invite token until it is relayed; drop it here so
+-- only the hash stays in the database.
+update outbox set dispatched_at = now(), payload = payload - 'token' where id = any(sqlc.arg(ids)::bigint[]);
+
+-- name: ClaimNotificationEmail :one
+-- Claims one notification for emailing and returns what the mail needs. No row: already
+-- claimed or sent, or the notification is gone.
+with c as (
+  update notifications set emailed_at = now()
+  where notifications.id = $1 and notifications.emailed_at is null
+  returning notifications.id, notifications.user_id, notifications.kind, notifications.payload
+)
+select c.id, c.kind, c.payload, u.email, u.display_name, u.locale
+from c join users u on u.id = c.user_id;
+
+-- name: ReleaseNotificationEmail :exec
+update notifications set emailed_at = null where id = any(sqlc.arg(ids)::bigint[]);
+
+-- name: ClaimDigestNotifications :many
+-- Claims every not-yet-emailed notification of one kind for a user and pact.
+update notifications set emailed_at = now()
+where user_id = $1 and kind = $2 and emailed_at is null and payload->>'pact_id' = sqlc.arg(pact_id)::text
+returning id;

@@ -117,3 +117,17 @@ select * from pact_invites where token_hash = $1;
 -- name: UseInvite :execrows
 -- Expiry is checked by the service against its injected clock.
 update pact_invites set used_at = now() where token_hash = $1 and used_at is null;
+
+-- name: ClaimInviteEmail :one
+-- Claims an unused, unexpired invite that has an address for emailing, and returns what the
+-- mail needs. No row: no address, already mailed, used, expired or unknown.
+with c as (
+  update pact_invites set emailed_at = now()
+  where token_hash = $1 and emailed_at is null and used_at is null and email is not null and expires_at > $2
+  returning pact_invites.pact_id, pact_invites.email, pact_invites.expires_at
+)
+select c.email::text as email, c.expires_at, p.title, u.display_name as backer_name
+from c join pacts p on p.id = c.pact_id join users u on u.id = p.backer_id;
+
+-- name: ReleaseInviteEmail :exec
+update pact_invites set emailed_at = null where token_hash = $1;

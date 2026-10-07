@@ -83,6 +83,7 @@ type Notification struct {
 	Payload   json.RawMessage
 	ReadAt    *time.Time
 	CreatedAt time.Time
+	EmailedAt *time.Time
 }
 
 type Outbox struct {
@@ -121,6 +122,7 @@ type PactInvite struct {
 	ExpiresAt time.Time
 	UsedAt    *time.Time
 	CreatedAt time.Time
+	EmailedAt *time.Time
 }
 
 type PactMember struct {

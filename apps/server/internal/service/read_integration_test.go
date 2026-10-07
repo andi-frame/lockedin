@@ -358,7 +358,8 @@ func TestTodayShowsYesterdayWhileItsGraceLasts(t *testing.T) {
 func TestNotificationsInbox(t *testing.T) {
 	f := newFixture(t)
 	add := func(user uuid.UUID, kind string) {
-		f.must(f.st.InsertNotification(f.ctx, store.InsertNotificationParams{UserID: user, Kind: kind, Payload: []byte(`{"pact_id":"x"}`)}))
+		_, err := f.st.InsertNotification(f.ctx, store.InsertNotificationParams{UserID: user, Kind: kind, Payload: []byte(`{"pact_id":"x"}`)})
+		f.must(err)
 	}
 	add(f.doer.ID, "proof_rejected")
 	add(f.doer.ID, "day_missed")

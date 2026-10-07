@@ -14,6 +14,74 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimDigestNotifications = `-- name: ClaimDigestNotifications :many
+update notifications set emailed_at = now()
+where user_id = $1 and kind = $2 and emailed_at is null and payload->>'pact_id' = $3::text
+returning id
+`
+
+type ClaimDigestNotificationsParams struct {
+	UserID uuid.UUID
+	Kind   string
+	PactID string
+}
+
+// Claims every not-yet-emailed notification of one kind for a user and pact.
+func (q *Queries) ClaimDigestNotifications(ctx context.Context, arg ClaimDigestNotificationsParams) ([]int64, error) {
+	rows, err := q.db.Query(ctx, claimDigestNotifications, arg.UserID, arg.Kind, arg.PactID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const claimNotificationEmail = `-- name: ClaimNotificationEmail :one
+with c as (
+  update notifications set emailed_at = now()
+  where notifications.id = $1 and notifications.emailed_at is null
+  returning notifications.id, notifications.user_id, notifications.kind, notifications.payload
+)
+select c.id, c.kind, c.payload, u.email, u.display_name, u.locale
+from c join users u on u.id = c.user_id
+`
+
+type ClaimNotificationEmailRow struct {
+	ID          int64
+	Kind        string
+	Payload     json.RawMessage
+	Email       string
+	DisplayName string
+	Locale      string
+}
+
+// Claims one notification for emailing and returns what the mail needs. No row: already
+// claimed or sent, or the notification is gone.
+func (q *Queries) ClaimNotificationEmail(ctx context.Context, id int64) (ClaimNotificationEmailRow, error) {
+	row := q.db.QueryRow(ctx, claimNotificationEmail, id)
+	var i ClaimNotificationEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Payload,
+		&i.Email,
+		&i.DisplayName,
+		&i.Locale,
+	)
+	return i, err
+}
+
 const confirmPayout = `-- name: ConfirmPayout :execrows
 update payouts set confirmed_at = now() where pact_id = $1 and confirmed_at is null
 `
@@ -163,8 +231,8 @@ func (q *Queries) InsertLedgerEntry(ctx context.Context, arg InsertLedgerEntryPa
 	return i, err
 }
 
-const insertNotification = `-- name: InsertNotification :exec
-insert into notifications (user_id, kind, payload) values ($1, $2, $3)
+const insertNotification = `-- name: InsertNotification :one
+insert into notifications (user_id, kind, payload) values ($1, $2, $3) returning id
 `
 
 type InsertNotificationParams struct {
@@ -173,9 +241,11 @@ type InsertNotificationParams struct {
 	Payload json.RawMessage
 }
 
-func (q *Queries) InsertNotification(ctx context.Context, arg InsertNotificationParams) error {
-	_, err := q.db.Exec(ctx, insertNotification, arg.UserID, arg.Kind, arg.Payload)
-	return err
+func (q *Queries) InsertNotification(ctx context.Context, arg InsertNotificationParams) (int64, error) {
+	row := q.db.QueryRow(ctx, insertNotification, arg.UserID, arg.Kind, arg.Payload)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const insertOutbox = `-- name: InsertOutbox :exec
@@ -264,7 +334,7 @@ func (q *Queries) ListLedgerPage(ctx context.Context, arg ListLedgerPageParams) 
 }
 
 const listNotifications = `-- name: ListNotifications :many
-select id, user_id, kind, payload, read_at, created_at from notifications
+select id, user_id, kind, payload, read_at, created_at, emailed_at from notifications
 where user_id = $1
   and ($2::bigint is null or id < $2::bigint)
   and (not $3::boolean or read_at is null)
@@ -300,6 +370,7 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 			&i.Payload,
 			&i.ReadAt,
 			&i.CreatedAt,
+			&i.EmailedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -357,9 +428,11 @@ func (q *Queries) MarkNotificationsRead(ctx context.Context, arg MarkNotificatio
 }
 
 const markOutboxDispatched = `-- name: MarkOutboxDispatched :exec
-update outbox set dispatched_at = now() where id = any($1::bigint[])
+update outbox set dispatched_at = now(), payload = payload - 'token' where id = any($1::bigint[])
 `
 
+// An invite mail row carries the plaintext invite token until it is relayed; drop it here so
+// only the hash stays in the database.
 func (q *Queries) MarkOutboxDispatched(ctx context.Context, ids []int64) error {
 	_, err := q.db.Exec(ctx, markOutboxDispatched, ids)
 	return err
@@ -424,4 +497,13 @@ func (q *Queries) PotBalances(ctx context.Context, pactIds []uuid.UUID) ([]PotBa
 		return nil, err
 	}
 	return items, nil
+}
+
+const releaseNotificationEmail = `-- name: ReleaseNotificationEmail :exec
+update notifications set emailed_at = null where id = any($1::bigint[])
+`
+
+func (q *Queries) ReleaseNotificationEmail(ctx context.Context, ids []int64) error {
+	_, err := q.db.Exec(ctx, releaseNotificationEmail, ids)
+	return err
 }

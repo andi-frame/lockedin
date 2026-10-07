@@ -120,9 +120,15 @@ func (s *Service) Propose(ctx context.Context, actor, pactID uuid.UUID, email *s
 		} else if p.Status != "proposed" {
 			return ErrPactState
 		}
-		return q.CreateInvite(ctx, store.CreateInviteParams{
+		if err := q.CreateInvite(ctx, store.CreateInviteParams{
 			TokenHash: hashToken(token), PactID: pactID, Email: email, ExpiresAt: s.clock.Now().Add(inviteTTL),
-		})
+		}); err != nil {
+			return err
+		}
+		if email == nil {
+			return nil // a link-only invite: the backer shares it by hand
+		}
+		return enqueueInviteMail(ctx, q, InviteMail{PactID: pactID, Email: *email, Token: token})
 	})
 	if err != nil {
 		return "", err
