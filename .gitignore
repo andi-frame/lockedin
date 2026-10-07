@@ -32,3 +32,4 @@ graphify-out/.graphify_*
 # web build output
 *.tsbuildinfo
 next-env.d.ts
+.playwright-mcp/

@@ -1,13 +1,85 @@
 @import "tailwindcss";
+@import "../styles/tokens.css";
 
-/* Design tokens (OKLCH, light and dark) arrive in PLAN 5.2 from the direction contract. */
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    background-color: var(--color-ground);
+    color: var(--color-ink);
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
 
-@theme inline {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  body {
+    min-height: 100dvh;
+    font-size: 15px;
+    line-height: 1.5;
+    /* Under the desk lamp the page gets one faint pool of warm light from above. In the light
+       theme the same layer is transparent, so it costs nothing there. */
+    background-image: radial-gradient(
+      90% 42% at 50% -8%,
+      light-dark(transparent, oklch(0.4 0.05 85 / 0.16)),
+      transparent 72%
+    );
+    background-repeat: no-repeat;
+  }
+
+  /* Browser surfaces that would otherwise ship in the default blue. */
+  ::selection {
+    background-color: light-dark(oklch(0.85 0.06 188), oklch(0.46 0.07 188));
+    color: var(--color-ink);
+  }
+  input,
+  textarea {
+    caret-color: var(--color-primary);
+    accent-color: var(--color-primary);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+  * {
+    scrollbar-color: var(--color-rule-strong) transparent;
+    scrollbar-width: thin;
+  }
+  a {
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: 1px;
+  }
+  button,
+  [role="button"],
+  summary {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
 }
 
-html {
-  font-family: var(--font-sans);
-  font-variant-numeric: tabular-nums;
+/* Guilloche: the fine security-paper linework, one device pixel thick, used on the pot header
+   band only (contract). Two interlocking radial rings; the line stays hairline on dense screens. */
+.guilloche {
+  --guilloche-line: oklch(0.955 0.012 150 / 0.09);
+  background-image:
+    repeating-radial-gradient(circle at 18% 120%, transparent 0 11px, var(--guilloche-line) 11px 12px),
+    repeating-radial-gradient(circle at 82% -30%, transparent 0 11px, var(--guilloche-line) 11px 12px);
+}
+@media (min-resolution: 2dppx) {
+  .guilloche {
+    background-image:
+      repeating-radial-gradient(circle at 18% 120%, transparent 0 11px, var(--guilloche-line) 11px 11.5px),
+      repeating-radial-gradient(circle at 82% -30%, transparent 0 11px, var(--guilloche-line) 11px 11.5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

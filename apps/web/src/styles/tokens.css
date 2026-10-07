@@ -1,0 +1,154 @@
+/*
+ * Design tokens for the Buku Tabungan direction (.impeccable/surfaces/apps-web-src-app-app.md).
+ *
+ * Every colour is one `light-dark(<light>, <dark>)` pair, so the two themes live side by side
+ * and cannot drift. The light values are the contract's hex values in OKLCH. The dark theme is
+ * the passbook read under a desk lamp: a deep blue-green ground, warm lamp-lit ink, and every
+ * accent re-picked (lighter, and checked for contrast) rather than inverted.
+ *
+ * `color-scheme` picks the side: the system preference by default, `data-theme` on <html> (set
+ * from the tepati_theme cookie) or on any wrapper to force one.
+ *
+ * Hue map: 195 teal paper and cover, 95 lamp and highlighter, 29 debit, 172 credit, 277 stamp.
+ * src/styles/tokens.test.ts parses this file and fails if a text pair drops below WCAG AA.
+ */
+
+@theme {
+  /* Only the tokens below exist: no default palette, no default radii or shadows, so a stray
+     `bg-red-500` or `rounded-xl` fails to build instead of slipping in. */
+  --color-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "Cascadia Mono", monospace;
+
+  /* Radius is 6px on controls and 10px on panels, nothing else. */
+  --radius-control: 6px;
+  --radius-panel: 10px;
+
+  /* Paper */
+  --color-ground: light-dark(oklch(0.966 0.007 145.5), oklch(0.185 0.02 200));
+  --color-surface: light-dark(oklch(0.985 0.004 145), oklch(0.225 0.022 200));
+  --color-sunken: light-dark(oklch(0.94 0.009 150), oklch(0.16 0.02 200));
+  --color-rule: light-dark(oklch(0.867 0.013 172.3), oklch(0.32 0.02 195));
+  --color-rule-strong: light-dark(oklch(0.6 0.02 180), oklch(0.52 0.03 190));
+
+  /* Ink */
+  --color-ink: light-dark(oklch(0.244 0.025 191.3), oklch(0.93 0.022 95));
+  --color-muted: light-dark(oklch(0.44 0.02 190), oklch(0.75 0.02 170));
+  --color-placeholder: light-dark(oklch(0.48 0.018 190), oklch(0.66 0.02 180));
+
+  /* Passbook cover: the rail, the header band, primary buttons */
+  --color-cover: light-dark(oklch(0.322 0.048 192.9), oklch(0.25 0.04 195));
+  --color-cover-ink: light-dark(oklch(0.955 0.012 150), oklch(0.95 0.012 150));
+  --color-cover-muted: light-dark(oklch(0.82 0.025 180), oklch(0.78 0.025 180));
+  --color-primary: light-dark(oklch(0.322 0.048 192.9), oklch(0.74 0.085 186));
+  --color-primary-hover: light-dark(oklch(0.27 0.045 193), oklch(0.8 0.085 186));
+  --color-primary-foreground: light-dark(oklch(0.955 0.012 150), oklch(0.2 0.03 195));
+  --color-teal-tint: light-dark(oklch(0.93 0.02 185), oklch(0.3 0.04 190));
+  --color-teal-text: light-dark(oklch(0.322 0.048 192.9), oklch(0.84 0.07 186));
+
+  /* The ledger: debit takes coins out, credit puts them in. Never the only signal (a sign and D/K travel with them). */
+  --color-debit: light-dark(oklch(0.5 0.182 29.5), oklch(0.74 0.14 25));
+  --color-debit-tint: light-dark(oklch(0.95 0.022 25), oklch(0.3 0.06 25));
+  --color-credit: light-dark(oklch(0.491 0.09 172.2), oklch(0.78 0.11 165));
+  --color-credit-tint: light-dark(oklch(0.95 0.03 170), oklch(0.3 0.05 170));
+
+  /* Stamp-ink violet: human decisions only (approve, reject, override, sign terms). */
+  --color-stamp: light-dark(oklch(0.457 0.215 277), oklch(0.56 0.2 277));
+  --color-stamp-hover: light-dark(oklch(0.4 0.2 277), oklch(0.5 0.2 277));
+  --color-stamp-foreground: light-dark(oklch(0.985 0.004 277), oklch(0.99 0.003 277));
+  --color-stamp-tint: light-dark(oklch(0.94 0.025 277), oklch(0.3 0.07 277));
+  --color-stamp-text: light-dark(oklch(0.457 0.215 277), oklch(0.78 0.11 277));
+
+  /* Highlighter yellow: today, and nothing else. */
+  --color-today: light-dark(oklch(0.924 0.115 95.7), oklch(0.86 0.11 95.7));
+  --color-today-ink: light-dark(oklch(0.244 0.025 191.3), oklch(0.22 0.03 195));
+
+  /* One fixed line colour per member. */
+  --color-member-a: light-dark(oklch(0.511 0.086 186.4), oklch(0.76 0.1 186));
+  --color-member-a-foreground: light-dark(oklch(0.985 0.004 186), oklch(0.2 0.03 195));
+  --color-member-b: light-dark(oklch(0.459 0.17 3.8), oklch(0.74 0.15 5));
+  --color-member-b-foreground: light-dark(oklch(0.985 0.004 4), oklch(0.2 0.03 195));
+
+  /* Behind dialogs and sheets: always darkens the page, in both themes. */
+  --color-scrim: light-dark(oklch(0.25 0.04 195 / 0.5), oklch(0.08 0.02 200 / 0.72));
+
+  --color-ring: light-dark(oklch(0.45 0.07 190), oklch(0.78 0.09 186));
+
+  /* Depth: tinted to the paper, never pure black. In the dark theme a border does the work. */
+  --shadow-panel: 0 1px 2px light-dark(oklch(0.25 0.04 195 / 0.1), oklch(0.05 0.02 200 / 0.5));
+  --shadow-overlay:
+    0 2px 4px light-dark(oklch(0.25 0.04 195 / 0.08), oklch(0.05 0.02 200 / 0.4)),
+    0 16px 40px -8px light-dark(oklch(0.25 0.04 195 / 0.28), oklch(0.05 0.02 200 / 0.7));
+
+  --animate-overlay-in: overlay-in 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-overlay-out: overlay-out 120ms ease-in;
+  --animate-dialog-in: dialog-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-dialog-out: dialog-out 120ms ease-in;
+  --animate-sheet-in-bottom: sheet-in-bottom 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-sheet-out-bottom: sheet-out-bottom 180ms ease-in;
+  --animate-sheet-in-right: sheet-in-right 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-sheet-out-right: sheet-out-right 180ms ease-in;
+  --animate-toast-in: toast-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-toast-out: toast-out 140ms ease-in;
+  --animate-pop-in: pop-in 140ms cubic-bezier(0.22, 1, 0.36, 1);
+
+  @keyframes overlay-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes overlay-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  @keyframes dialog-in {
+    from { opacity: 0; transform: translate(-50%, calc(-50% + 8px)); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+  }
+  @keyframes dialog-out {
+    from { opacity: 1; transform: translate(-50%, -50%); }
+    to { opacity: 0; transform: translate(-50%, calc(-50% + 8px)); }
+  }
+  @keyframes sheet-in-bottom {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  @keyframes sheet-out-bottom {
+    from { transform: translateY(0); }
+    to { transform: translateY(100%); }
+  }
+  @keyframes sheet-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes sheet-out-right {
+    from { transform: translateX(0); }
+    to { transform: translateX(100%); }
+  }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes toast-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  @keyframes pop-in {
+    from { opacity: 0; transform: translateY(-2px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+:root {
+  color-scheme: light dark;
+}
+:root[data-theme="light"],
+[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"],
+[data-theme="dark"] {
+  color-scheme: dark;
+}
