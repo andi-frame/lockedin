@@ -18,7 +18,7 @@ The first unchecked task in `docs/PLAN.md` is **5.1**.
 
 ## 2. Branch and merge state
 
-Nothing has been pushed or merged. `main` is still at `e4f987f` (end of Phase 1). Everything since lives on **stacked** branches, each cut from the one before:
+Nothing has been merged. The seven branches below were pushed to `origin` on 2026-10-08 (no pull requests opened yet); `main` is still at `e4f987f` (end of Phase 1). Everything since lives on **stacked** branches, each cut from the one before:
 
 ```
 main ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-handlers ─ p3.1-worker-jobs ─ p3.2-notifications-email ─ p4.1-blobstore ─ p4.2-uploads   (HEAD)

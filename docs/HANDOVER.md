@@ -7,7 +7,7 @@ Written 2026-10-08, at the end of Phase 4, by the agent that built Phases 2 to 4
 - **Tepati** is a study-pact app (two peers, a coin IOU ledger, daily proof). Folder name is `lockedin`; product name is Tepati.
 - **Done:** Phases 0 to 4. The whole backend works: auth, pacts, check-ins, review and disputes, settlement worker, payouts, notifications and email, uploads and media processing. **There is no web app yet** (`apps/web` only holds a generated `schema.d.ts`).
 - **Next task:** `docs/PLAN.md` **5.1 Next.js app on Bun**. Branch `p5.1-nextjs-app`, cut from `p4.2-uploads`. Playbook in §9.
-- **Nothing has been pushed or merged.** All work sits on 7 stacked local branches (`p2.1-openapi` ... `p4.2-uploads`). `origin` is `https://github.com/andi-frame/lockedin.git`; `main` there is still the end of Phase 1. Do not push, merge, or open PRs unless the owner asks.
+- **Nothing has been merged, and no pull request exists.** All work sits on 7 stacked branches (`p2.1-openapi` ... `p4.2-uploads`), pushed to `origin` (`https://github.com/andi-frame/lockedin.git`) on 2026-10-08; `main` there is still the end of Phase 1. Push new branches only when the owner asks, and never merge, force-push, or open PRs unless they ask.
 - **First three commands in a new Git Bash terminal:**
 
 ```bash
