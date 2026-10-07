@@ -86,7 +86,7 @@ Use *superpowers:test-driven-development* (or *tdd*) for every task in this phas
 
 ## Phase 2: API contract and HTTP
 
-- [ ] **2.1 OpenAPI contract**
+- [x] **2.1 OpenAPI contract** (fd303f0)
   - Read: `ARCHITECTURE.md §5`, and `SPEC.md` for field semantics.
   - Do: Write `api/openapi.yaml` (3.1) covering every endpoint in §5, with `problem+json` errors and stable `code` enums, the `Idempotency-Key` header parameter on mutating endpoints, and cursor pagination. Add `bun run codegen`, which generates Go (strict server) and TS (`apps/web/src/lib/api/schema.d.ts`).
   - Done when: `redocly lint api/openapi.yaml` (via `bunx @redocly/cli`) passes and the codegen output compiles.
