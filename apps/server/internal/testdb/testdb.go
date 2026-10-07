@@ -143,6 +143,15 @@ func RedisIn(t testing.TB, db int) *redis.Client {
 }
 
 // readRootEnv reads one key from the repo root .env so `go test` works without Bun.
+// Setting returns an environment variable, or else its value in the repo's root .env. Tests for
+// other infrastructure (Garage keys) use it so they run without exporting anything.
+func Setting(key string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return readRootEnv(key)
+}
+
 func readRootEnv(key string) string {
 	raw, err := os.ReadFile(filepath.Join(serverRoot(), "..", "..", ".env"))
 	if err != nil {
