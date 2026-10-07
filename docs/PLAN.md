@@ -21,7 +21,7 @@ Legend: ⇄ parallel-safe · 🔒 touches money/time invariants (extra review: r
   - Done when: `bun install` succeeds on a clean clone.
   - Verify: `bun install && git status --short` shows only intended files.
 
-- [ ] **0.2 Env examples and setup script**
+- [x] **0.2 Env examples and setup script**
   - Do: Write `deploy/env/.env.example` with every variable from `ARCHITECTURE.md §9`, each with a comment. Add `.env.dev.example`, `.env.staging.example`, and `.env.production.example`. Write `scripts/setup.ts`: copy examples to `.env` (repo root, used by hybrid/native) and `deploy/env/.env.dev` only when missing, and fill `SESSION_SECRET`, `GARAGE_RPC_SECRET` (32-byte hex), `GARAGE_ADMIN_TOKEN`, and `GARAGE_METRICS_TOKEN` with crypto-random values.
   - Done when: running setup twice leaves files unchanged the second time.
   - Verify: `bun run setup && bun run setup` (the second run prints "exists, skipped").
