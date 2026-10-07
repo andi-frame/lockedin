@@ -137,6 +137,8 @@ Definitions (all instants in UTC; `local_date` is a `date` in the pact timezone)
 - `resolution_deadline = disputed_at + dispute_resolution_hours`
 - `override_deadline = auto_approved_at + override_window_hours`
 
+Reasons: `reject`, `override`, and dispute `dismiss` each require a written reason of at least 10 characters (enforced by a DB check on `decisions`). A dispute itself also requires a reason.
+
 **Final** statuses: `approved`, `rest`, `missed`, `rejected` (after the dispute window or dismissal, or after an override), and `auto_approved` after `override_deadline` (or immediately when `max_overrides` is exhausted or `0`).
 
 A submission is valid only if it meets the terms `evidence` rules **and** every attachment has `status = ready` (uploads still processing block submission; the UI shows progress).

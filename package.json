@@ -20,9 +20,9 @@
     "dev:hybrid": "bun scripts/dev.ts hybrid",
     "dev:native": "bun scripts/dev.ts native",
     "dev:apps": "bun scripts/dev.ts apps",
-    "db:migrate": "bun scripts/todo.ts db:migrate 1.2",
-    "db:rollback": "bun scripts/todo.ts db:rollback 1.2",
-    "db:new": "bun scripts/todo.ts db:new 1.2",
+    "db:migrate": "bun scripts/db.ts migrate",
+    "db:rollback": "bun scripts/db.ts rollback",
+    "db:new": "bun scripts/db.ts new",
     "db:seed": "bun scripts/todo.ts db:seed 3.1",
     "codegen": "bun scripts/todo.ts codegen 1.4",
     "test": "bun test scripts && cd apps/server && go test ./...",
@@ -32,7 +32,8 @@
     "deploy:build": "bun scripts/todo.ts deploy:build 7.1",
     "deploy:up": "bun scripts/todo.ts deploy:up 7.2",
     "deploy:scale": "bun scripts/todo.ts deploy:scale 7.2",
-    "go:tool": "cd apps/server/tools && go tool"
+    "go:tool": "cd apps/server/tools && go tool",
+    "db:status": "bun scripts/db.ts status"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.1147.0",

@@ -44,7 +44,7 @@ Use *superpowers:test-driven-development* (or *tdd*) for every task in this phas
   - Do: `apps/server/go.mod` (Go 1.25). `internal/config` uses `caarlos0/env` and validates on start, and the error lists every missing var. Logging uses slog JSON. `cmd/api`, `cmd/worker`, and `cmd/tepatictl` each print their version and exit cleanly on SIGTERM. Pin goose, sqlc, and oapi-codegen as `tool` directives in a separate module `apps/server/tools/go.mod` (keeps the server module small and on Go 1.25; run them with `bun run go:tool <name>`).
   - Verify: `cd apps/server && go build ./... && go vet ./...`
 
-- [ ] **1.2 Migrations: initial schema**
+- [x] **1.2 Migrations: initial schema**
   - Read: `ARCHITECTURE.md §4` (the DDL is the reference) and `SPEC.md §3, §5, §6`.
   - Do: Write the goose migrations for the schema, including the append-only trigger on `ledger_entries` and the extensions. Add `bun run db:migrate` / `db:rollback` / `db:new`.
   - Done when: up, down, and up again works on a fresh DB, and `UPDATE ledger_entries` raises an error.
