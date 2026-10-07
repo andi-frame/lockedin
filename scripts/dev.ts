@@ -1,6 +1,7 @@
 // `bun run dev:{docker,hybrid,native,apps}`: one entry point for every run mode (ADR-0008).
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { airCommand } from "./lib/air.ts";
 import { checkBinary, checkPostgres, checkRedis } from "./lib/checks.ts";
 import { readEnvFile } from "./lib/env.ts";
 import { paths } from "./lib/paths.ts";
@@ -24,8 +25,8 @@ function appSpecs(env: Record<string, string>): { specs: ProcSpec[]; missing: st
   for (const name of ["api", "worker"] as const) {
     const air = join(server, `.air.${name}.toml`);
     if (existsSync(join(server, "go.mod")) && existsSync(air)) {
-      specs.push({ name, cwd: server, env, cmd: ["air", "-c", air] });
-    } else missing.push(`${name} (PLAN 1.1)`);
+      specs.push({ name, cwd: server, env, cmd: airCommand(air, env) });
+    } else missing.push(`${name} (.air.${name}.toml)`);
   }
   return { specs, missing };
 }

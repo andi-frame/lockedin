@@ -1,29 +1,138 @@
-// Command tepatictl is the admin CLI (seed, settlement replay, checks).
+// Command tepatictl is the admin CLI: development seeds and a pact inspector.
 package main
 
 import (
+	"context"
+	"errors"
+	"flag"
 	"fmt"
+	"io"
 	"os"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/andi-frame/lockedin/apps/server/internal/buildinfo"
+	"github.com/andi-frame/lockedin/apps/server/internal/config"
+	"github.com/andi-frame/lockedin/apps/server/internal/ctl"
+	"github.com/andi-frame/lockedin/apps/server/internal/store"
 )
 
 const usage = `usage: tepatictl <command>
 
 commands:
-  version   print the build version
+  version                          print the build version
+  seed --scenario overdue|invite   create development data
+                                     overdue  an active pact with check-ins past their deadline;
+                                              the worker should mark them missed within 2 minutes
+                                     invite   a proposed pact with an open invite link
+  pact show <id>                   print a pact, its check-ins and its ledger
+
+Reads DATABASE_URL and the rest of the app config from the environment (see .env).
 `
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprint(os.Stderr, usage)
-		os.Exit(2)
+	ctx, stop := signalContext()
+	defer stop()
+	if err := run(ctx, os.Args[1:], os.Stdout); err != nil {
+		fmt.Fprintln(os.Stderr, "tepatictl:", err)
+		os.Exit(1)
 	}
-	switch os.Args[1] {
+}
+
+func run(ctx context.Context, args []string, out io.Writer) error {
+	if len(args) == 0 {
+		fmt.Fprint(out, usage)
+		return errors.New("usage: a command is required")
+	}
+	switch args[0] {
 	case "version":
-		fmt.Println(buildinfo.Version)
+		fmt.Fprintln(out, buildinfo.Version)
+		return nil
+	case "seed":
+		return runSeed(ctx, args[1:], out)
+	case "pact":
+		return runPact(ctx, args[1:], out)
 	default:
-		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", os.Args[1], usage)
-		os.Exit(2)
+		fmt.Fprint(out, usage)
+		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func runSeed(ctx context.Context, args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("seed", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	scenario := fs.String("scenario", "", "overdue or invite")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	switch *scenario {
+	case "":
+		return errors.New("seed needs --scenario overdue|invite")
+	case "overdue", "invite":
+	default:
+		return fmt.Errorf("unknown scenario %q (want overdue or invite)", *scenario)
+	}
+
+	cfg, st, closeDB, err := open(ctx)
+	if err != nil {
+		return err
+	}
+	defer closeDB()
+
+	now := time.Now()
+	var s ctl.Seeded
+	if *scenario == "overdue" {
+		s, err = ctl.SeedOverdue(ctx, st, now)
+	} else {
+		s, err = ctl.SeedInvite(ctx, st, now)
+	}
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(out, "pact     %s  (%s)\n", s.Pact.ID, s.Pact.Status)
+	fmt.Fprintf(out, "backer   %s  password %s\n", s.Backer.Email, ctl.SeedPassword)
+	fmt.Fprintf(out, "doer     %s  password %s\n", s.Doer.Email, ctl.SeedPassword)
+	if s.InviteToken != "" {
+		fmt.Fprintf(out, "invite   %s/invite/%s  (to %s)\n", cfg.BaseURL, s.InviteToken, s.InviteEmail)
+	}
+	fmt.Fprintf(out, "inspect  tepatictl pact show %s\n", s.Pact.ID)
+	return nil
+}
+
+func runPact(ctx context.Context, args []string, out io.Writer) error {
+	if len(args) == 0 || args[0] != "show" {
+		return errors.New("usage: tepatictl pact show <id>")
+	}
+	if len(args) < 2 {
+		return errors.New("pact show needs a pact id")
+	}
+	id, err := uuid.Parse(args[1])
+	if err != nil {
+		return fmt.Errorf("%q is not a UUID", args[1])
+	}
+	_, st, closeDB, err := open(ctx)
+	if err != nil {
+		return err
+	}
+	defer closeDB()
+	text, err := ctl.Show(ctx, st, id)
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(out, text)
+	return err
+}
+
+func open(ctx context.Context) (config.Config, *store.Store, func(), error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return config.Config{}, nil, nil, err
+	}
+	pool, err := store.Connect(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return config.Config{}, nil, nil, err
+	}
+	return cfg, store.NewStore(pool), pool.Close, nil
 }
