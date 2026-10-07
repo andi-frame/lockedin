@@ -7,7 +7,7 @@ Written 2026-10-08, at the end of Phase 4, by the agent that built Phases 2 to 4
 - **Tepati** is a study-pact app (two peers, a coin IOU ledger, daily proof). Folder name is `lockedin`; product name is Tepati.
 - **Done:** Phases 0 to 4. The whole backend works: auth, pacts, check-ins, review and disputes, settlement worker, payouts, notifications and email, uploads and media processing. **There is no web app yet** (`apps/web` only holds a generated `schema.d.ts`).
 - **Next task:** `docs/PLAN.md` **5.1 Next.js app on Bun**. Branch `p5.1-nextjs-app`, cut from `main`. Playbook in §9.
-- **Phases 2 to 4 are merged into `main`** (pull request #1, https://github.com/andi-frame/lockedin/pull/1, merge commit `054e61a`, 2026-10-08, not squashed). `origin` is `https://github.com/andi-frame/lockedin.git`. The seven task branches (`p2.1-openapi` ... `p4.2-uploads`) still exist there; do not delete them unasked. The owner asked for the push and the merge explicitly each time: push, open PRs and merge only when they ask, and never force-push.
+- **Phases 2 to 4 are merged into `main`** (pull request #1, https://github.com/andi-frame/lockedin/pull/1, merge commit `054e61a`, 2026-10-08, not squashed). `origin` is `https://github.com/andi-frame/lockedin.git`. The seven task branches (`p2.1-openapi` ... `p4.2-uploads`) were deleted on 2026-10-08 at the owner's request; their commits are in `main`. Do not delete branches unasked. The owner asked for the push and the merge explicitly each time: push, open PRs and merge only when they ask, and never force-push.
 - **First three commands in a new Git Bash terminal:**
 
 ```bash
@@ -154,7 +154,7 @@ Things the web app must provide because the backend already points at them: rout
 
 ## 10. Questions that are the owner's to answer (do not decide silently)
 
-- Whether to delete the seven merged task branches on `origin`, and whether later PRs should be merged with merge commits (as PR #1 was, to keep the hashes in `docs/PLAN.md` valid) or squashed.
+- Whether later PRs should be merged with merge commits (as PR #1 was, to keep the hashes in `docs/PLAN.md` valid) or squashed.
 - Whether to install Go 1.26 system-wide (removes the `dev-env.sh` Go workaround).
 - A real SMTP provider and TLS settings for staging and production.
 - HEIC/AVIF handling: the sniffer accepts them, but decoding depends on the libvips build and was not tested with a real HEIC file.

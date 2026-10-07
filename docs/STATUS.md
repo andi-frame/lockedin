@@ -24,7 +24,7 @@ Phases 2 to 4 are **merged into `main`**: pull request #1 (`p4.2-uploads` -> `ma
 e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-handlers ─ p3.1-worker-jobs ─ p3.2-notifications-email ─ p4.1-blobstore ─ p4.2-uploads ─ merge 054e61a (main)
 ```
 
-- The seven task branches still exist on `origin` and can be deleted (ask the owner first).
+- The seven task branches (`p2.1-openapi` ... `p4.2-uploads`) were deleted from `origin` and locally on 2026-10-08, at the owner's request, after the merge. Their commits are in `main`.
 - Branch for 5.1: cut `p5.1-nextjs-app` from `main`. From now on each task branch starts from `main` (or from the previous task's branch only while that one is still unmerged).
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
