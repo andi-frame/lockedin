@@ -347,7 +347,7 @@ SESSION_SECRET=…                     API_INTERNAL_URL=http://localhost:8080   
 | Layer | Tooling | What |
 |---|---|---|
 | domain | `go test` table tests | FSM transitions, deadlines across timezones, clamp math, terms validation |
-| store/service | `go test -tags=integration` + testcontainers-go (Postgres, Redis, Garage) | transactions, idempotency, concurrent sweeps (run 2 sweeps in parallel and assert no double penalty) |
+| store/service | `go test -tags=integration` with `internal/testdb`: a throwaway, migrated database per test on the dev Postgres (`TEST_DATABASE_URL` or `DATABASE_URL`; CI uses a Postgres service container) | transactions, idempotency, concurrent sweeps (run 2 sweeps in parallel and assert no double penalty) |
 | http | handler tests against the strict-server interface | auth, validation, problem codes |
 | media | golden files (small fixtures in `testdata/`) | sniffing, rejection, output dimensions |
 | web unit | `bun test` + Testing Library | formatters, reducers, editor schema |

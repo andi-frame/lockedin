@@ -24,7 +24,7 @@
 
 ## 2. Actors and roles
 
-- **Member A (backer)**: creates the pact, funds the pot, and reviews B's proof. If `backer_commits` is set, A is also a doer, and B reviews A's proof.
+- **Member A (backer)**: creates the pact (in the MVP the creator is always the backer; the doer joins through the invite link, which re-keys the doer slot in the terms and clears any signature), funds the pot, and reviews B's proof. If `backer_commits` is set, A is also a doer, and B reviews A's proof.
 - **Member B (doer)**: commits daily and reviews A's proof when A also commits.
 - **System**: the settlement worker. It is the only actor that applies time-based transitions.
 - **Reviewer of a check-in**: always *the other member*. Nobody reviews their own check-ins.

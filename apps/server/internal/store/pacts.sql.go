@@ -566,9 +566,10 @@ func (q *Queries) UpdatePactTerms(ctx context.Context, arg UpdatePactTermsParams
 }
 
 const useInvite = `-- name: UseInvite :execrows
-update pact_invites set used_at = now() where token_hash = $1 and used_at is null and expires_at > now()
+update pact_invites set used_at = now() where token_hash = $1 and used_at is null
 `
 
+// Expiry is checked by the service against its injected clock.
 func (q *Queries) UseInvite(ctx context.Context, tokenHash string) (int64, error) {
 	result, err := q.db.Exec(ctx, useInvite, tokenHash)
 	if err != nil {

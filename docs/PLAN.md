@@ -65,9 +65,9 @@ Use *superpowers:test-driven-development* (or *tdd*) for every task in this phas
   - Do: `sqlc.yaml` (pgx/v5, UUIDs as `github.com/google/uuid`, `emit_interface: true`). Queries go in `db/queries/*.sql` for users, sessions (none: sessions are Redis), pacts, members, invites, check-ins (including batch generation and sweep selects with `FOR UPDATE SKIP LOCKED LIMIT $n`), proofs, attachments, decisions, ledger (insert, balance, and a passbook page with a running balance using `sum(amount) over (order by id)`), payouts, notifications, and outbox. Add a `store.WithTx` helper.
   - Verify: `bun run codegen && go build ./...`
 
-- [ ] **1.5 Services: pact lifecycle** 🔒
+- [x] **1.5 Services: pact lifecycle** 🔒
   - Do: `internal/service/pacts.go`: `CreateDraft`, `UpdateTerms` (bumps the version and clears acceptances), `Propose` (invite token, stored hashed), `Accept(termsHash, signatureName)`. When both accept, it moves the pact to `scheduled`, inserts the `pot_initial` entry, and generates check-ins for all scheduled dates with deadlines precomputed. `ActivateDuePacts(now)` handles the scheduled→active step.
-  - Done when: integration tests (testcontainers Postgres) show that accepting a stale hash fails with `pact.terms_mismatch`, a double accept is idempotent, and check-in counts equal the scheduled dates.
+  - Done when: integration tests (`internal/testdb`, real Postgres) show that accepting a stale hash fails with `pact.terms_mismatch`, a double accept is idempotent, and check-in counts equal the scheduled dates.
   - Verify: `go test -tags=integration ./internal/service/...`
 
 - [ ] **1.6 Services: check-in transitions and settlement** 🔒

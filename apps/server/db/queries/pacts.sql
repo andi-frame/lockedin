@@ -100,4 +100,5 @@ insert into pact_invites (token_hash, pact_id, email, expires_at) values ($1, $2
 select * from pact_invites where token_hash = $1;
 
 -- name: UseInvite :execrows
-update pact_invites set used_at = now() where token_hash = $1 and used_at is null and expires_at > now();
+-- Expiry is checked by the service against its injected clock.
+update pact_invites set used_at = now() where token_hash = $1 and used_at is null;
