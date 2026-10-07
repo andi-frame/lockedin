@@ -128,7 +128,7 @@ func ptrInt(v *int32) *int {
 	return ptr(int(*v))
 }
 
-// apiAttachment never fills `urls`: signed URLs need the BlobStore, which arrives with PLAN 4.
+// apiAttachment never fills `urls`; getAttachment adds them (they need the BlobStore).
 func apiAttachment(a store.Attachment) api.Attachment {
 	out := api.Attachment{
 		Id: a.ID, PactId: a.PactID, Kind: api.AttachmentKind(a.Kind), Status: api.AttachmentStatus(a.Status),

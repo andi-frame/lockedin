@@ -14,8 +14,10 @@ import (
 	"github.com/andi-frame/lockedin/apps/server/internal/config"
 	"github.com/andi-frame/lockedin/apps/server/internal/domain"
 	"github.com/andi-frame/lockedin/apps/server/internal/jobs"
+	"github.com/andi-frame/lockedin/apps/server/internal/media"
 	"github.com/andi-frame/lockedin/apps/server/internal/notify"
 	"github.com/andi-frame/lockedin/apps/server/internal/service"
+	"github.com/andi-frame/lockedin/apps/server/internal/storage"
 	"github.com/andi-frame/lockedin/apps/server/internal/store"
 )
 
@@ -39,11 +41,25 @@ func run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	blobs, err := storage.FromConfig(cfg)
+	if err != nil {
+		return err
+	}
 	svc := service.New(store.NewStore(pool), domain.SystemClock{})
+	svc.WithUploads(service.UploadDeps{
+		Blobs: blobs, Log: log,
+		Media: media.New(
+			media.Tools{FFmpeg: cfg.Media.FFmpeg, FFprobe: cfg.Media.FFprobe, Vips: cfg.Media.Vips, VipsHeader: cfg.Media.VipsHeader},
+			media.Limits{
+				ImageMaxBytes: cfg.Upload.ImageMaxBytes, VideoMaxBytes: cfg.Upload.VideoMaxBytes, FileMaxBytes: cfg.Upload.FileMaxBytes,
+				VideoMaxSeconds: cfg.Upload.VideoMaxSeconds, ImageMaxPixels: 40_000_000, VideoOutputMaxBytes: 50 << 20,
+			}),
+	})
 	opts := jobs.Options{
 		Redis:       redisOpt,
 		Svc:         svc,
 		Mail:        &jobs.Mail{Svc: svc, Renderer: notify.NewRenderer(cfg.BaseURL), Sender: sender},
+		Uploads:     svc,
 		Log:         log,
 		Concurrency: cfg.WorkerConcurrency,
 	}

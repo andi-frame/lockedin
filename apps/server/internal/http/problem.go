@@ -85,6 +85,9 @@ func writeProblem(c fiber.Ctx, p api.Problem) error {
 	if err != nil {
 		return err
 	}
+	if p.Code == api.UploadQueueBusy {
+		c.Set(fiber.HeaderRetryAfter, "10") // seconds; the web app backs off and retries
+	}
 	c.Status(p.Status)
 	c.Set(fiber.HeaderContentType, problemContentType)
 	return c.Send(body)

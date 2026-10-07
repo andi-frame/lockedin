@@ -8,6 +8,7 @@ import (
 	nethttp "net/http"
 	"os"
 
+	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/andi-frame/lockedin/apps/server/internal/app"
@@ -15,6 +16,7 @@ import (
 	"github.com/andi-frame/lockedin/apps/server/internal/config"
 	"github.com/andi-frame/lockedin/apps/server/internal/domain"
 	httpapi "github.com/andi-frame/lockedin/apps/server/internal/http"
+	"github.com/andi-frame/lockedin/apps/server/internal/jobs"
 	"github.com/andi-frame/lockedin/apps/server/internal/service"
 	"github.com/andi-frame/lockedin/apps/server/internal/storage"
 	"github.com/andi-frame/lockedin/apps/server/internal/store"
@@ -46,6 +48,19 @@ func run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	asynqOpt, err := asynq.ParseRedisURI(cfg.RedisURL)
+	if err != nil {
+		return fmt.Errorf("REDIS_URL: %w", err)
+	}
+	mediaQueue := jobs.NewMediaQueue(asynqOpt, cfg.MediaQueueMax)
+	defer mediaQueue.Close()
+	svc.WithUploads(service.UploadDeps{
+		Blobs: blobs, Queue: mediaQueue, Log: log,
+		Limits: service.UploadLimits{
+			ImageMaxBytes: cfg.Upload.ImageMaxBytes, VideoMaxBytes: cfg.Upload.VideoMaxBytes,
+			FileMaxBytes: cfg.Upload.FileMaxBytes, PactQuotaBytes: cfg.Upload.PactQuotaBytes,
+		},
+	})
 	deps := httpapi.Deps{
 		Config:   cfg,
 		Log:      log,
@@ -57,7 +72,6 @@ func run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Limits:   httpapi.DefaultLimits(),
 	}
 	// Only the fs driver is served by the API; with s3 the browser talks to Garage directly.
-	// PLAN 4.2 hands blobs to the upload handlers.
 	if h, ok := blobs.(nethttp.Handler); ok {
 		deps.Blob = h
 		deps.BlobMaxBytes = int(max(cfg.Upload.ImageMaxBytes, cfg.Upload.VideoMaxBytes, cfg.Upload.FileMaxBytes)) + 1<<20

@@ -42,22 +42,30 @@ type stack struct {
 	clock *domain.FakeClock
 }
 
-func newStack(t *testing.T) *stack {
+func newStack(t *testing.T) *stack { return buildStack(t, nil) }
+
+// buildStack wires the real stack. uploads, when set, turns on the upload use-cases and mounts
+// the fs driver's blob route, the way native dev runs.
+func buildStack(t *testing.T, uploads *uploadWiring) *stack {
 	t.Helper()
 	st := testdb.New(t)
 	rdb := testdb.RedisIn(t, 14)
 	clock := domain.NewFakeClock(at(1, 9, 0))
 	svc := service.New(st, clock)
 	authSvc := auth.NewService(st, rdb, "integration-secret")
-	app := New(Deps{
+	deps := Deps{
 		Config:   config.Config{Env: "staging", BaseURL: "http://localhost:3000"},
 		Log:      discardLogger(),
 		Redis:    rdb,
 		Sessions: authSvc.Sessions(),
 		Handlers: NewHandlers(svc, authSvc, false),
 		Limits:   Limits{Global: 100000, Auth: 100000, Upload: 100000, Window: time.Minute},
-	})
-	return &stack{t: t, app: app, st: st, svc: svc, clock: clock}
+	}
+	if uploads != nil {
+		svc.WithUploads(uploads.deps)
+		deps.Blob, deps.BlobMaxBytes = uploads.blobs, 8<<20
+	}
+	return &stack{t: t, app: New(deps), st: st, svc: svc, clock: clock}
 }
 
 // client is one browser: it keeps the session and CSRF cookies like a cookie jar.
@@ -693,7 +701,7 @@ func TestNonMembersGetNotFoundEverywhere(t *testing.T) {
 	}
 }
 
-func TestUploadOperationsAreNotAvailableYet(t *testing.T) {
+func TestUploadOperationsAnswer503WhenStorageIsNotConfigured(t *testing.T) {
 	s := newStack(t)
 	sc := s.activePact()
 	body := map[string]any{"pact_id": sc.pact.String(), "kind": "image", "mime": "image/webp", "bytes": 1000}
