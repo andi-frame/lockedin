@@ -50,7 +50,7 @@ Use *superpowers:test-driven-development* (or *tdd*) for every task in this phas
   - Done when: up, down, and up again works on a fresh DB, and `UPDATE ledger_entries` raises an error.
   - Verify: `bun run db:migrate && bun run db:rollback -- --all && bun run db:migrate`, then `psql -c "update ledger_entries set amount=0"` fails.
 
-- [ ] **1.3 Domain: terms, deadlines, check-in FSM, ledger math** 🔒
+- [x] **1.3 Domain: terms, deadlines, check-in FSM, ledger math** 🔒
   - Read: `SPEC.md §4–§7` completely.
   - Do: `internal/domain`, pure Go with no imports from store or http:
     - `Terms` struct with `Validate()` and `Hash()` (canonical JSON with sorted keys, then sha256).
