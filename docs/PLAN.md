@@ -61,7 +61,7 @@ Use *superpowers:test-driven-development* (or *tdd*) for every task in this phas
   - Done when: table tests cover every arrow in the SPEC §5 diagram, every forbidden transition (returns `ErrInvalidTransition`), deadlines in `Asia/Jakarta`, `Asia/Makassar`, `Asia/Jayapura`, and `UTC`, the clamp at the floor and cap (including clamp-to-0), and override limits. Coverage ≥ 95% for `internal/domain`.
   - Verify: `go test ./internal/domain/... -cover`
 
-- [ ] **1.4 Store layer (sqlc)**
+- [x] **1.4 Store layer (sqlc)**
   - Do: `sqlc.yaml` (pgx/v5, UUIDs as `github.com/google/uuid`, `emit_interface: true`). Queries go in `db/queries/*.sql` for users, sessions (none: sessions are Redis), pacts, members, invites, check-ins (including batch generation and sweep selects with `FOR UPDATE SKIP LOCKED LIMIT $n`), proofs, attachments, decisions, ledger (insert, balance, and a passbook page with a running balance using `sum(amount) over (order by id)`), payouts, notifications, and outbox. Add a `store.WithTx` helper.
   - Verify: `bun run codegen && go build ./...`
 
