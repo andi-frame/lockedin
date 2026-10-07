@@ -32,7 +32,7 @@ Legend: ⇄ parallel-safe · 🔒 touches money/time invariants (extra review: r
   - Done when: `bun run infra:up` from a fresh clone reaches healthy, and running it a second time changes nothing.
   - Verify: `bun run infra:up && docker compose -f deploy/compose.yaml ps` (all healthy). Then `bun run garage:init` a second time and confirm it prints no-op lines. Then `bun run s3:smoke` lists both buckets and round-trips an object.
 
-- [ ] **0.4 Dev orchestrator**
+- [x] **0.4 Dev orchestrator**
   - Do: Write `scripts/dev.ts`, which spawns named processes with coloured prefixes, forwards Ctrl+C, and exits non-zero if any child crashes. Modes: `docker`, `hybrid`, `native`, `apps`. Native mode pre-checks `pg_isready`/TCP 5432, Redis `PING`, `ffmpeg -version`, and `vips --version`, and forces `STORAGE_DRIVER=fs`. Wire up the root scripts listed in `RUNNING.md §3` (stub the app commands until the apps exist).
   - Verify: `bun run dev:hybrid` starts infra and prints "apps not yet scaffolded" for missing apps without crashing.
 

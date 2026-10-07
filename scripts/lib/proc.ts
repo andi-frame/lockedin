@@ -32,4 +32,5 @@ export const log = {
   step: (m: string) => console.log(`\x1b[36m›\x1b[0m ${m}`),
   ok: (m: string) => console.log(`\x1b[32m✓\x1b[0m ${m}`),
   skip: (m: string) => console.log(`\x1b[90m= ${m}\x1b[0m`),
+  bad: (m: string) => console.log(`\x1b[31m✖\x1b[0m ${m}`),
 };

@@ -45,7 +45,7 @@ bun run setup                     # copies deploy/env/*.example → .env files i
 | `bun run codegen` | OpenAPI → Go + TS, then sqlc |
 | `bun run dev:docker` | infra + apps in Docker with `compose.dev.yaml` (hot reload) |
 | `bun run dev:hybrid` | `infra:up` then runs web (`bun --bun next dev`), api (`air -c .air.api.toml`), and worker (`air -c .air.worker.toml`) natively with prefixed, coloured logs. Ctrl+C stops all three. |
-| `bun run dev:native` | the same as hybrid but skips Docker and checks that local Postgres, Redis, ffmpeg, and vips respond first, with clear messages if not. Forces `STORAGE_DRIVER=fs`. |
+| `bun run dev:native` | the same as hybrid but skips Docker and checks that local Postgres, Redis, ffmpeg, and vips respond first, listing every missing one. Forces `STORAGE_DRIVER=fs`. Put native hosts/ports (e.g. `DATABASE_URL=postgres://…@localhost:5432/tepati`) in an optional, gitignored `.env.native`, which overrides `.env` in this mode only. |
 | `bun run dev:apps` | only the three app processes (when infra is already running anywhere) |
 | `bun run test` | Go unit tests and web unit tests |
 | `bun run test:integration` | Go integration tests (testcontainers; Docker required) |
