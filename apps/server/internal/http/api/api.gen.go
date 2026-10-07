@@ -142,10 +142,12 @@ const (
 	DecisionActionDismiss        DecisionAction = "dismiss"
 	DecisionActionDispute        DecisionAction = "dispute"
 	DecisionActionDisputeExpired DecisionAction = "dispute_expired"
+	DecisionActionFinalize       DecisionAction = "finalize"
 	DecisionActionMissed         DecisionAction = "missed"
 	DecisionActionOverride       DecisionAction = "override"
 	DecisionActionReject         DecisionAction = "reject"
 	DecisionActionRest           DecisionAction = "rest"
+	DecisionActionSubmit         DecisionAction = "submit"
 	DecisionActionUphold         DecisionAction = "uphold"
 )
 
@@ -162,6 +164,8 @@ func (e DecisionAction) Valid() bool {
 		return true
 	case DecisionActionDisputeExpired:
 		return true
+	case DecisionActionFinalize:
+		return true
 	case DecisionActionMissed:
 		return true
 	case DecisionActionOverride:
@@ -169,6 +173,8 @@ func (e DecisionAction) Valid() bool {
 	case DecisionActionReject:
 		return true
 	case DecisionActionRest:
+		return true
+	case DecisionActionSubmit:
 		return true
 	case DecisionActionUphold:
 		return true
@@ -205,6 +211,7 @@ const (
 	PactLimitReached            ErrorCode = "pact.limit_reached"
 	PactMemberMissing           ErrorCode = "pact.member_missing"
 	PactNotBacker               ErrorCode = "pact.not_backer"
+	PactNotDoer                 ErrorCode = "pact.not_doer"
 	PactSignatureMismatch       ErrorCode = "pact.signature_mismatch"
 	PactTermsMembers            ErrorCode = "pact.terms_members"
 	PactTermsMismatch           ErrorCode = "pact.terms_mismatch"
@@ -276,6 +283,8 @@ func (e ErrorCode) Valid() bool {
 	case PactMemberMissing:
 		return true
 	case PactNotBacker:
+		return true
+	case PactNotDoer:
 		return true
 	case PactSignatureMismatch:
 		return true
@@ -682,7 +691,7 @@ type DecisionAction string
 // |---|---|
 // | 400 | `validation.failed`, `auth.invalid_email`, `auth.invalid_name`, `auth.weak_password`, `pact.invalid_terms`, `pact.terms_members`, `proof.invalid_doc`, `checkin.reason_required`, `upload.size_mismatch` |
 // | 401 | `auth.unauthenticated`, `auth.invalid_credentials` |
-// | 403 | `auth.csrf`, `pact.not_backer`, `checkin.not_allowed` |
+// | 403 | `auth.csrf`, `pact.not_backer`, `pact.not_doer`, `checkin.not_allowed` |
 // | 404 | `not_found` (also for non-members) |
 // | 405 | `method_not_allowed` |
 // | 409 | `auth.email_taken`, `pact.invalid_state`, `pact.terms_mismatch`, `pact.member_missing`, `pact.limit_reached`, `checkin.invalid_transition`, `checkin.conflict`, `checkin.override_limit`, `checkin.rest_limit`, `upload.quota_exceeded`, `idempotency.in_progress` |
@@ -910,7 +919,7 @@ type Problem struct {
 	// |---|---|
 	// | 400 | `validation.failed`, `auth.invalid_email`, `auth.invalid_name`, `auth.weak_password`, `pact.invalid_terms`, `pact.terms_members`, `proof.invalid_doc`, `checkin.reason_required`, `upload.size_mismatch` |
 	// | 401 | `auth.unauthenticated`, `auth.invalid_credentials` |
-	// | 403 | `auth.csrf`, `pact.not_backer`, `checkin.not_allowed` |
+	// | 403 | `auth.csrf`, `pact.not_backer`, `pact.not_doer`, `checkin.not_allowed` |
 	// | 404 | `not_found` (also for non-members) |
 	// | 405 | `method_not_allowed` |
 	// | 409 | `auth.email_taken`, `pact.invalid_state`, `pact.terms_mismatch`, `pact.member_missing`, `pact.limit_reached`, `checkin.invalid_transition`, `checkin.conflict`, `checkin.override_limit`, `checkin.rest_limit`, `upload.quota_exceeded`, `idempotency.in_progress` |

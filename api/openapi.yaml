@@ -620,7 +620,7 @@ paths:
       description: |
         Doer only, while the pact is `settling`. The doer's confirmation alone completes the pact
         (SPEC §3), whether or not the backer marked it paid.
-      x-problem-codes: [pact.invalid_state, auth.unauthenticated, auth.csrf, checkin.not_allowed, not_found]
+      x-problem-codes: [pact.invalid_state, pact.not_doer, auth.unauthenticated, auth.csrf, not_found]
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       responses:
@@ -856,7 +856,7 @@ components:
         |---|---|
         | 400 | `validation.failed`, `auth.invalid_email`, `auth.invalid_name`, `auth.weak_password`, `pact.invalid_terms`, `pact.terms_members`, `proof.invalid_doc`, `checkin.reason_required`, `upload.size_mismatch` |
         | 401 | `auth.unauthenticated`, `auth.invalid_credentials` |
-        | 403 | `auth.csrf`, `pact.not_backer`, `checkin.not_allowed` |
+        | 403 | `auth.csrf`, `pact.not_backer`, `pact.not_doer`, `checkin.not_allowed` |
         | 404 | `not_found` (also for non-members) |
         | 405 | `method_not_allowed` |
         | 409 | `auth.email_taken`, `pact.invalid_state`, `pact.terms_mismatch`, `pact.member_missing`, `pact.limit_reached`, `checkin.invalid_transition`, `checkin.conflict`, `checkin.override_limit`, `checkin.rest_limit`, `upload.quota_exceeded`, `idempotency.in_progress` |
@@ -891,6 +891,7 @@ components:
         - pact.terms_members
         - pact.terms_mismatch
         - pact.not_backer
+        - pact.not_doer
         - pact.invite_invalid
         - pact.limit_reached
         - pact.signature_mismatch
@@ -1310,7 +1311,7 @@ components:
           items: { type: string, format: uuid }
     DecisionAction:
       type: string
-      enum: [approve, reject, auto_approve, override, dispute, uphold, dismiss, dispute_expired, rest, missed]
+      enum: [submit, approve, reject, auto_approve, override, dispute, uphold, dismiss, dispute_expired, rest, missed, finalize]
     Decision:
       type: object
       required: [id, action, is_power, created_at]

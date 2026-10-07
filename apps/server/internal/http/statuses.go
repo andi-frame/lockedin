@@ -19,6 +19,7 @@ var statuses = map[api.ErrorCode]int{
 	api.AuthInvalidCredentials:      401,
 	api.AuthCsrf:                    403,
 	api.PactNotBacker:               403,
+	api.PactNotDoer:                 403,
 	api.CheckinNotAllowed:           403,
 	api.NotFound:                    404,
 	api.MethodNotAllowed:            405,
