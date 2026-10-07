@@ -16,6 +16,8 @@ export default getRequestConfig(async () => {
   const locale = isLocale(stored) ? stored : defaultLocale;
   return {
     locale,
+    // Pacts default to Asia/Jakarta (SPEC); per-user zones arrive with the settings screen.
+    timeZone: "Asia/Jakarta",
     messages: (await import(`../../messages/${locale}.json`)).default,
   };
 });

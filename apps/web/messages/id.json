@@ -11,9 +11,48 @@
   "Errors": {
     "unknown": "Terjadi kesalahan. Coba lagi sebentar lagi.",
     "network": "Tidak bisa terhubung ke server. Periksa koneksimu lalu coba lagi.",
-    "auth.unauthenticated": "Sesimu sudah berakhir. Masuk lagi untuk melanjutkan.",
+    "auth_unauthenticated": "Sesimu sudah berakhir. Masuk lagi untuk melanjutkan.",
     "rate_limited": "Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.",
-    "server.internal": "Ada masalah di sisi kami. Coba lagi sebentar lagi.",
-    "server.unavailable": "Server sedang sibuk. Coba lagi sebentar lagi."
+    "server_internal": "Ada masalah di sisi kami. Coba lagi sebentar lagi.",
+    "server_unavailable": "Server sedang sibuk. Coba lagi sebentar lagi."
+  },
+  "Common": {
+    "close": "Tutup",
+    "loading": "Memuat",
+    "dismissToast": "Tutup pemberitahuan"
+  },
+  "Status": {
+    "open": "Terbuka",
+    "submitted": "Menunggu tinjauan",
+    "approved": "Disetujui",
+    "auto_approved": "Disetujui otomatis",
+    "rejected": "Ditolak",
+    "disputed": "Disanggah",
+    "missed": "Terlewat",
+    "rest": "Hari jeda"
+  },
+  "Amount": {
+    "unit": "koin",
+    "debit": "debit",
+    "credit": "kredit",
+    "debitMark": "D",
+    "creditMark": "K",
+    "approx": "≈"
+  },
+  "Countdown": {
+    "left": "lagi",
+    "over": "lewat",
+    "spoken": "{hours} jam {minutes} menit lagi",
+    "spokenExpired": "Batas waktu sudah lewat"
+  },
+  "Role": {
+    "backer": "Penyokong",
+    "doer": "Pelaku"
+  },
+  "Theme": {
+    "label": "Tema",
+    "system": "Ikuti sistem",
+    "light": "Terang",
+    "dark": "Gelap"
   }
 }
