@@ -42,20 +42,26 @@ bun run setup                     # copies deploy/env/*.example → .env files i
 | `bun run s3:smoke` | lists both buckets and does a put/get/delete round-trip with the app key |
 | `bun run db:migrate` / `db:rollback` / `db:new <name>` | goose against `DATABASE_URL` |
 | `bun run db:seed` | `tepatictl seed`: 2 demo users and 1 active pact with synthetic history (labelled synthetic) |
-| `bun run codegen` | OpenAPI → Go + TS, then sqlc |
+| `bun run codegen` | sqlc, then OpenAPI → Go strict server (`internal/http/api`) and web types (`apps/web/src/lib/api/schema.d.ts`). `-- --check` fails if regenerating changes a tracked file (run it after committing) |
 | `bun run dev:docker` | infra + apps in Docker with `compose.dev.yaml` (hot reload) |
 | `bun run dev:hybrid` | `infra:up` then runs web (`bun --bun next dev`), api (`air -c .air.api.toml`), and worker (`air -c .air.worker.toml`) natively with prefixed, coloured logs. Ctrl+C stops all three. |
 | `bun run dev:native` | the same as hybrid but skips Docker and checks that local Postgres, Redis, ffmpeg, and vips respond first, listing every missing one. Forces `STORAGE_DRIVER=fs`. Put native hosts/ports (e.g. `DATABASE_URL=postgres://…@localhost:5432/tepati`) in an optional, gitignored `.env.native`, which overrides `.env` in this mode only. |
 | `bun run dev:apps` | only the three app processes (when infra is already running anywhere) |
 | `bun run test` | Go unit tests and web unit tests |
-| `bun run test:integration` | Go integration tests (testcontainers; Docker required) |
+| `bun run test:integration` | Go integration tests (`-tags=integration`) against the **running dev infra** (`bun run infra:up`): each test gets a throwaway Postgres database, and Redis tests use their own logical DB (auth 15, http 14). Add `-race` when running `go test` by hand |
 | `bun run test:e2e` | Playwright against `dev:docker` with the test clock enabled |
-| `bun run lint` | tsc `--noEmit` for scripts, `gofmt -l`, `go vet` (eslint and the generated-code freshness check join in PLAN 2.1/5.1) |
+| `bun run lint` | tsc `--noEmit` for scripts, Redocly lint of `api/openapi.yaml`, `gofmt -l`, `go vet` (eslint joins in PLAN 5.1) |
 | `bun run go:tool <tool> …` | runs goose / sqlc / oapi-codegen pinned in `apps/server/tools/go.mod` (Go downloads the 1.26 toolchain for that module automatically) |
 | `bun run deploy:build -- --env staging` | builds and tags images `tepati-web`/`tepati-server:<git sha>` |
 | `bun run deploy:up -- --env staging` | `docker compose -f deploy/compose.yaml -f deploy/compose.prod.yaml --env-file deploy/env/.env.staging --profile infra --profile app --profile edge up -d`, then runs `migrate` |
 
 Ports in dev: web `3000`, api `8080`, Postgres `55432` (Docker; 5432/5433 stay free for native Postgres installs), Redis `6379`, Garage S3 `3900` (admin `3903`), Mailpit UI `8025` (SMTP `1025`), asynqmon `8081`. Override them in `.env` if a port is taken.
+
+### Windows and Go
+
+If `go build` fails with `compile: version "go1.26.0" does not match go tool version "go1.25.3"`, the machine has an older system Go and the automatic toolchain switch is broken. Put the cached 1.26 toolchain first on `PATH` (path shown in `docs/STATUS.md §3`) and set `GOTOOLCHAIN=local`, or install Go 1.26 system-wide. `bun run lint|test|codegen` shell out to `go`, so they need it too.
+
+Until `.air.api.toml` and `.air.worker.toml` exist (PLAN 3.1), `dev:hybrid` does not start the api or worker. Build and run the API by hand with `.env` loaded.
 
 ## 4. Compose structure and **mount rules**
 

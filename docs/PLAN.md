@@ -2,6 +2,8 @@
 
 This plan is written so that **any capable agent (for example Claude Sonnet 5.5) or human developer can pick up the next unchecked task and finish it without extra context**. Read `AGENTS.md` first.
 
+Resuming? Read `docs/STATUS.md` first: it records where the project stands, decisions made so far, known gaps, and the brief for the next phase.
+
 How to use it:
 - Work **one task at a time**, in order, unless a task is marked ⇄ (parallel-safe with its siblings).
 - Each task lists **Read**, **Do**, **Done when** (acceptance criteria), and **Verify** (exact commands). A task is finished only when every Verify command passes and you have looked at the output.
@@ -105,6 +107,7 @@ Use *superpowers:test-driven-development* (or *tdd*) for every task in this phas
 
 - [ ] **3.1 asynq server, scheduler, and outbox relay** 🔒
   - Do: In `cmd/worker`, set up queues `critical`/`default`/`media` (weights 6/3/1) with periodic tasks `settlement:sweep` (every 1 min), `pacts:activate` (every 1 min), `pacts:close` (every 5 min), `outbox:relay` (every 5 s), `uploads:gc` (hourly), and `reminders:cutoff` (every 5 min, which enqueues unique reminder tasks for 3 h and 30 min before cutoff). Shut down gracefully.
+  - Also: add `apps/server/.air.worker.toml` and `.air.api.toml` (`scripts/dev.ts` starts a process only when its air file exists, so `dev:hybrid` runs neither today), and `tepatictl seed` / `pact show` (see `docs/STATUS.md §7`).
   - Verify: `go test -tags=integration ./internal/jobs/...`. Then run `bun run dev:hybrid`, use `tepatictl seed --scenario overdue` to create a pact with an overdue check-in, and confirm it becomes `missed` with a ledger row within 2 minutes (inspect via `tepatictl pact show <id>`).
 
 - [ ] **3.2 Notifications and email** ⇄
