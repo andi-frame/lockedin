@@ -10,6 +10,14 @@ log.ok("scripts typecheck");
 await run(["bunx", "@redocly/cli", "lint", join(paths.root, "api", "openapi.yaml")]);
 log.ok("openapi lint");
 
+const web = join(paths.root, "apps", "web");
+if (existsSync(join(web, "package.json"))) {
+  await run(["bun", "run", "typecheck"], { cwd: web });
+  log.ok("web typecheck");
+  await run(["bun", "run", "lint"], { cwd: web });
+  log.ok("web eslint");
+}
+
 const server = join(paths.root, "apps", "server");
 if (existsSync(join(server, "go.mod"))) {
   const fmt = await capture(["gofmt", "-l", server]);

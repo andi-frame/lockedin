@@ -6,7 +6,7 @@ export interface RunResult {
 }
 
 /** Runs a command, captures output, never throws on a non-zero exit. */
-export async function capture(cmd: string[], opts: { env?: Record<string, string | undefined> } = {}): Promise<RunResult> {
+export async function capture(cmd: string[], opts: { env?: Record<string, string | undefined>; cwd?: string } = {}): Promise<RunResult> {
   const proc = Bun.spawn(cmd, { stdout: "pipe", stderr: "pipe", env: { ...process.env, ...opts.env } });
   const [stdout, stderr, code] = await Promise.all([
     new Response(proc.stdout).text(),
@@ -17,8 +17,8 @@ export async function capture(cmd: string[], opts: { env?: Record<string, string
 }
 
 /** Runs a command with inherited stdio; exits the script if it fails. */
-export async function run(cmd: string[], opts: { env?: Record<string, string | undefined> } = {}): Promise<void> {
-  const proc = Bun.spawn(cmd, { stdio: ["inherit", "inherit", "inherit"], env: { ...process.env, ...opts.env } });
+export async function run(cmd: string[], opts: { env?: Record<string, string | undefined>; cwd?: string } = {}): Promise<void> {
+  const proc = Bun.spawn(cmd, { cwd: opts.cwd, stdio: ["inherit", "inherit", "inherit"], env: { ...process.env, ...opts.env } });
   const code = await proc.exited;
   if (code !== 0) fail(`command failed (exit ${code}): ${cmd.join(" ")}`);
 }
