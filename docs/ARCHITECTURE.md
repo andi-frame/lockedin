@@ -307,10 +307,10 @@ client                         api                          garage              
 ## 7. Frontend design (Next.js)
 
 - **Runtime:** `bun --bun next dev|build|start`. Use Bun for package management (`bun.lock`).
-- **Rendering:** route pages are Server Components that fetch from the Go API server-side (forwarding the session cookie) for first paint. Interactive islands use TanStack Query with the generated `openapi-fetch` client. Mutations send an `Idempotency-Key` (uuid generated per attempt) and the CSRF header.
+- **Rendering:** route pages are Server Components that fetch from the Go API server-side (forwarding the session cookie) for first paint. Interactive islands use TanStack Query with the generated `openapi-fetch` client. Mutations send an `Idempotency-Key` (a uuid per logical action: the client adds one when the caller gave none, and a caller that retries one action passes its own so the server can replay) and the CSRF header.
 - **Styling and UI:** Tailwind v4, shadcn/ui components **owned and restyled** to the direction contract (they never ship in their default look), Phosphor icons (one family, stroke weight fixed), Motion (`motion/react`) for the passbook-print signature move, honouring `prefers-reduced-motion`.
 - **Rich text:** Tiptap 3 with StarterKit and Link, TaskList, Placeholder, CharacterCount, and a custom `attachmentImage` node that references `attachment_id` (never a raw URL). Pasted or dropped images are routed through the upload pipeline.
-- **i18n:** next-intl, default `id`, and `en` available. No locale prefix in the URL. Locale comes from user settings or a cookie. All copy lives in `messages/*.json` and is never hard-coded.
+- **i18n:** next-intl, default `id`, and `en` available. No locale prefix in the URL. Locale comes from user settings or the `tepati_locale` cookie. All copy lives in `messages/*.json` and is never hard-coded.
 - **PWA:** manifest plus a service worker for installability and a camera `capture` input. Offline support is not an MVP goal.
 - **Formatting:** amounts use `Intl.NumberFormat('id-ID')`. Coins are shown as `1.000 koin` with the IDR equivalent `≈ Rp1.000.000`. Debit and credit always carry a sign and a D/K label as well as colour.
 - **Design source of truth:** `.impeccable/surfaces/apps-web-src-app-app.md` (direction contract), then `DESIGN.md` once it is written. See `docs/design/README.md` for the workflow.

@@ -2,7 +2,7 @@
 
 > *Tepati janji belajarmu.* A pact between two friends: one puts up a coin pot, the other proves every day that they studied. Each missed day takes coins out of the pot.
 
-**Status:** the backend is complete (Phases 0 to 4: API, worker, email, uploads and media). The web app (Phase 5 onwards) has not been started. Read [`docs/HANDOVER.md`](docs/HANDOVER.md) and [`docs/STATUS.md`](docs/STATUS.md) first; the task list is [`docs/PLAN.md`](docs/PLAN.md).
+**Status:** the backend is complete (Phases 0 to 4: API, worker, email, uploads and media). The web app is scaffolded (task 5.1: Next.js 16 on Bun with the typed API client); design tokens, primitives and the screens (5.2 onwards) are next. Read [`docs/HANDOVER.md`](docs/HANDOVER.md) and [`docs/STATUS.md`](docs/STATUS.md) first; the task list is [`docs/PLAN.md`](docs/PLAN.md).
 
 ## How it works
 
