@@ -736,3 +736,42 @@ func TestClientIPIsNeverEmpty(t *testing.T) {
 		t.Errorf("X-Forwarded-For from a loopback proxy should be used, got: %s", e.logs.String())
 	}
 }
+
+// ---------------------------------------------------------------- request bodies
+
+// The generated handlers bind a body even when the contract marks it optional, and
+// reject an empty one. An empty body must mean {}.
+func TestEmptyBodyIsAnEmptyJSONObject(t *testing.T) {
+	e := newEnv(t)
+	var gotBody bool
+	var gotReason string
+	e.h.reject = func(_ context.Context, r api.RejectCheckInRequestObject) (api.RejectCheckInResponseObject, error) {
+		gotBody, gotReason = r.Body != nil, r.Body.Reason
+		return api.RejectCheckIn200JSONResponse(api.CheckInDetail{}), nil
+	}
+	l := e.loginAs(t, uuid.New())
+	r := e.do(t, req{method: "POST", path: strings.Replace(approvePath, "approve", "reject", 1), as: &l})
+	if r.status != 200 || !gotBody || gotReason != "" {
+		t.Fatalf("status %d body %s (handler saw body=%v reason=%q)", r.status, r.body, gotBody, gotReason)
+	}
+}
+
+func TestNonJSONBodiesAreRefused(t *testing.T) {
+	e := newEnv(t)
+	l := e.loginAs(t, uuid.New())
+	hr := httptest.NewRequest("POST", strings.Replace(approvePath, "approve", "reject", 1), strings.NewReader("reason=belum+cukup+ya"))
+	hr.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	hr.Header.Set("Cookie", l.cookie)
+	hr.Header.Set(auth.CSRFHeader, l.csrf)
+	resp, err := e.app.Test(hr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 415 || !strings.Contains(string(raw), string(api.RequestUnsupportedMediaType)) {
+		t.Fatalf("status = %d body %s, want 415 request.unsupported_media_type", resp.StatusCode, raw)
+	}
+	if e.calls.Load() != 0 {
+		t.Error("the handler must not run for a form body")
+	}
+}

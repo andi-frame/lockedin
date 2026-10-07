@@ -263,6 +263,8 @@ Base path `/api/v1`. Authentication uses session cookies. Errors use `problem+js
 | GET | `/notifications` · POST `/notifications/read` | inbox |
 | GET | `/healthz` · `/readyz` | liveness / readiness (DB + Redis + S3 ping) |
 
+Request bodies are JSON only: an empty body on a POST, PUT, or PATCH counts as `{}` (the generated handlers bind a body even where the contract calls it optional), and any other content type gets `415 request.unsupported_media_type`. `uploads`, `uploads/{id}/complete`, and `attachments/{id}` answer `503 server.unavailable` until PLAN 4.1/4.2. The client IP behind Caddy comes from `X-Forwarded-For`, trusted only from a loopback or private peer, so the production Caddyfile must not list untrusted proxies and must overwrite any inbound `X-Forwarded-For`.
+
 ## 6. Upload and compression pipeline
 
 ```

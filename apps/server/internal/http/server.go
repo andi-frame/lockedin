@@ -58,6 +58,10 @@ func New(d Deps) *fiber.App {
 	})
 
 	app.Use(requestid.New())
+	app.Use(func(c fiber.Ctx) error { // handlers and services read the caller's address from the context
+		c.SetContext(withClientIP(c.Context(), clientIP(c)))
+		return c.Next()
+	})
 	routes := routeSet{}
 	app.Use(observe(d.Log, m, routes))
 	app.Use(recover.New())
@@ -67,7 +71,7 @@ func New(d Deps) *fiber.App {
 	for _, rl := range rateLimiters(d.Redis, d.Limits) {
 		app.Use(rl)
 	}
-	app.Use(basePath, authenticate(d.Sessions), idempotency(d.Redis, d.Log))
+	app.Use(basePath, authenticate(d.Sessions), jsonBodies(), idempotency(d.Redis, d.Log))
 
 	registerOps(app, d.Checks, m, d.Log)
 	if d.Handlers != nil {
@@ -98,6 +102,30 @@ func authenticate(s *auth.Sessions) fiber.Handler {
 			return c.Next()
 		}
 		return guard(c)
+	}
+}
+
+// jsonBodies makes body handling uniform before the generated handlers see it. They bind
+// a body even where the contract says it is optional, and fail on an empty one, so an
+// empty body becomes {}. Anything else must be JSON: form and multipart bodies would be
+// parsed by Fiber's other binders, and refusing them also means a cross-site <form> can
+// never reach a handler (a JSON content type forces a CORS preflight).
+func jsonBodies() fiber.Handler {
+	return func(c fiber.Ctx) error {
+		switch c.Method() {
+		case fiber.MethodPost, fiber.MethodPut, fiber.MethodPatch:
+		default:
+			return c.Next()
+		}
+		if len(c.Body()) == 0 {
+			c.Request().Header.SetContentType(fiber.MIMEApplicationJSON)
+			c.Request().SetBody([]byte("{}"))
+			return c.Next()
+		}
+		if ct := strings.ToLower(string(c.Request().Header.ContentType())); !strings.HasPrefix(ct, fiber.MIMEApplicationJSON) {
+			return problemError(api.RequestUnsupportedMediaType, "send the body as application/json")
+		}
+		return c.Next()
 	}
 }
 
