@@ -1,0 +1,1595 @@
+openapi: 3.1.0
+info:
+  title: Tepati API
+  version: 1.0.0
+  summary: HTTP contract for the Tepati study-pact app.
+  description: |
+    Tepati keeps study promises. Two peers sign a *pact*: the *backer* funds a coin *pot*,
+    and the *doer* submits daily *proof* before a cutoff. Coins are an IOU ledger. No real
+    money moves through the app.
+
+    This file is the contract. `docs/SPEC.md` is the source of truth for behaviour, and
+    `docs/ARCHITECTURE.md §5` is the human-readable summary.
+
+    ## Conventions
+
+    - **Base path** `/api/v1` (see `servers`). Health checks live at the origin root.
+    - **Auth** is a session cookie (`tepati_session`, HttpOnly). Every unsafe method also needs
+      the `X-CSRF-Token` header, which the web app copies from the readable `tepati_csrf` cookie.
+    - **Errors** are RFC 9457 `application/problem+json`. Clients branch on the stable `code`, never
+      on `title` or `detail`. The status for each code is listed under `ErrorCode`.
+    - **Authorisation.** A user who is not a member of a pact gets `404 not_found` for anything in
+      it, so pact existence never leaks. A member who lacks the power for an action gets `403`.
+    - **Idempotency.** Mutating endpoints accept an `Idempotency-Key` header. The first response
+      is stored for 24 hours and replayed for the same user, route and key. Reusing a key with a
+      different body returns `422 idempotency.key_reused`.
+    - **Money** is `int64` coins. There are no floats. Format with `Intl.NumberFormat` and the
+      pact's `coin_rate_idr`.
+    - **Time.** Instants are RFC 3339 UTC (`date-time`). `local_date` is a calendar date in the
+      pact timezone (`date`). Deadlines are always computed on the server.
+    - **Pagination.** List endpoints take `cursor` (opaque) and `limit`, and return `next_cursor`
+      (`null` on the last page).
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /api/v1
+    description: Same-origin in production, proxied by Next.js in development.
+tags:
+  - name: auth
+    description: Register, log in and out.
+  - name: me
+    description: The current user and the Today screen.
+  - name: pacts
+    description: Pact lifecycle, terms and invites.
+  - name: check-ins
+    description: Daily check-ins, proof and review actions.
+  - name: ledger
+    description: The passbook and settlement.
+  - name: uploads
+    description: Presigned uploads and processed attachments.
+  - name: notifications
+    description: The in-app inbox.
+  - name: ops
+    description: Liveness and readiness. Served at the origin root, not under `/api/v1`.
+
+security:
+  - cookieAuth: []
+    csrfToken: []
+
+paths:
+  # ---------------------------------------------------------------- auth
+  /auth/register:
+    post:
+      tags: [auth]
+      operationId: register
+      summary: Create an account and start a session
+      description: Sets the `tepati_session` and `tepati_csrf` cookies on success.
+      security: []
+      x-problem-codes: [validation.failed, auth.invalid_email, auth.invalid_name, auth.weak_password, auth.email_taken, auth.rate_limited]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "201":
+          description: Account created and signed in.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Start a session
+      description: |
+        Sets the `tepati_session` and `tepati_csrf` cookies on success. Limited to 10 attempts per
+        minute per IP and per email. A wrong email and a wrong password are indistinguishable.
+      security: []
+      x-problem-codes: [validation.failed, auth.invalid_credentials, auth.rate_limited]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: Signed in.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: End the session
+      description: Deletes the server-side session and clears both cookies. Safe to call twice.
+      x-problem-codes: [auth.unauthenticated, auth.csrf]
+      responses:
+        "204": { description: Signed out. }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  # ---------------------------------------------------------------- me
+  /me:
+    get:
+      tags: [me]
+      operationId: getMe
+      summary: The signed-in user
+      x-problem-codes: [auth.unauthenticated]
+      responses:
+        "200":
+          description: The current user.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /today:
+    get:
+      tags: [me]
+      operationId: getToday
+      summary: Everything the Today screen needs, in one call
+      description: |
+        My check-ins for today and any still-open earlier ones, how many submissions wait for my
+        review, and a pot summary per active pact (ordered by the nearest deadline).
+      x-problem-codes: [auth.unauthenticated]
+      responses:
+        "200":
+          description: The Today aggregate.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Today" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  # ---------------------------------------------------------------- pacts
+  /pacts:
+    get:
+      tags: [pacts]
+      operationId: listPacts
+      summary: My pacts
+      description: Newest first. Includes pacts in every status, so the client can filter.
+      x-problem-codes: [auth.unauthenticated]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of pacts.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PactPage" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+    post:
+      tags: [pacts]
+      operationId: createPact
+      summary: Create a draft pact
+      description: |
+        The creator is always the backer (SPEC §2). The doer's terms are keyed by the nil UUID
+        (`00000000-0000-0000-0000-000000000000`) until the invitee joins.
+      x-problem-codes: [validation.failed, pact.invalid_terms, pact.terms_members, pact.limit_reached, auth.unauthenticated, auth.csrf]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PactDraft" }
+      responses:
+        "201":
+          description: The new draft.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pact" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /pacts/{pactId}:
+    parameters:
+      - $ref: "#/components/parameters/PactId"
+    get:
+      tags: [pacts]
+      operationId: getPact
+      summary: Pact detail
+      x-problem-codes: [auth.unauthenticated, not_found]
+      responses:
+        "200":
+          description: The pact, its members, the pot balance and the payout once it exists.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pact" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+    patch:
+      tags: [pacts]
+      operationId: updatePact
+      summary: Edit title, description and terms
+      description: |
+        Only in `draft` or `proposed`. The body replaces the title, description and terms. Any
+        change to the terms bumps `terms_version`, recomputes `terms_hash` and clears both
+        signatures, and the other member is notified.
+      x-problem-codes: [validation.failed, pact.invalid_terms, pact.terms_members, pact.invalid_state, pact.not_backer, auth.unauthenticated, auth.csrf, not_found]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PactDraft" }
+      responses:
+        "200":
+          description: The updated pact.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pact" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /pacts/{pactId}/propose:
+    parameters:
+      - $ref: "#/components/parameters/PactId"
+    post:
+      tags: [pacts]
+      operationId: proposePact
+      summary: Move a draft to proposed and create an invite
+      description: |
+        Backer only. Callable again while `proposed` to mint a fresh invite link. Only the hash of
+        the token is stored, so the token is shown exactly once, in this response.
+      x-problem-codes: [pact.invalid_state, pact.not_backer, auth.unauthenticated, auth.csrf, not_found]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProposeRequest" }
+      responses:
+        "200":
+          description: The invite. The link is `/invite/{invite_token}` on the web app.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Proposal" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /pacts/{pactId}/accept:
+    parameters:
+      - $ref: "#/components/parameters/PactId"
+    post:
+      tags: [pacts]
+      operationId: acceptPact
+      summary: Sign the current terms
+      description: |
+        Valid only for the exact `terms_hash` the member read, and only if `signature_name` equals
+        their display name. Accepting twice is a no-op. When both members have signed the same
+        hash, the pact becomes `scheduled`, the pot is funded and every check-in is generated.
+      x-problem-codes: [validation.failed, pact.terms_mismatch, pact.signature_mismatch, pact.member_missing, pact.invalid_state, auth.unauthenticated, auth.csrf, not_found]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcceptRequest" }
+      responses:
+        "200":
+          description: The pact after signing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pact" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /invites/{token}:
+    parameters:
+      - $ref: "#/components/parameters/InviteToken"
+    get:
+      tags: [pacts]
+      operationId: previewInvite
+      summary: Preview the terms behind an invite link
+      description: |
+        Public, because the invitee may not have an account yet. The token is the credential.
+        It reveals only what the invitee needs to decide: the terms and who invited them.
+      security: []
+      x-problem-codes: [pact.invite_invalid, rate_limited]
+      responses:
+        "200":
+          description: The invite preview.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitePreview" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /invites/{token}/join:
+    parameters:
+      - $ref: "#/components/parameters/InviteToken"
+    post:
+      tags: [pacts]
+      operationId: joinInvite
+      summary: Take the doer slot of an invited pact
+      description: |
+        Added because accepting needs membership (`ARCHITECTURE §5` had no way in). The caller
+        becomes the doer, the invite is consumed, and the doer slot in the terms is re-keyed to the
+        caller. That changes `terms_hash`, so any earlier signature is cleared and the caller must
+        then call `acceptPact` with the new hash.
+      x-problem-codes: [pact.invite_invalid, pact.invalid_state, pact.limit_reached, auth.unauthenticated, auth.csrf]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: The pact, now with both members.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pact" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /pacts/{pactId}/check-ins:
+    parameters:
+      - $ref: "#/components/parameters/PactId"
+    get:
+      tags: [check-ins]
+      operationId: listPactCheckIns
+      summary: Check-ins of a pact, for the calendar
+      description: Both members' check-ins, ordered by `local_date` then member. Bounded by the pact length, so there is no cursor.
+      x-problem-codes: [validation.failed, auth.unauthenticated, not_found]
+      parameters:
+        - name: from
+          in: query
+          required: false
+          description: First `local_date` to include. Defaults to the pact start.
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: false
+          description: Last `local_date` to include. Defaults to the pact end.
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: The check-ins in range.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckInList" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  # ---------------------------------------------------------------- check-ins
+  /check-ins/{checkInId}:
+    parameters:
+      - $ref: "#/components/parameters/CheckInId"
+    get:
+      tags: [check-ins]
+      operationId: getCheckIn
+      summary: Check-in detail
+      description: |
+        The latest proof, the version history, attachments, the full decision timeline and the
+        actions the caller may take right now (`my_actions`), so the client never re-derives the
+        state machine.
+      x-problem-codes: [auth.unauthenticated, not_found]
+      responses:
+        "200":
+          description: The check-in with everything around it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckInDetail" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /check-ins/{checkInId}/proof:
+    parameters:
+      - $ref: "#/components/parameters/CheckInId"
+    put:
+      tags: [check-ins]
+      operationId: submitProof
+      summary: Submit or replace the proof
+      description: |
+        Creates a new proof version and submits (or re-submits) the check-in. Allowed until
+        `submit_deadline`. The server validates `body_doc` against the allow-list in SPEC §8, derives
+        the text and word count, and checks the evidence rules and that every attachment is `ready`.
+      x-problem-codes: [validation.failed, proof.invalid_doc, checkin.evidence_insufficient, checkin.deadline_passed, checkin.invalid_transition, checkin.not_allowed, checkin.conflict, auth.unauthenticated, auth.csrf, not_found]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProofRequest" }
+      responses:
+        "200":
+          description: The check-in after submission.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckInDetail" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /check-ins/{checkInId}/rest:
+    parameters:
+      - $ref: "#/components/parameters/CheckInId"
+    post:
+      tags: [check-ins]
+      operationId: declareRest
+      summary: Declare a rest day
+      description: Only for an `open` check-in and before the cutoff, up to the pact's `rest_days`. Never retroactive.
+      x-problem-codes: [checkin.rest_limit, checkin.deadline_passed, checkin.invalid_transition, checkin.not_allowed, checkin.conflict, auth.unauthenticated, auth.csrf, not_found]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: The check-in, now `rest`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckInDetail" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /check-ins/{checkInId}/approve:
+    parameters:
+      - $ref: "#/components/parameters/CheckInId"
+    post:
+      tags: [check-ins]
+      operationId: approveCheckIn
+      summary: Approve a submission
+      description: Reviewer only. Nobody reviews their own check-in.
+      x-problem-codes: [checkin.invalid_transition, checkin.not_allowed, checkin.conflict, auth.unauthenticated, auth.csrf, not_found]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: The check-in, now `approved`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckInDetail" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /check-ins/{checkInId}/reject:
+    parameters:
+      - $ref: "#/components/parameters/CheckInId"
+    post:
+      tags: [check-ins]
+      operationId: rejectCheckIn
+      summary: Reject a submission
+      description: Reviewer only. A written reason of at least 10 characters is required. The doer may dispute within the dispute window.
+      x-problem-codes: [validation.failed, checkin.reason_required, checkin.invalid_transition, checkin.not_allowed, checkin.conflict, auth.unauthenticated, auth.csrf, not_found]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReasonRequest" }
+      responses:
+        "200":
+          description: The check-in, now `rejected`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckInDetail" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /check-ins/{checkInId}/override:
+    parameters:
+      - $ref: "#/components/parameters/CheckInId"
+    post:
+      tags: [check-ins]
+      operationId: overrideCheckIn
+      summary: Override an auto-approval (backer power)
+      description: |
+        Backer only, and only on a check-in the backer reviews. Turns an `auto_approved` check-in
+        into a final `rejected` one within `override_window_hours`, at most `max_overrides` times
+        per pact. The doer cannot dispute it. Always writes a visible decision.
+      x-problem-codes: [validation.failed, checkin.reason_required, checkin.override_limit, checkin.deadline_passed, checkin.invalid_transition, checkin.not_allowed, checkin.conflict, auth.unauthenticated, auth.csrf, not_found]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReasonRequest" }
+      responses:
+        "200":
+          description: The check-in, now final `rejected`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckInDetail" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /check-ins/{checkInId}/dispute:
+    parameters:
+      - $ref: "#/components/parameters/CheckInId"
+    post:
+      tags: [check-ins]
+      operationId: disputeCheckIn
+      summary: Dispute a rejection
+      description: Doer only, within the dispute window. A reason is required. A pending dispute moves no coins.
+      x-problem-codes: [validation.failed, checkin.reason_required, checkin.deadline_passed, checkin.invalid_transition, checkin.not_allowed, checkin.conflict, auth.unauthenticated, auth.csrf, not_found]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReasonRequest" }
+      responses:
+        "200":
+          description: The check-in, now `disputed`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckInDetail" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /check-ins/{checkInId}/dispute/resolve:
+    parameters:
+      - $ref: "#/components/parameters/CheckInId"
+    post:
+      tags: [check-ins]
+      operationId: resolveDispute
+      summary: Resolve a dispute (backer power)
+      description: |
+        Backer only, and only on a check-in the backer reviewed. `uphold` approves the check-in and
+        `dismiss` makes the rejection final. Both need a written rationale (SPEC §2). If nobody
+        resolves it before `resolution_deadline`, the system approves it.
+      x-problem-codes: [validation.failed, checkin.reason_required, checkin.deadline_passed, checkin.invalid_transition, checkin.not_allowed, checkin.conflict, auth.unauthenticated, auth.csrf, not_found]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResolveDisputeRequest" }
+      responses:
+        "200":
+          description: The check-in, now `approved` or final `rejected`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckInDetail" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /review-queue:
+    get:
+      tags: [check-ins]
+      operationId: getReviewQueue
+      summary: Submissions waiting for my review
+      description: Check-ins in `submitted` where I am the reviewer, soonest `review_deadline` first.
+      x-problem-codes: [auth.unauthenticated]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of review items.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReviewQueuePage" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  # ---------------------------------------------------------------- ledger
+  /pacts/{pactId}/ledger:
+    parameters:
+      - $ref: "#/components/parameters/PactId"
+    get:
+      tags: [ledger]
+      operationId: listLedger
+      summary: Passbook lines with a running balance
+      description: |
+        Newest first. `balance_after` is the pot after that line, computed with a window function
+        over the whole ledger, so it stays correct on every page. The pot balance is always
+        `SUM(amount)`. There is no stored balance.
+      x-problem-codes: [auth.unauthenticated, not_found]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of passbook lines.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LedgerPage" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /pacts/{pactId}/payout/mark-paid:
+    parameters:
+      - $ref: "#/components/parameters/PactId"
+    post:
+      tags: [ledger]
+      operationId: markPayoutPaid
+      summary: The backer says the IOU was paid
+      description: Backer only, while the pact is `settling`. Repeating it is a no-op.
+      x-problem-codes: [validation.failed, pact.invalid_state, pact.not_backer, auth.unauthenticated, auth.csrf, not_found]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MarkPaidRequest" }
+      responses:
+        "200":
+          description: The payout.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payout" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /pacts/{pactId}/payout/confirm:
+    parameters:
+      - $ref: "#/components/parameters/PactId"
+    post:
+      tags: [ledger]
+      operationId: confirmPayout
+      summary: The doer confirms receipt
+      description: |
+        Doer only, while the pact is `settling`. The doer's confirmation alone completes the pact
+        (SPEC §3), whether or not the backer marked it paid.
+      x-problem-codes: [pact.invalid_state, pact.not_doer, auth.unauthenticated, auth.csrf, not_found]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: The payout, now confirmed. The pact is `completed`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payout" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  # ---------------------------------------------------------------- uploads
+  /uploads:
+    post:
+      tags: [uploads]
+      operationId: createUpload
+      summary: Ask for an upload slot
+      description: |
+        Validates the declared kind, type and size against the limits (SPEC §8) and the per-pact
+        quota, then returns a presigned PUT. The bytes go straight to object storage and never
+        through the API. Limited to 30 intents per minute. Returns `503` with `Retry-After` when
+        the media queue is full.
+      x-problem-codes: [validation.failed, upload.too_large, upload.unsupported_type, upload.quota_exceeded, upload.queue_busy, rate_limited, auth.unauthenticated, auth.csrf, not_found]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UploadIntentRequest" }
+      responses:
+        "201":
+          description: The slot. `headers` must be sent unchanged with the PUT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UploadIntent" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /uploads/{attachmentId}/complete:
+    parameters:
+      - $ref: "#/components/parameters/AttachmentId"
+    post:
+      tags: [uploads]
+      operationId: completeUpload
+      summary: The PUT finished; start processing
+      description: |
+        The server HEADs the object and rejects a size that differs from the declared one, then
+        queues processing. Poll `getAttachment` until the status is `ready` or `rejected`.
+      x-problem-codes: [upload.size_mismatch, upload.queue_busy, pact.invalid_state, auth.unauthenticated, auth.csrf, not_found]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: The attachment, now `uploaded` (or already further along on a repeat call).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Attachment" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /attachments/{attachmentId}:
+    parameters:
+      - $ref: "#/components/parameters/AttachmentId"
+    get:
+      tags: [uploads]
+      operationId: getAttachment
+      summary: Attachment status and signed URLs
+      description: |
+        Visible to the pact's members only. When `ready`, `urls` holds signed GET URLs valid for
+        5 minutes. Fetch them again when they expire. Buckets are never public.
+      x-problem-codes: [auth.unauthenticated, not_found]
+      responses:
+        "200":
+          description: The attachment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Attachment" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  # ---------------------------------------------------------------- notifications
+  /notifications:
+    get:
+      tags: [notifications]
+      operationId: listNotifications
+      summary: My inbox
+      description: Newest first.
+      x-problem-codes: [auth.unauthenticated]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: unread_only
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: A page of notifications.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPage" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /notifications/read:
+    post:
+      tags: [notifications]
+      operationId: markNotificationsRead
+      summary: Mark notifications as read
+      description: Ids that are already read, or that belong to someone else, are ignored.
+      x-problem-codes: [validation.failed, auth.unauthenticated, auth.csrf]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MarkReadRequest" }
+      responses:
+        "204": { description: Marked. }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+  # ---------------------------------------------------------------- ops
+  /healthz:
+    servers:
+      - url: /
+    get:
+      tags: [ops]
+      operationId: getHealth
+      summary: Liveness
+      description: The process is up. Does not touch dependencies.
+      security: []
+      responses:
+        "200":
+          description: Alive.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+  /readyz:
+    servers:
+      - url: /
+    get:
+      tags: [ops]
+      operationId: getReadiness
+      summary: Readiness
+      description: Pings Postgres, Redis and object storage. Returns `503` if any is down.
+      security: []
+      responses:
+        "200":
+          description: Ready.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+        "503":
+          description: At least one dependency is down.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: tepati_session
+      description: HttpOnly session cookie set by `register` and `login`.
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Double-submit token, bound to the session. Required on every unsafe method, copied from the `tepati_csrf` cookie.
+
+  parameters:
+    PactId:
+      name: pactId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CheckInId:
+      name: checkInId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AttachmentId:
+      name: attachmentId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    InviteToken:
+      name: token
+      in: path
+      required: true
+      description: The one-time invite token from `proposePact`.
+      schema: { type: string, minLength: 16, maxLength: 128 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        Client-generated unique value (a UUID is fine) for one logical action. A retry with the same
+        key replays the stored response for 24 hours instead of acting twice.
+      schema: { type: string, minLength: 8, maxLength: 128 }
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Opaque value from the previous page's `next_cursor`.
+      schema: { type: string, maxLength: 256 }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 30 }
+
+  responses:
+    Problem:
+      description: An error. Branch on `code`.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
+    # ------------------------------------------------------------ errors
+    ErrorCode:
+      type: string
+      description: |
+        Stable machine-readable error code. The web app maps each one to an i18n message.
+
+        | Status | Codes |
+        |---|---|
+        | 400 | `validation.failed`, `auth.invalid_email`, `auth.invalid_name`, `auth.weak_password`, `pact.invalid_terms`, `pact.terms_members`, `proof.invalid_doc`, `checkin.reason_required`, `upload.size_mismatch` |
+        | 401 | `auth.unauthenticated`, `auth.invalid_credentials` |
+        | 403 | `auth.csrf`, `pact.not_backer`, `pact.not_doer`, `checkin.not_allowed` |
+        | 404 | `not_found` (also for non-members) |
+        | 405 | `method_not_allowed` |
+        | 409 | `auth.email_taken`, `pact.invalid_state`, `pact.terms_mismatch`, `pact.member_missing`, `pact.limit_reached`, `checkin.invalid_transition`, `checkin.conflict`, `checkin.override_limit`, `checkin.rest_limit`, `upload.quota_exceeded`, `idempotency.in_progress` |
+        | 410 | `pact.invite_invalid` |
+        | 413 | `upload.too_large`, `request.too_large` |
+        | 415 | `upload.unsupported_type`, `request.unsupported_media_type` |
+        | 422 | `pact.signature_mismatch`, `checkin.deadline_passed`, `checkin.evidence_insufficient`, `idempotency.key_reused` |
+        | 429 | `rate_limited`, `auth.rate_limited` |
+        | 500 | `server.internal` |
+        | 503 | `upload.queue_busy`, `server.unavailable` |
+      enum:
+        - validation.failed
+        - not_found
+        - method_not_allowed
+        - request.too_large
+        - request.unsupported_media_type
+        - rate_limited
+        - server.internal
+        - server.unavailable
+        - idempotency.in_progress
+        - idempotency.key_reused
+        - auth.unauthenticated
+        - auth.csrf
+        - auth.invalid_credentials
+        - auth.email_taken
+        - auth.invalid_email
+        - auth.invalid_name
+        - auth.weak_password
+        - auth.rate_limited
+        - pact.invalid_state
+        - pact.invalid_terms
+        - pact.terms_members
+        - pact.terms_mismatch
+        - pact.not_backer
+        - pact.not_doer
+        - pact.invite_invalid
+        - pact.limit_reached
+        - pact.signature_mismatch
+        - pact.member_missing
+        - proof.invalid_doc
+        - checkin.invalid_transition
+        - checkin.not_allowed
+        - checkin.deadline_passed
+        - checkin.reason_required
+        - checkin.evidence_insufficient
+        - checkin.override_limit
+        - checkin.rest_limit
+        - checkin.conflict
+        - upload.too_large
+        - upload.unsupported_type
+        - upload.size_mismatch
+        - upload.quota_exceeded
+        - upload.queue_busy
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          description: JSON path of the offending field, for example `terms.members.<id>.penalty_per_miss`.
+        message: { type: string }
+    Problem:
+      type: object
+      description: RFC 9457 problem details with a stable `code`.
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+          description: A URI naming the problem type. `about:blank` when `code` says it all.
+          default: about:blank
+        title: { type: string, description: A short English summary. Not for display. }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        detail: { type: [string, "null"] }
+        instance: { type: [string, "null"] }
+        code: { $ref: "#/components/schemas/ErrorCode" }
+        request_id: { type: [string, "null"], description: "Echo of the `X-Request-Id` header, for support." }
+        errors:
+          type: array
+          description: Per-field detail, present for `validation.failed` and `pact.invalid_terms`.
+          items: { $ref: "#/components/schemas/FieldError" }
+
+    # ------------------------------------------------------------ users
+    User:
+      type: object
+      required: [id, email, display_name, locale, timezone, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        display_name: { type: string, minLength: 1, maxLength: 80 }
+        locale: { type: string, enum: [id, en] }
+        timezone: { type: string, description: IANA zone, example: Asia/Jakarta }
+        created_at: { type: string, format: date-time }
+    RegisterRequest:
+      type: object
+      required: [email, password, display_name]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 8, maxLength: 128, format: password }
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Also the signature the user types when accepting terms.
+        locale: { type: string, enum: [id, en], default: id }
+        timezone: { type: string, default: Asia/Jakarta, description: IANA zone. }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, maxLength: 128, format: password }
+    MemberRef:
+      type: object
+      description: Just enough about a member to draw a line in their colour.
+      required: [user_id, display_name, line_color]
+      properties:
+        user_id: { type: string, format: uuid }
+        display_name: { type: string }
+        line_color: { $ref: "#/components/schemas/LineColor" }
+    LineColor:
+      type: string
+      pattern: "^#[0-9A-Fa-f]{6}$"
+      description: The member's fixed colour for the whole pact.
+
+    # ------------------------------------------------------------ terms and pacts
+    Terms:
+      type: object
+      description: |
+        The frozen rule set both members sign (SPEC §4). `terms_hash` is sha256 of its canonical JSON.
+        The server validates every rule and answers `pact.invalid_terms` with per-field `errors`.
+      required:
+        - version
+        - timezone
+        - starts_on
+        - ends_on
+        - cutoff_local_time
+        - grace_minutes
+        - coin_rate_idr
+        - initial_pot
+        - pot_floor
+        - pot_cap
+        - review_window_hours
+        - dispute_window_hours
+        - dispute_resolution_hours
+        - override_window_hours
+        - max_overrides
+        - backer_commits
+        - members
+      properties:
+        version: { type: integer, minimum: 1, description: Schema version of the terms document. }
+        timezone: { type: string, description: IANA zone, example: Asia/Jakarta }
+        starts_on: { type: string, format: date }
+        ends_on:
+          type: string
+          format: date
+          description: Between 1 and 366 days after `starts_on`.
+        cutoff_local_time:
+          type: string
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          example: "23:59"
+        grace_minutes: { type: integer, minimum: 0, maximum: 180 }
+        coin_rate_idr: { type: integer, format: int64, minimum: 1, description: "Rupiah per coin. Display only, since the ledger is an IOU." }
+        initial_pot: { type: integer, format: int64, minimum: 1 }
+        pot_floor: { type: integer, format: int64, minimum: 0, description: The pot never drops below this. }
+        pot_cap:
+          type: [integer, "null"]
+          format: int64
+          description: Backer bonuses stop at this. `null` means no cap. Must be at least `initial_pot`.
+        review_window_hours: { type: integer, minimum: 1, maximum: 72 }
+        dispute_window_hours: { type: integer, minimum: 1, maximum: 72 }
+        dispute_resolution_hours: { type: integer, minimum: 1, maximum: 72 }
+        override_window_hours: { type: integer, minimum: 1, maximum: 72 }
+        max_overrides: { type: integer, minimum: 0, maximum: 10, description: "0 disables the override power." }
+        backer_commits: { type: boolean, description: Whether the backer also has a daily commitment. }
+        members:
+          type: object
+          description: |
+            Keyed by user id. Exactly the backer and one doer. Until the invitee joins, the doer
+            slot is keyed by the nil UUID `00000000-0000-0000-0000-000000000000`.
+          additionalProperties: { $ref: "#/components/schemas/MemberTerms" }
+    MemberTerms:
+      type: object
+      required: [role, commitment, schedule, penalty_per_miss, rest_days, evidence]
+      properties:
+        role: { type: string, enum: [backer, doer] }
+        commitment: { type: string, minLength: 1, maxLength: 200, description: Shown to the member every day. }
+        schedule:
+          type: array
+          description: ISO weekdays, 1 = Monday. Empty means this member does not commit (backer only).
+          uniqueItems: true
+          maxItems: 7
+          items: { type: integer, minimum: 1, maximum: 7 }
+        penalty_per_miss:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Coins taken from the pot when a doer misses, or added to it when the backer misses.
+        rest_days: { type: integer, minimum: 0, description: Rest days this member may declare in the pact. }
+        evidence: { $ref: "#/components/schemas/Evidence" }
+    Evidence:
+      type: object
+      required: [min_attachments, min_words]
+      properties:
+        min_attachments: { type: integer, minimum: 0, maximum: 10 }
+        min_words: { type: integer, minimum: 0 }
+    PactStatus:
+      type: string
+      enum: [draft, proposed, scheduled, active, settling, completed, cancelled]
+    Role:
+      type: string
+      enum: [backer, doer]
+    PactDraft:
+      type: object
+      required: [title, terms]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: [string, "null"], maxLength: 1000 }
+        terms: { $ref: "#/components/schemas/Terms" }
+    PactMember:
+      type: object
+      required: [user_id, display_name, role, line_color, accepted, rest_days_used]
+      properties:
+        user_id: { type: string, format: uuid }
+        display_name: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        line_color: { $ref: "#/components/schemas/LineColor" }
+        accepted:
+          type: boolean
+          description: True only if they signed the *current* `terms_hash`. Editing the terms makes it false for both.
+        accepted_at: { type: [string, "null"], format: date-time }
+        signature_name: { type: [string, "null"] }
+        rest_days_used: { type: integer, minimum: 0 }
+    Pact:
+      type: object
+      required:
+        - id
+        - title
+        - status
+        - backer_id
+        - my_role
+        - terms
+        - terms_version
+        - terms_hash
+        - timezone
+        - starts_on
+        - ends_on
+        - overrides_used
+        - balance
+        - members
+        - created_at
+        - updated_at
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: [string, "null"] }
+        status: { $ref: "#/components/schemas/PactStatus" }
+        backer_id: { type: string, format: uuid }
+        my_role: { $ref: "#/components/schemas/Role" }
+        terms: { $ref: "#/components/schemas/Terms" }
+        terms_version: { type: integer, minimum: 1 }
+        terms_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+        timezone: { type: string }
+        starts_on: { type: string, format: date }
+        ends_on: { type: string, format: date }
+        overrides_used: { type: integer, minimum: 0 }
+        balance:
+          type: integer
+          format: int64
+          description: The pot, computed as the sum of the ledger. `0` before the pact is scheduled.
+        members:
+          type: array
+          description: The backer first. Only the backer until the doer joins.
+          items: { $ref: "#/components/schemas/PactMember" }
+        payout:
+          description: Present once the pact is `settling` or `completed`.
+          oneOf:
+            - $ref: "#/components/schemas/Payout"
+            - type: "null"
+        scheduled_at: { type: [string, "null"], format: date-time }
+        settled_at: { type: [string, "null"], format: date-time }
+        completed_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    PactPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Pact" }
+        next_cursor: { type: [string, "null"] }
+    ProposeRequest:
+      type: object
+      properties:
+        email:
+          type: [string, "null"]
+          format: email
+          description: Optional. Locks the invite to this address and emails the link.
+    Proposal:
+      type: object
+      required: [invite_token]
+      properties:
+        invite_token:
+          type: string
+          description: Shown once. Build the link as `{origin}/invite/{invite_token}`. It is valid for 7 days.
+    AcceptRequest:
+      type: object
+      required: [terms_hash, signature_name]
+      properties:
+        terms_hash:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          description: The hash of the terms the member just read. A stale hash fails with `pact.terms_mismatch`.
+        signature_name:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Must equal the member's display name (case-insensitive, trimmed).
+    InvitePreview:
+      type: object
+      required: [pact_title, inviter, terms, terms_hash, status, doer_slot_open]
+      properties:
+        pact_title: { type: string }
+        inviter: { $ref: "#/components/schemas/MemberRef" }
+        terms: { $ref: "#/components/schemas/Terms" }
+        terms_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+        status: { $ref: "#/components/schemas/PactStatus" }
+        doer_slot_open: { type: boolean, description: False if someone already joined. }
+
+    # ------------------------------------------------------------ check-ins
+    CheckInStatus:
+      type: string
+      enum: [open, submitted, approved, auto_approved, rejected, disputed, missed, rest]
+    CheckIn:
+      type: object
+      required:
+        - id
+        - pact_id
+        - member_id
+        - reviewer_id
+        - local_date
+        - status
+        - is_final
+        - cutoff_at
+        - submit_deadline
+        - penalty_applied
+      properties:
+        id: { type: string, format: uuid }
+        pact_id: { type: string, format: uuid }
+        member_id: { type: string, format: uuid, description: The member who owes this check-in. }
+        reviewer_id: { type: string, format: uuid, description: Always the other member. }
+        local_date: { type: string, format: date, description: "The day, in the pact timezone." }
+        status: { $ref: "#/components/schemas/CheckInStatus" }
+        is_final: { type: boolean }
+        cutoff_at: { type: string, format: date-time }
+        submit_deadline: { type: string, format: date-time, description: Cutoff plus grace. }
+        submitted_at: { type: [string, "null"], format: date-time }
+        review_deadline: { type: [string, "null"], format: date-time }
+        decided_at: { type: [string, "null"], format: date-time }
+        dispute_deadline: { type: [string, "null"], format: date-time }
+        disputed_at: { type: [string, "null"], format: date-time }
+        resolution_deadline: { type: [string, "null"], format: date-time }
+        override_deadline: { type: [string, "null"], format: date-time }
+        penalty_applied: { type: boolean, description: Whether coins moved because of this check-in. }
+    CheckInList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CheckIn" }
+    CheckInAction:
+      type: string
+      description: What the caller may do right now, derived on the server from the state machine and the deadlines.
+      enum: [submit, edit_proof, declare_rest, approve, reject, override, dispute, resolve_dispute]
+    CheckInDetail:
+      type: object
+      required: [check_in, pact_title, member, reviewer, proof_versions, attachments, decisions, my_actions]
+      properties:
+        check_in: { $ref: "#/components/schemas/CheckIn" }
+        pact_title: { type: string }
+        member: { $ref: "#/components/schemas/MemberRef" }
+        reviewer: { $ref: "#/components/schemas/MemberRef" }
+        proof:
+          description: The latest version. `null` until something was submitted.
+          oneOf:
+            - $ref: "#/components/schemas/Proof"
+            - type: "null"
+        proof_versions:
+          type: array
+          description: Every version, oldest first, so the reviewer can see an edit happened.
+          items: { $ref: "#/components/schemas/ProofVersion" }
+        attachments:
+          type: array
+          description: Attachments of the latest proof.
+          items: { $ref: "#/components/schemas/Attachment" }
+        decisions:
+          type: array
+          description: Every decision row, oldest first. Power actions are visible to both members.
+          items: { $ref: "#/components/schemas/Decision" }
+        my_actions:
+          type: array
+          items: { $ref: "#/components/schemas/CheckInAction" }
+        overrides_remaining:
+          type: [integer, "null"]
+          minimum: 0
+          description: Backer's remaining overrides in the pact. `null` for anyone else.
+    Proof:
+      type: object
+      required: [id, version, body_doc, body_text, word_count, links, attachment_ids, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        version: { type: integer, minimum: 1 }
+        body_doc:
+          type: object
+          description: Tiptap/ProseMirror JSON limited to the node and mark allow-list in SPEC §8.
+          additionalProperties: true
+        body_text: { type: string, description: Plain text derived on the server. }
+        word_count: { type: integer, minimum: 0 }
+        links:
+          type: array
+          items: { type: string, format: uri }
+        attachment_ids:
+          type: array
+          items: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+    ProofVersion:
+      type: object
+      required: [id, version, word_count, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        version: { type: integer, minimum: 1 }
+        word_count: { type: integer, minimum: 0 }
+        created_at: { type: string, format: date-time }
+    ProofRequest:
+      type: object
+      required: [body_doc]
+      properties:
+        body_doc:
+          type: object
+          description: Tiptap JSON. Anything outside the SPEC §8 allow-list fails with `proof.invalid_doc`.
+          additionalProperties: true
+        links:
+          type: array
+          maxItems: 20
+          items: { type: string, format: uri, maxLength: 2048 }
+        attachment_ids:
+          type: array
+          description: Attachments in the tray. Inline images are added automatically. They must be the caller's and all `ready`.
+          maxItems: 10
+          uniqueItems: true
+          items: { type: string, format: uuid }
+    DecisionAction:
+      type: string
+      enum: [submit, approve, reject, auto_approve, override, dispute, uphold, dismiss, dispute_expired, rest, missed, finalize]
+    Decision:
+      type: object
+      required: [id, action, is_power, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        action: { $ref: "#/components/schemas/DecisionAction" }
+        actor_id:
+          type: [string, "null"]
+          format: uuid
+          description: "`null` means the system."
+        reason: { type: [string, "null"] }
+        is_power:
+          type: boolean
+          description: True for the backer's extra powers (`override`, `uphold`, `dismiss`). The UI draws these in stamp violet.
+        created_at: { type: string, format: date-time }
+    ReasonRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 1000
+          description: At least 10 characters after trimming, counted in characters, not bytes.
+    ResolveDisputeRequest:
+      type: object
+      required: [outcome, reason]
+      properties:
+        outcome:
+          type: string
+          enum: [uphold, dismiss]
+          description: "`uphold` approves the check-in. `dismiss` makes the rejection final."
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 1000
+          description: The backer's rationale (SPEC §2). Both members see it.
+    ReviewQueueItem:
+      type: object
+      required: [check_in, pact_title, member, word_count, attachment_count]
+      properties:
+        check_in: { $ref: "#/components/schemas/CheckIn" }
+        pact_title: { type: string }
+        member: { $ref: "#/components/schemas/MemberRef" }
+        word_count: { type: integer, minimum: 0 }
+        attachment_count: { type: integer, minimum: 0 }
+    ReviewQueuePage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ReviewQueueItem" }
+        next_cursor: { type: [string, "null"] }
+
+    # ------------------------------------------------------------ today
+    TodayCheckIn:
+      type: object
+      required: [check_in, pact_title, member]
+      properties:
+        check_in: { $ref: "#/components/schemas/CheckIn" }
+        pact_title: { type: string }
+        member: { $ref: "#/components/schemas/MemberRef" }
+        word_count: { type: [integer, "null"], minimum: 0, description: "Of the latest proof, if any." }
+    TodayPact:
+      type: object
+      required: [pact_id, title, status, my_role, balance, partner, recent_ledger]
+      properties:
+        pact_id: { type: string, format: uuid }
+        title: { type: string }
+        status: { $ref: "#/components/schemas/PactStatus" }
+        my_role: { $ref: "#/components/schemas/Role" }
+        balance: { type: integer, format: int64 }
+        partner: { $ref: "#/components/schemas/MemberRef" }
+        next_deadline:
+          type: [string, "null"]
+          format: date-time
+          description: My nearest unfinished deadline in this pact. Sections are ordered by it.
+        recent_ledger:
+          type: array
+          description: The last three passbook lines, newest first, for the mini passbook.
+          maxItems: 3
+          items: { $ref: "#/components/schemas/LedgerLine" }
+    Today:
+      type: object
+      required: [server_time, my_check_ins, review_queue_count, pacts]
+      properties:
+        server_time:
+          type: string
+          format: date-time
+          description: Lets the client correct its clock before it draws countdowns.
+        my_check_ins:
+          type: array
+          description: My check-ins dated today in each active pact's timezone, plus any earlier ones still open. Soonest `submit_deadline` first.
+          items: { $ref: "#/components/schemas/TodayCheckIn" }
+        review_queue_count: { type: integer, minimum: 0 }
+        pacts:
+          type: array
+          description: Active pacts (and those `settling`), nearest `next_deadline` first.
+          items: { $ref: "#/components/schemas/TodayPact" }
+
+    # ------------------------------------------------------------ ledger
+    LedgerKind:
+      type: string
+      enum: [pot_initial, doer_miss, backer_miss, reversal, payout]
+    LedgerLine:
+      type: object
+      required: [id, kind, amount, balance_after, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        kind: { $ref: "#/components/schemas/LedgerKind" }
+        amount:
+          type: integer
+          format: int64
+          description: Signed coins. Negative is a debit (D), positive a credit (K). A clamped penalty is `0` with `note = clamped`.
+        balance_after: { type: integer, format: int64, description: The pot after this line. }
+        check_in_id: { type: [string, "null"], format: uuid }
+        check_in_local_date: { type: [string, "null"], format: date, description: "The day this line is about, for the *keterangan* column." }
+        member_id: { type: [string, "null"], format: uuid, description: "Whose check-in caused it, for the line colour." }
+        note: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+    LedgerPage:
+      type: object
+      required: [items, next_cursor, balance]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LedgerLine" }
+        next_cursor: { type: [string, "null"] }
+        balance: { type: integer, format: int64, description: "The current pot, the same on every page." }
+    Payout:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Coins the backer owes the doer, fixed when the pact reached `settling`.
+        marked_paid_at: { type: [string, "null"], format: date-time }
+        marked_paid_note: { type: [string, "null"] }
+        confirmed_at: { type: [string, "null"], format: date-time }
+    MarkPaidRequest:
+      type: object
+      properties:
+        note: { type: [string, "null"], maxLength: 500, description: For example how it was paid. }
+
+    # ------------------------------------------------------------ uploads
+    AttachmentKind:
+      type: string
+      enum: [image, video, file]
+    AttachmentStatus:
+      type: string
+      enum: [awaiting_upload, uploaded, processing, ready, rejected]
+    UploadIntentRequest:
+      type: object
+      required: [pact_id, kind, mime, bytes]
+      properties:
+        pact_id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/AttachmentKind" }
+        mime:
+          type: string
+          maxLength: 100
+          description: Declared by the client for the pre-check only. The server sniffs the real type.
+        bytes: { type: integer, format: int64, minimum: 1, description: Exact size of the file about to be sent. }
+    UploadIntent:
+      type: object
+      required: [attachment_id, put_url, headers, expires_at]
+      properties:
+        attachment_id: { type: string, format: uuid }
+        put_url: { type: string, format: uri, description: Presigned PUT to object storage. Valid for 10 minutes. }
+        headers:
+          type: object
+          description: Headers to send unchanged with the PUT, including the signed `Content-Length` and `Content-Type`.
+          additionalProperties: { type: string }
+        expires_at: { type: string, format: date-time }
+    AttachmentUrls:
+      type: object
+      required: [expires_at]
+      properties:
+        original: { type: string, format: uri }
+        thumb: { type: [string, "null"], format: uri }
+        poster: { type: [string, "null"], format: uri, description: First frame of a video. }
+        expires_at: { type: string, format: date-time, description: About 5 minutes after the response. }
+    Attachment:
+      type: object
+      required: [id, pact_id, kind, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        pact_id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/AttachmentKind" }
+        status: { $ref: "#/components/schemas/AttachmentStatus" }
+        mime: { type: [string, "null"], description: The sniffed type once known. }
+        bytes: { type: [integer, "null"], format: int64, description: Stored size after processing. }
+        width: { type: [integer, "null"] }
+        height: { type: [integer, "null"] }
+        duration_ms: { type: [integer, "null"] }
+        reject_reason: { type: [string, "null"], description: Shown to the uploader when `status` is `rejected`. }
+        urls:
+          description: Signed GET URLs. Present only when `status` is `ready`.
+          oneOf:
+            - $ref: "#/components/schemas/AttachmentUrls"
+            - type: "null"
+        created_at: { type: string, format: date-time }
+        ready_at: { type: [string, "null"], format: date-time }
+
+    # ------------------------------------------------------------ notifications
+    NotificationKind:
+      type: string
+      enum:
+        - member_joined
+        - terms_changed
+        - terms_signed
+        - pact_scheduled
+        - pact_settled
+        - proof_submitted
+        - proof_edited
+        - proof_approved
+        - proof_rejected
+        - proof_auto_approved
+        - proof_overridden
+        - rejection_final
+        - rest_declared
+        - day_missed
+        - dispute_opened
+        - dispute_upheld
+        - dispute_dismissed
+        - reminder_cutoff_3h
+        - reminder_cutoff_30m
+        - review_deadline_soon
+        - payout_marked_paid
+        - payout_confirmed
+    Notification:
+      type: object
+      required: [id, kind, payload, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        kind: { $ref: "#/components/schemas/NotificationKind" }
+        payload:
+          type: object
+          description: Carries `pact_id` and, where relevant, `check_in_id`, so the client can deep-link.
+          additionalProperties: true
+        read_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+    NotificationPage:
+      type: object
+      required: [items, next_cursor, unread_count]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Notification" }
+        next_cursor: { type: [string, "null"] }
+        unread_count: { type: integer, minimum: 0 }
+    MarkReadRequest:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { type: integer, format: int64 }
+
+    # ------------------------------------------------------------ ops
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [ok] }
+    Readiness:
+      type: object
+      required: [status, checks]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        checks:
+          type: object
+          required: [database, redis, storage]
+          properties:
+            database: { type: string, enum: [ok, down] }
+            redis: { type: string, enum: [ok, down] }
+            storage: { type: string, enum: [ok, down] }

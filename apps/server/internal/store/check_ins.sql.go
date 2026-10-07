@@ -34,6 +34,17 @@ func (q *Queries) CountNonFinalCheckIns(ctx context.Context, pactID uuid.UUID) (
 	return count, err
 }
 
+const countReviewQueue = `-- name: CountReviewQueue :one
+select count(*) from check_ins where reviewer_id = $1 and status = 'submitted'
+`
+
+func (q *Queries) CountReviewQueue(ctx context.Context, reviewerID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countReviewQueue, reviewerID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getCheckIn = `-- name: GetCheckIn :one
 select id, pact_id, member_id, reviewer_id, local_date, status, is_final, cutoff_at, submit_deadline, submitted_at, review_deadline, decided_at, dispute_deadline, disputed_at, resolution_deadline, override_deadline, penalty_applied, created_at, updated_at from check_ins where id = $1
 `
@@ -176,6 +187,24 @@ type InsertCheckInsParams struct {
 	SubmitDeadline time.Time
 }
 
+const insertReminderSent = `-- name: InsertReminderSent :execrows
+insert into reminders_sent (check_in_id, kind) values ($1, $2) on conflict do nothing
+`
+
+type InsertReminderSentParams struct {
+	CheckInID uuid.UUID
+	Kind      string
+}
+
+// 0 rows = this reminder was already sent (possibly by another worker).
+func (q *Queries) InsertReminderSent(ctx context.Context, arg InsertReminderSentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertReminderSent, arg.CheckInID, arg.Kind)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const listCheckInsForPact = `-- name: ListCheckInsForPact :many
 select id, pact_id, member_id, reviewer_id, local_date, status, is_final, cutoff_at, submit_deadline, submitted_at, review_deadline, decided_at, dispute_deadline, disputed_at, resolution_deadline, override_deadline, penalty_applied, created_at, updated_at from check_ins
 where pact_id = $1 and local_date between $2 and $3
@@ -190,6 +219,70 @@ type ListCheckInsForPactParams struct {
 
 func (q *Queries) ListCheckInsForPact(ctx context.Context, arg ListCheckInsForPactParams) ([]CheckIn, error) {
 	rows, err := q.db.Query(ctx, listCheckInsForPact, arg.PactID, arg.FromDate, arg.ToDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CheckIn{}
+	for rows.Next() {
+		var i CheckIn
+		if err := rows.Scan(
+			&i.ID,
+			&i.PactID,
+			&i.MemberID,
+			&i.ReviewerID,
+			&i.LocalDate,
+			&i.Status,
+			&i.IsFinal,
+			&i.CutoffAt,
+			&i.SubmitDeadline,
+			&i.SubmittedAt,
+			&i.ReviewDeadline,
+			&i.DecidedAt,
+			&i.DisputeDeadline,
+			&i.DisputedAt,
+			&i.ResolutionDeadline,
+			&i.OverrideDeadline,
+			&i.PenaltyApplied,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCutoffReminderCandidates = `-- name: ListCutoffReminderCandidates :many
+select c.id, c.pact_id, c.member_id, c.reviewer_id, c.local_date, c.status, c.is_final, c.cutoff_at, c.submit_deadline, c.submitted_at, c.review_deadline, c.decided_at, c.dispute_deadline, c.disputed_at, c.resolution_deadline, c.override_deadline, c.penalty_applied, c.created_at, c.updated_at from check_ins c
+join pacts p on p.id = c.pact_id
+where p.status = 'active' and c.status = 'open'
+  and c.cutoff_at > $1::timestamptz and c.cutoff_at <= $2::timestamptz
+  and not exists (select 1 from reminders_sent r where r.check_in_id = c.id and r.kind = $3::text)
+order by c.cutoff_at
+limit $4
+`
+
+type ListCutoffReminderCandidatesParams struct {
+	FromAt  time.Time
+	ToAt    time.Time
+	Kind    string
+	MaxRows int32
+}
+
+// Reminders (SPEC §9). Open check-ins of active pacts whose cutoff falls in (from_at, to_at]
+// and that were not yet reminded with this kind.
+func (q *Queries) ListCutoffReminderCandidates(ctx context.Context, arg ListCutoffReminderCandidatesParams) ([]CheckIn, error) {
+	rows, err := q.db.Query(ctx, listCutoffReminderCandidates,
+		arg.FromAt,
+		arg.ToAt,
+		arg.Kind,
+		arg.MaxRows,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -273,73 +366,75 @@ func (q *Queries) ListDueCheckInIDs(ctx context.Context, arg ListDueCheckInIDsPa
 	return items, nil
 }
 
-const listOpenCheckInsForMember = `-- name: ListOpenCheckInsForMember :many
-select c.id, c.pact_id, c.member_id, c.reviewer_id, c.local_date, c.status, c.is_final, c.cutoff_at, c.submit_deadline, c.submitted_at, c.review_deadline, c.decided_at, c.dispute_deadline, c.disputed_at, c.resolution_deadline, c.override_deadline, c.penalty_applied, c.created_at, c.updated_at, p.title as pact_title from check_ins c
+const listReviewQueuePage = `-- name: ListReviewQueuePage :many
+select c.id, c.pact_id, c.member_id, c.reviewer_id, c.local_date, c.status, c.is_final, c.cutoff_at, c.submit_deadline, c.submitted_at, c.review_deadline, c.decided_at, c.dispute_deadline, c.disputed_at, c.resolution_deadline, c.override_deadline, c.penalty_applied, c.created_at, c.updated_at, p.title as pact_title,
+       coalesce(lp.word_count, 0)::int as word_count,
+       (select count(*) from attachments a where a.proof_id = lp.id)::int as attachment_count
+from check_ins c
 join pacts p on p.id = c.pact_id
-where c.member_id = $1 and p.status = 'active' and not c.is_final
-  and c.cutoff_at between $2 and $3
-order by c.cutoff_at
+left join lateral (
+  select id, word_count from proofs pr where pr.check_in_id = c.id order by version desc limit 1
+) lp on true
+where c.reviewer_id = $1 and c.status = 'submitted'
+  and ($2::timestamptz is null
+       or (c.review_deadline, c.id) > ($2::timestamptz, $3::uuid))
+order by c.review_deadline, c.id
+limit $4
 `
 
-type ListOpenCheckInsForMemberParams struct {
-	MemberID uuid.UUID
-	FromTime time.Time
-	ToTime   time.Time
+type ListReviewQueuePageParams struct {
+	ReviewerID    uuid.UUID
+	AfterDeadline *time.Time
+	AfterID       *uuid.UUID
+	MaxRows       int32
 }
 
-type ListOpenCheckInsForMemberRow struct {
-	ID                 uuid.UUID
-	PactID             uuid.UUID
-	MemberID           uuid.UUID
-	ReviewerID         uuid.UUID
-	LocalDate          time.Time
-	Status             string
-	IsFinal            bool
-	CutoffAt           time.Time
-	SubmitDeadline     time.Time
-	SubmittedAt        *time.Time
-	ReviewDeadline     *time.Time
-	DecidedAt          *time.Time
-	DisputeDeadline    *time.Time
-	DisputedAt         *time.Time
-	ResolutionDeadline *time.Time
-	OverrideDeadline   *time.Time
-	PenaltyApplied     bool
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
-	PactTitle          string
+type ListReviewQueuePageRow struct {
+	CheckIn         CheckIn
+	PactTitle       string
+	WordCount       int32
+	AttachmentCount int32
 }
 
-func (q *Queries) ListOpenCheckInsForMember(ctx context.Context, arg ListOpenCheckInsForMemberParams) ([]ListOpenCheckInsForMemberRow, error) {
-	rows, err := q.db.Query(ctx, listOpenCheckInsForMember, arg.MemberID, arg.FromTime, arg.ToTime)
+// Keyset page ordered by (review_deadline, id), soonest first. The proof word count and
+// attachment count come from the latest proof version.
+func (q *Queries) ListReviewQueuePage(ctx context.Context, arg ListReviewQueuePageParams) ([]ListReviewQueuePageRow, error) {
+	rows, err := q.db.Query(ctx, listReviewQueuePage,
+		arg.ReviewerID,
+		arg.AfterDeadline,
+		arg.AfterID,
+		arg.MaxRows,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListOpenCheckInsForMemberRow{}
+	items := []ListReviewQueuePageRow{}
 	for rows.Next() {
-		var i ListOpenCheckInsForMemberRow
+		var i ListReviewQueuePageRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.PactID,
-			&i.MemberID,
-			&i.ReviewerID,
-			&i.LocalDate,
-			&i.Status,
-			&i.IsFinal,
-			&i.CutoffAt,
-			&i.SubmitDeadline,
-			&i.SubmittedAt,
-			&i.ReviewDeadline,
-			&i.DecidedAt,
-			&i.DisputeDeadline,
-			&i.DisputedAt,
-			&i.ResolutionDeadline,
-			&i.OverrideDeadline,
-			&i.PenaltyApplied,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.CheckIn.ID,
+			&i.CheckIn.PactID,
+			&i.CheckIn.MemberID,
+			&i.CheckIn.ReviewerID,
+			&i.CheckIn.LocalDate,
+			&i.CheckIn.Status,
+			&i.CheckIn.IsFinal,
+			&i.CheckIn.CutoffAt,
+			&i.CheckIn.SubmitDeadline,
+			&i.CheckIn.SubmittedAt,
+			&i.CheckIn.ReviewDeadline,
+			&i.CheckIn.DecidedAt,
+			&i.CheckIn.DisputeDeadline,
+			&i.CheckIn.DisputedAt,
+			&i.CheckIn.ResolutionDeadline,
+			&i.CheckIn.OverrideDeadline,
+			&i.CheckIn.PenaltyApplied,
+			&i.CheckIn.CreatedAt,
+			&i.CheckIn.UpdatedAt,
 			&i.PactTitle,
+			&i.WordCount,
+			&i.AttachmentCount,
 		); err != nil {
 			return nil, err
 		}
@@ -351,45 +446,33 @@ func (q *Queries) ListOpenCheckInsForMember(ctx context.Context, arg ListOpenChe
 	return items, nil
 }
 
-const listReviewQueue = `-- name: ListReviewQueue :many
-select c.id, c.pact_id, c.member_id, c.reviewer_id, c.local_date, c.status, c.is_final, c.cutoff_at, c.submit_deadline, c.submitted_at, c.review_deadline, c.decided_at, c.dispute_deadline, c.disputed_at, c.resolution_deadline, c.override_deadline, c.penalty_applied, c.created_at, c.updated_at, p.title as pact_title from check_ins c
+const listReviewReminderCandidates = `-- name: ListReviewReminderCandidates :many
+select c.id, c.pact_id, c.member_id, c.reviewer_id, c.local_date, c.status, c.is_final, c.cutoff_at, c.submit_deadline, c.submitted_at, c.review_deadline, c.decided_at, c.dispute_deadline, c.disputed_at, c.resolution_deadline, c.override_deadline, c.penalty_applied, c.created_at, c.updated_at from check_ins c
 join pacts p on p.id = c.pact_id
-where c.reviewer_id = $1 and c.status = 'submitted'
+where p.status = 'active' and c.status = 'submitted'
+  and c.review_deadline > $1::timestamptz and c.review_deadline <= $2::timestamptz
+  and not exists (select 1 from reminders_sent r where r.check_in_id = c.id and r.kind = 'review_deadline_soon')
 order by c.review_deadline
+limit $3
 `
 
-type ListReviewQueueRow struct {
-	ID                 uuid.UUID
-	PactID             uuid.UUID
-	MemberID           uuid.UUID
-	ReviewerID         uuid.UUID
-	LocalDate          time.Time
-	Status             string
-	IsFinal            bool
-	CutoffAt           time.Time
-	SubmitDeadline     time.Time
-	SubmittedAt        *time.Time
-	ReviewDeadline     *time.Time
-	DecidedAt          *time.Time
-	DisputeDeadline    *time.Time
-	DisputedAt         *time.Time
-	ResolutionDeadline *time.Time
-	OverrideDeadline   *time.Time
-	PenaltyApplied     bool
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
-	PactTitle          string
+type ListReviewReminderCandidatesParams struct {
+	FromAt  time.Time
+	ToAt    time.Time
+	MaxRows int32
 }
 
-func (q *Queries) ListReviewQueue(ctx context.Context, reviewerID uuid.UUID) ([]ListReviewQueueRow, error) {
-	rows, err := q.db.Query(ctx, listReviewQueue, reviewerID)
+// Submitted check-ins whose review deadline falls in (from_at, to_at] and whose reviewer
+// was not yet reminded.
+func (q *Queries) ListReviewReminderCandidates(ctx context.Context, arg ListReviewReminderCandidatesParams) ([]CheckIn, error) {
+	rows, err := q.db.Query(ctx, listReviewReminderCandidates, arg.FromAt, arg.ToAt, arg.MaxRows)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListReviewQueueRow{}
+	items := []CheckIn{}
 	for rows.Next() {
-		var i ListReviewQueueRow
+		var i CheckIn
 		if err := rows.Scan(
 			&i.ID,
 			&i.PactID,
@@ -410,8 +493,117 @@ func (q *Queries) ListReviewQueue(ctx context.Context, reviewerID uuid.UUID) ([]
 			&i.PenaltyApplied,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.PactTitle,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTodayCheckIns = `-- name: ListTodayCheckIns :many
+select c.id, c.pact_id, c.member_id, c.reviewer_id, c.local_date, c.status, c.is_final, c.cutoff_at, c.submit_deadline, c.submitted_at, c.review_deadline, c.decided_at, c.dispute_deadline, c.disputed_at, c.resolution_deadline, c.override_deadline, c.penalty_applied, c.created_at, c.updated_at, p.title as pact_title,
+       coalesce(lp.word_count, 0)::int as word_count,
+       (lp.id is not null)::boolean as has_proof
+from check_ins c
+join pacts p on p.id = c.pact_id
+left join lateral (
+  select id, word_count from proofs pr where pr.check_in_id = c.id order by version desc limit 1
+) lp on true
+where c.member_id = $1 and p.status = 'active'
+  and (c.local_date = ($2::timestamptz at time zone p.timezone)::date
+       or (c.status = 'open' and c.local_date < ($2::timestamptz at time zone p.timezone)::date
+           and c.submit_deadline > $2::timestamptz))
+order by c.submit_deadline, c.id
+`
+
+type ListTodayCheckInsParams struct {
+	MemberID uuid.UUID
+	Now      time.Time
+}
+
+type ListTodayCheckInsRow struct {
+	CheckIn   CheckIn
+	PactTitle string
+	WordCount int32
+	HasProof  bool
+}
+
+// My check-ins for the Today screen: dated today in each active pact's timezone, plus an
+// earlier day that is still open because its grace period has not ended.
+func (q *Queries) ListTodayCheckIns(ctx context.Context, arg ListTodayCheckInsParams) ([]ListTodayCheckInsRow, error) {
+	rows, err := q.db.Query(ctx, listTodayCheckIns, arg.MemberID, arg.Now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTodayCheckInsRow{}
+	for rows.Next() {
+		var i ListTodayCheckInsRow
+		if err := rows.Scan(
+			&i.CheckIn.ID,
+			&i.CheckIn.PactID,
+			&i.CheckIn.MemberID,
+			&i.CheckIn.ReviewerID,
+			&i.CheckIn.LocalDate,
+			&i.CheckIn.Status,
+			&i.CheckIn.IsFinal,
+			&i.CheckIn.CutoffAt,
+			&i.CheckIn.SubmitDeadline,
+			&i.CheckIn.SubmittedAt,
+			&i.CheckIn.ReviewDeadline,
+			&i.CheckIn.DecidedAt,
+			&i.CheckIn.DisputeDeadline,
+			&i.CheckIn.DisputedAt,
+			&i.CheckIn.ResolutionDeadline,
+			&i.CheckIn.OverrideDeadline,
+			&i.CheckIn.PenaltyApplied,
+			&i.CheckIn.CreatedAt,
+			&i.CheckIn.UpdatedAt,
+			&i.PactTitle,
+			&i.WordCount,
+			&i.HasProof,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const nextDeadlines = `-- name: NextDeadlines :many
+select pact_id, min(submit_deadline)::timestamptz as next_deadline from check_ins
+where member_id = $1 and status = 'open' and pact_id = any($2::uuid[])
+group by pact_id
+`
+
+type NextDeadlinesParams struct {
+	MemberID uuid.UUID
+	PactIds  []uuid.UUID
+}
+
+type NextDeadlinesRow struct {
+	PactID       uuid.UUID
+	NextDeadline time.Time
+}
+
+// My nearest unfinished deadline per pact (open days only).
+func (q *Queries) NextDeadlines(ctx context.Context, arg NextDeadlinesParams) ([]NextDeadlinesRow, error) {
+	rows, err := q.db.Query(ctx, nextDeadlines, arg.MemberID, arg.PactIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []NextDeadlinesRow{}
+	for rows.Next() {
+		var i NextDeadlinesRow
+		if err := rows.Scan(&i.PactID, &i.NextDeadline); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

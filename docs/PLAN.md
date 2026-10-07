@@ -2,6 +2,8 @@
 
 This plan is written so that **any capable agent (for example Claude Sonnet 5.5) or human developer can pick up the next unchecked task and finish it without extra context**. Read `AGENTS.md` first.
 
+Resuming? Read `docs/STATUS.md` first: it records where the project stands, decisions made so far, known gaps, and the brief for the next phase.
+
 How to use it:
 - Work **one task at a time**, in order, unless a task is marked ⇄ (parallel-safe with its siblings).
 - Each task lists **Read**, **Do**, **Done when** (acceptance criteria), and **Verify** (exact commands). A task is finished only when every Verify command passes and you have looked at the output.
@@ -86,38 +88,46 @@ Use *superpowers:test-driven-development* (or *tdd*) for every task in this phas
 
 ## Phase 2: API contract and HTTP
 
-- [ ] **2.1 OpenAPI contract**
+- [x] **2.1 OpenAPI contract** (fd303f0)
   - Read: `ARCHITECTURE.md §5`, and `SPEC.md` for field semantics.
   - Do: Write `api/openapi.yaml` (3.1) covering every endpoint in §5, with `problem+json` errors and stable `code` enums, the `Idempotency-Key` header parameter on mutating endpoints, and cursor pagination. Add `bun run codegen`, which generates Go (strict server) and TS (`apps/web/src/lib/api/schema.d.ts`).
   - Done when: `redocly lint api/openapi.yaml` (via `bunx @redocly/cli`) passes and the codegen output compiles.
   - Verify: `bunx @redocly/cli lint api/openapi.yaml && bun run codegen && cd apps/server && go build ./...`
 
-- [ ] **2.2 Fiber app and middleware**
+- [x] **2.2 Fiber app and middleware** (3205c30)
   - Do: Middleware in the order given in `ARCHITECTURE.md §3`, with the Redis rate-limit storage, idempotency middleware (key = user + route + header; stores status and body for 24 h; replays the stored response), the problem+json error handler, `/healthz`, `/readyz`, and `/metrics`.
   - Verify: `go test ./internal/http/...` (includes the idempotency replay test and the rate-limit 429 test).
 
-- [ ] **2.3 Handlers** (implement the generated strict-server interface) ⇄ split by resource: auth/me, pacts/invites, check-ins/review, ledger/payout, notifications.
+- [x] **2.3 Handlers** (b563a23..a780ff9) (implement the generated strict-server interface) ⇄ split by resource: auth/me, pacts/invites, check-ins/review, ledger/payout, notifications.
   - Done when: every operation in the YAML is implemented, and every handler test asserts the authorisation rule (a non-member gets 404, not 403, so pact existence doesn't leak).
-  - Verify: `go test ./internal/http/... && bun run lint`
+  - Verify: `go test ./internal/http/... && bun run lint`, plus `go test -race -tags=integration ./internal/http/... ./internal/service/...` (the handler tests need Postgres and Redis, so they carry the `integration` tag).
+  - Deviations, decided while building: (1) the three upload operations (`createUpload`, `completeUpload`, `getAttachment`) are routed but answer `503 server.unavailable` until 4.1/4.2 add the BlobStore and the media worker, so "every operation implemented" holds for the other 28; `TestEveryContractOperationIsRouted` still proves all 31 are routed. (2) Added `POST /invites/{token}/join`, which `ARCHITECTURE §5` lacked. Without it an invitee could not become a member, and accepting needs membership.
 
 ## Phase 3: Worker
 
-- [ ] **3.1 asynq server, scheduler, and outbox relay** 🔒
+- [x] **3.1 asynq server, scheduler, and outbox relay** 🔒 (ab82852..736cbcc)
   - Do: In `cmd/worker`, set up queues `critical`/`default`/`media` (weights 6/3/1) with periodic tasks `settlement:sweep` (every 1 min), `pacts:activate` (every 1 min), `pacts:close` (every 5 min), `outbox:relay` (every 5 s), `uploads:gc` (hourly), and `reminders:cutoff` (every 5 min, which enqueues unique reminder tasks for 3 h and 30 min before cutoff). Shut down gracefully.
+  - Also: add `apps/server/.air.worker.toml` and `.air.api.toml` (`scripts/dev.ts` starts a process only when its air file exists, so `dev:hybrid` runs neither today), and `tepatictl seed` / `pact show` (see `docs/STATUS.md §7`).
   - Verify: `go test -tags=integration ./internal/jobs/...`. Then run `bun run dev:hybrid`, use `tepatictl seed --scenario overdue` to create a pact with an overdue check-in, and confirm it becomes `missed` with a ledger row within 2 minutes (inspect via `tepatictl pact show <id>`).
+  - Result: verified live on 2026-10-07. `bun run db:seed` made an active pact with 3 overdue days; the worker marked all 6 check-ins `missed` within 35 s, wrote the `doer_miss`/`backer_miss` ledger rows, and relayed the `day_missed` notifications. `go test -race -tags=integration ./...` green.
+  - Deviations, decided while building: (1) `reminders:cutoff` calls `service.SendReminders` directly instead of enqueueing a unique task per reminder. Dedupe is a new table `reminders_sent (check_in_id, kind)` written in the same transaction as the outbox row, which is stronger than asynq's TTL-based uniqueness and survives a Redis flush. It also sends the reviewer's 2 h `review_deadline_soon` reminder from SPEC §9. (2) The schedule uses `asynq.Scheduler`, not `PeriodicTaskManager` (the table is fixed; ADR-0004 updated). (3) `uploads:gc` is scheduled and handled, but does nothing until the BlobStore exists (4.1/4.2). (4) The `media` concurrency cap of 2 cannot be set per queue in asynq; it will be a semaphore in the `media:process` handler (4.2). (5) `RelayOutbox` only writes notifications. It returns the ones it delivered so 3.2 can enqueue emails after the commit.
 
-- [ ] **3.2 Notifications and email** ⇄
+- [x] **3.2 Notifications and email** ⇄ (ed2eca4..8a61460)
   - Do: In-app notifications, plus SMTP email (Mailpit in dev) using Indonesian templates (`html/template`, plain text fallback) for the triggers in `SPEC.md §9`.
   - Verify: Mailpit UI at `http://localhost:8025` shows the invite email after `tepatictl seed --scenario invite`.
+  - Result: verified live on 2026-10-07. With `bun run dev:hybrid` running, `bun run db:seed -- invite` put an email to `seed-invitee@tepati.test` in Mailpit within 15 s: Indonesian subject, plain text and HTML parts, and the `/invite/<token>` link. `go test -race -tags=integration ./...` green.
+  - Deviations, decided while building: (1) `Service.Propose` now writes an outbox row (topic `invite_mail`) when it is given an address; that row carries the plaintext invite token, and `MarkOutboxDispatched` strips `token` from the payload when the relay dispatches it, so only the hash outlives a few seconds (ADR-0004). (2) Dedupe is a claim column, `emailed_at` on `notifications` and `pact_invites` (migration `20261009000001`): the email task claims the row, sends, and releases the claim if the send fails. A crash between claim and send loses one email instead of sending two. (3) `proof_submitted` is a digest: tasks are unique per (user, pact, kind) and run 5 minutes after the first one, then one email covers everything unsent. (4) Email kinds are exactly the SPEC §9 "email" column (`internal/notify/delivery.go`); `rejection_final`, `dispute_upheld`/`dismissed` and `payout_*` stay in-app. (5) Copy uses the SPEC §1 glossary (kontrak, penyokong, pelaku, sanggahan). (6) SMTP uses the standard library (`net/smtp` driven by hand for context deadlines, STARTTLS when offered), no new dependency.
 
 ## Phase 4: Uploads and media
 
-- [ ] **4.1 BlobStore drivers**
+- [x] **4.1 BlobStore drivers** (2ee6dce..de7c8b6)
   - Do: Implement the `storage.BlobStore` interface (`PresignPut`, `PresignGet`, `Head`, `Get`, `Put`, `Delete`) with an `s3` driver (aws-sdk-go-v2, path-style, separate public endpoint for signing) and an `fs` driver (HMAC-signed local URLs served by `/api/v1/blob/*`).
   - Done when: integration test `TestPresignedPutRejectsWrongLength` runs against Garage, and its result is recorded in `docs/adr/0005` (append a note). If Garage does not enforce the signed length, implement `UPLOAD_MODE=proxy` and make it the default.
   - Verify: `go test -tags=integration ./internal/storage/...`
+  - Result: verified 2026-10-07 against the local Garage. `TestPresignedPutRejectsWrongLength` passes (Garage answers `403` to a longer and to a shorter body), and a mutation check (presigning without the length) makes it fail with a `200`, so the test does detect the problem. **Garage enforces the signed length**, so `UPLOAD_MODE=presigned` stays the default and the proxy mode is not built. Recorded in ADR-0005.
+  - Deviations, decided while building: (1) One contract suite (`contract_test.go`) runs against both drivers, so the fs driver cannot drift from the s3 one. It also checks content type, expiry, bucket separation and key validation. (2) `fs` also needed the HTTP side: `FS.ServeHTTP` verifies the HMAC and is mounted by the API at `/api/v1/blob/*` (before the session gate; the signature is the credential). Fiber has one body limit per app, so with the fs driver it is raised to the largest upload limit and JSON routes are re-capped at 1 MB by `jsonSizeCap`. (3) Keys are restricted to `[A-Za-z0-9._-]` segments joined by `/` (`ValidKey`), which is the path-traversal defence for fs. (4) The s3 driver turns off the SDK's default CRC32 checksums (`WhenRequired`) so presigned URLs need no header the browser cannot compute, and spools non-seekable readers to a temp file because signing over plain HTTP needs a seekable body. (5) `Delete` of a missing object is not an error, for both drivers.
 
-- [ ] **4.2 Upload intent, complete, and processing** 🔒 (limits)
+- [x] **4.2 Upload intent, complete, and processing** 🔒 (limits) (ac7b781..825df97)
   - Do: Implement the endpoints and the `media:process` handler as specified in `ARCHITECTURE.md §6` and `SPEC.md §8`. Use ffmpeg and vips through `exec.CommandContext` with arg slices and timeouts, sniff types, enforce limits, and add the queue backpressure 503.
   - Done when: golden tests in `internal/media/testdata` pass:
     - A 12 MP JPEG with GPS becomes a WebP ≤ 2048 px with no EXIF.
@@ -125,6 +135,8 @@ Use *superpowers:test-driven-development* (or *tdd*) for every task in this phas
     - A 200-second video is rejected.
     - A 30-second 1080p video becomes 720p.
   - Verify: `go test ./internal/media/... && go test -tags=integration ./internal/service/... -run Upload`
+  - Result: verified 2026-10-08 with ffmpeg 9.0.2 and libvips 8.18.7 on Windows. The four golden tests pass, and a mutation check (saving the WebP without `strip`) makes the EXIF test fail. `TestUploadedPhotoBecomesReadyThroughGarageAndTheWorker` runs the whole path with nothing faked: presigned PUT to Garage, `completeUpload`, the worker's media server, a signed GET of the WebP. `go test -race -tags=integration ./...` green.
+  - Deviations, decided while building: (1) The golden inputs are generated by the tests (ffmpeg `testsrc2`, a hand-built GPS EXIF block) instead of committed to `internal/media/testdata`, which would add a 12 MP JPEG and a 1080p clip to the repo. The tests skip with a message when the tools are missing. (2) The `media` concurrency cap of 2 is a **second asynq server** that serves only the media queue (`Options.MediaWorkers`, default 2), not a semaphore in the handler as ADR-0004 planned: a semaphore would park waiting tasks on the shared pool and starve settlement. ADR-0004 is updated. (3) Added `GiveUpAttachment`: when `media:process` has used its retries (`MaxRetry 3`), the attachment becomes `rejected` with a reason instead of staying `processing`. (4) `CreateAttachment` and `MarkAttachmentReady` take their timestamps from the injected clock (invariant 4). (5) Added `UPLOAD_PACT_QUOTA_BYTES` (default 1 GB) and `VIPSHEADER_PATH` (image sizes without decoding; ships with libvips). (6) `uploads:gc` also queues `media:process` again for uploads still `uploaded` after 5 minutes, so a lost enqueue (Redis down at `completeUpload`) heals. (7) The handler rejects `bytes < 1` itself because the generated server does not enforce schema minimums. (8) `dev:native` now also checks `ffprobe` and `vipsheader`.
 
 ## Phase 5: Web foundation
 

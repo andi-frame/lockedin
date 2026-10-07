@@ -25,9 +25,13 @@ Use asynq with three queues:
 | `default` | notifications and email | 3 |
 | `media` | transcoding | 1, plus its own concurrency cap |
 
-`cmd/worker` registers periodic tasks through `asynq.PeriodicTaskManager`. Every handler is idempotent.
+`cmd/worker` registers periodic tasks with `asynq.Scheduler` (the schedule is a fixed table in `internal/jobs`, so `PeriodicTaskManager`'s dynamic reloading is not needed). Every handler is idempotent.
 
 ## Consequences
 - Redis must run with AOF persistence (`appendonly yes`) so queued tasks survive a restart.
 - Side effects that must be emitted exactly at commit go through the outbox table.
+- asynq has no per-queue concurrency, so the `media` cap (2) comes from running a **second asynq server** that serves only the `media` queue with `Concurrency: 2` (PLAN 4.2). The first design, a semaphore inside the media handler, would have parked waiting transcodes on the shared worker pool and starved settlement. The first server serves `critical` and `default` only.
+- Periodic tasks are enqueued with `MaxRetry(0)` and a unique lock slightly shorter than their period: two worker replicas schedule the same tick once, and a failed tick is repaired by the next one, because every job re-derives its work from the database.
 - If asynq stops being maintained, River (Postgres) is the fallback. Task handlers sit behind our own `jobs` interfaces, so swapping is contained.
+- Email tasks (`email:notification`, `email:digest`, `email:invite`) are enqueued by the outbox relay after its transaction committed, never from inside one. They retry up to 5 times; the handler claims the row (`emailed_at`) before it sends and releases the claim on failure, so a retry or a duplicate task cannot send twice.
+- **The invite token is a secret that has to reach the mailer.** `Propose` writes an outbox row with the plaintext token (the database stores only its hash elsewhere). The relay strips `token` from that row's payload when it dispatches it, and the token then lives only in the asynq task payload until the email is sent (`Retention(0)`). Redis therefore briefly holds a live, single-use, 7-day invite token; it carries no more power than the link the backer already received. The alternative, encrypting the token in the outbox, adds a key to manage for no gain over this short window.

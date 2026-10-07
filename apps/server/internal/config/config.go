@@ -22,9 +22,12 @@ type Config struct {
 	SMTPURL       string `env:"SMTP_URL" envDefault:"smtp://localhost:1025"`
 	MailFrom      string `env:"MAIL_FROM" envDefault:"Tepati <no-reply@tepati.local>"`
 	MediaQueueMax int    `env:"MEDIA_QUEUE_MAX" envDefault:"500"`
-	Storage       Storage
-	Upload        Upload
-	Media         MediaTools
+	// Worker: jobs run at once, and the port of its /metrics listener (0 turns it off).
+	WorkerConcurrency int `env:"WORKER_CONCURRENCY" envDefault:"10"`
+	WorkerMetricsPort int `env:"WORKER_METRICS_PORT" envDefault:"9091"`
+	Storage           Storage
+	Upload            Upload
+	Media             MediaTools
 }
 
 type Storage struct {
@@ -47,12 +50,15 @@ type Upload struct {
 	VideoMaxSeconds int   `env:"UPLOAD_VIDEO_MAX_SECONDS" envDefault:"180"`
 	FileMaxBytes    int64 `env:"UPLOAD_FILE_MAX_BYTES" envDefault:"20971520"`
 	MaxPerProof     int   `env:"UPLOAD_MAX_PER_PROOF" envDefault:"10"`
+	PactQuotaBytes  int64 `env:"UPLOAD_PACT_QUOTA_BYTES" envDefault:"1073741824"` // stored media per pact, SPEC §8
 }
 
 type MediaTools struct {
 	FFmpeg  string `env:"FFMPEG_PATH" envDefault:"ffmpeg"`
 	FFprobe string `env:"FFPROBE_PATH" envDefault:"ffprobe"`
 	Vips    string `env:"VIPS_PATH" envDefault:"vips"`
+	// vipsheader reads image sizes without decoding; it ships with the libvips tools.
+	VipsHeader string `env:"VIPSHEADER_PATH" envDefault:"vipsheader"`
 }
 
 func (c Config) IsProduction() bool { return c.Env == "production" }
@@ -90,6 +96,8 @@ func (c Config) validate() error {
 	// The test clock lets e2e tests move time; it must never be reachable in production.
 	check(!(c.ClockOverride && c.IsProduction()), "CLOCK_OVERRIDE must be false in production")
 	check(c.APIPort > 0 && c.APIPort < 65536, "API_PORT out of range")
+	check(c.WorkerConcurrency > 0, "WORKER_CONCURRENCY must be at least 1")
+	check(c.WorkerMetricsPort >= 0 && c.WorkerMetricsPort < 65536, "WORKER_METRICS_PORT out of range")
 	return errors.Join(errs...)
 }
 

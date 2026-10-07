@@ -15,3 +15,4 @@ Format: Context → Decision → Consequences. Use the next free number.
 | [0007](0007-review-power.md) | Review power model: auto-approve, dispute, backer override | Accepted |
 | [0008](0008-run-modes.md) | Three run modes driven by Bun scripts | Accepted |
 | [0009](0009-visual-direction.md) | Visual direction: Buku Tabungan (passbook) | Accepted |
+| [0010](0010-api-conventions.md) | API conventions: errors, idempotency, bodies, pagination | Accepted |

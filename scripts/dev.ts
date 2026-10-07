@@ -1,6 +1,7 @@
 // `bun run dev:{docker,hybrid,native,apps}`: one entry point for every run mode (ADR-0008).
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { airCommand } from "./lib/air.ts";
 import { checkBinary, checkPostgres, checkRedis } from "./lib/checks.ts";
 import { readEnvFile } from "./lib/env.ts";
 import { paths } from "./lib/paths.ts";
@@ -24,8 +25,8 @@ function appSpecs(env: Record<string, string>): { specs: ProcSpec[]; missing: st
   for (const name of ["api", "worker"] as const) {
     const air = join(server, `.air.${name}.toml`);
     if (existsSync(join(server, "go.mod")) && existsSync(air)) {
-      specs.push({ name, cwd: server, env, cmd: ["air", "-c", air] });
-    } else missing.push(`${name} (PLAN 1.1)`);
+      specs.push({ name, cwd: server, env, cmd: airCommand(air, env) });
+    } else missing.push(`${name} (.air.${name}.toml)`);
   }
   return { specs, missing };
 }
@@ -43,7 +44,9 @@ async function nativePreflight(env: Record<string, string>) {
     checkPostgres(env.DATABASE_URL ?? "postgres://localhost:5432"),
     checkRedis(env.REDIS_URL ?? "redis://localhost:6379"),
     checkBinary("ffmpeg", [env.FFMPEG_PATH ?? "ffmpeg", "-version"], "Install ffmpeg (Windows: winget install Gyan.FFmpeg)."),
-    checkBinary("vips", [env.VIPS_PATH ?? "vips", "--version"], "Install the libvips CLI and put `vips` on PATH."),
+    checkBinary("ffprobe", [env.FFPROBE_PATH ?? "ffprobe", "-version"], "ffprobe ships with ffmpeg; put its folder on PATH."),
+    checkBinary("vips", [env.VIPS_PATH ?? "vips", "--version"], "Install the libvips CLI (Windows: winget install libvips.libvips) and put `vips` on PATH."),
+    checkBinary("vipsheader", [env.VIPSHEADER_PATH ?? "vipsheader", "--version"], "vipsheader ships with the libvips tools; put its folder on PATH."),
   ]);
   for (const r of results) (r.ok ? log.ok : log.bad)(`${r.name}: ${r.detail}`);
   const failed = results.filter((r) => !r.ok);

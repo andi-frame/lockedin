@@ -83,6 +83,7 @@ type Notification struct {
 	Payload   json.RawMessage
 	ReadAt    *time.Time
 	CreatedAt time.Time
+	EmailedAt *time.Time
 }
 
 type Outbox struct {
@@ -121,6 +122,7 @@ type PactInvite struct {
 	ExpiresAt time.Time
 	UsedAt    *time.Time
 	CreatedAt time.Time
+	EmailedAt *time.Time
 }
 
 type PactMember struct {
@@ -152,6 +154,12 @@ type Proof struct {
 	WordCount int32
 	Links     json.RawMessage
 	CreatedAt time.Time
+}
+
+type RemindersSent struct {
+	CheckInID uuid.UUID
+	Kind      string
+	SentAt    time.Time
 }
 
 type User struct {

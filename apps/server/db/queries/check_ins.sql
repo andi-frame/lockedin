@@ -53,21 +53,77 @@ select * from check_ins
 where pact_id = sqlc.arg(pact_id) and local_date between sqlc.arg(from_date) and sqlc.arg(to_date)
 order by local_date, member_id;
 
--- name: ListReviewQueue :many
-select c.*, p.title as pact_title from check_ins c
+-- Keyset page ordered by (review_deadline, id), soonest first. The proof word count and
+-- attachment count come from the latest proof version.
+-- name: ListReviewQueuePage :many
+select sqlc.embed(c), p.title as pact_title,
+       coalesce(lp.word_count, 0)::int as word_count,
+       (select count(*) from attachments a where a.proof_id = lp.id)::int as attachment_count
+from check_ins c
 join pacts p on p.id = c.pact_id
-where c.reviewer_id = $1 and c.status = 'submitted'
-order by c.review_deadline;
+left join lateral (
+  select id, word_count from proofs pr where pr.check_in_id = c.id order by version desc limit 1
+) lp on true
+where c.reviewer_id = sqlc.arg(reviewer_id) and c.status = 'submitted'
+  and (sqlc.narg(after_deadline)::timestamptz is null
+       or (c.review_deadline, c.id) > (sqlc.narg(after_deadline)::timestamptz, sqlc.narg(after_id)::uuid))
+order by c.review_deadline, c.id
+limit sqlc.arg(max_rows);
 
--- name: ListOpenCheckInsForMember :many
-select c.*, p.title as pact_title from check_ins c
+-- name: CountReviewQueue :one
+select count(*) from check_ins where reviewer_id = $1 and status = 'submitted';
+
+-- My check-ins for the Today screen: dated today in each active pact's timezone, plus an
+-- earlier day that is still open because its grace period has not ended.
+-- name: ListTodayCheckIns :many
+select sqlc.embed(c), p.title as pact_title,
+       coalesce(lp.word_count, 0)::int as word_count,
+       (lp.id is not null)::boolean as has_proof
+from check_ins c
 join pacts p on p.id = c.pact_id
-where c.member_id = sqlc.arg(member_id) and p.status = 'active' and not c.is_final
-  and c.cutoff_at between sqlc.arg(from_time) and sqlc.arg(to_time)
-order by c.cutoff_at;
+left join lateral (
+  select id, word_count from proofs pr where pr.check_in_id = c.id order by version desc limit 1
+) lp on true
+where c.member_id = sqlc.arg(member_id) and p.status = 'active'
+  and (c.local_date = (sqlc.arg(now)::timestamptz at time zone p.timezone)::date
+       or (c.status = 'open' and c.local_date < (sqlc.arg(now)::timestamptz at time zone p.timezone)::date
+           and c.submit_deadline > sqlc.arg(now)::timestamptz))
+order by c.submit_deadline, c.id;
+
+-- My nearest unfinished deadline per pact (open days only).
+-- name: NextDeadlines :many
+select pact_id, min(submit_deadline)::timestamptz as next_deadline from check_ins
+where member_id = sqlc.arg(member_id) and status = 'open' and pact_id = any(sqlc.arg(pact_ids)::uuid[])
+group by pact_id;
 
 -- name: CountNonFinalCheckIns :one
 select count(*) from check_ins where pact_id = $1 and not is_final;
 
 -- name: CountCheckInsForPact :one
 select count(*) from check_ins where pact_id = $1;
+
+-- Reminders (SPEC §9). Open check-ins of active pacts whose cutoff falls in (from_at, to_at]
+-- and that were not yet reminded with this kind.
+-- name: ListCutoffReminderCandidates :many
+select c.* from check_ins c
+join pacts p on p.id = c.pact_id
+where p.status = 'active' and c.status = 'open'
+  and c.cutoff_at > sqlc.arg(from_at)::timestamptz and c.cutoff_at <= sqlc.arg(to_at)::timestamptz
+  and not exists (select 1 from reminders_sent r where r.check_in_id = c.id and r.kind = sqlc.arg(kind)::text)
+order by c.cutoff_at
+limit sqlc.arg(max_rows);
+
+-- Submitted check-ins whose review deadline falls in (from_at, to_at] and whose reviewer
+-- was not yet reminded.
+-- name: ListReviewReminderCandidates :many
+select c.* from check_ins c
+join pacts p on p.id = c.pact_id
+where p.status = 'active' and c.status = 'submitted'
+  and c.review_deadline > sqlc.arg(from_at)::timestamptz and c.review_deadline <= sqlc.arg(to_at)::timestamptz
+  and not exists (select 1 from reminders_sent r where r.check_in_id = c.id and r.kind = 'review_deadline_soon')
+order by c.review_deadline
+limit sqlc.arg(max_rows);
+
+-- 0 rows = this reminder was already sent (possibly by another worker).
+-- name: InsertReminderSent :execrows
+insert into reminders_sent (check_in_id, kind) values ($1, $2) on conflict do nothing;

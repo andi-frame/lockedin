@@ -89,6 +89,42 @@ func (q *Queries) AddPactMember(ctx context.Context, arg AddPactMemberParams) er
 	return err
 }
 
+const claimInviteEmail = `-- name: ClaimInviteEmail :one
+with c as (
+  update pact_invites set emailed_at = now()
+  where token_hash = $1 and emailed_at is null and used_at is null and email is not null and expires_at > $2
+  returning pact_invites.pact_id, pact_invites.email, pact_invites.expires_at
+)
+select c.email::text as email, c.expires_at, p.title, u.display_name as backer_name
+from c join pacts p on p.id = c.pact_id join users u on u.id = p.backer_id
+`
+
+type ClaimInviteEmailParams struct {
+	TokenHash string
+	ExpiresAt time.Time
+}
+
+type ClaimInviteEmailRow struct {
+	Email      string
+	ExpiresAt  time.Time
+	Title      string
+	BackerName string
+}
+
+// Claims an unused, unexpired invite that has an address for emailing, and returns what the
+// mail needs. No row: no address, already mailed, used, expired or unknown.
+func (q *Queries) ClaimInviteEmail(ctx context.Context, arg ClaimInviteEmailParams) (ClaimInviteEmailRow, error) {
+	row := q.db.QueryRow(ctx, claimInviteEmail, arg.TokenHash, arg.ExpiresAt)
+	var i ClaimInviteEmailRow
+	err := row.Scan(
+		&i.Email,
+		&i.ExpiresAt,
+		&i.Title,
+		&i.BackerName,
+	)
+	return i, err
+}
+
 const countAcceptances = `-- name: CountAcceptances :one
 select count(*) from pact_members where pact_id = $1 and accepted_terms_hash = $2
 `
@@ -196,7 +232,7 @@ func (q *Queries) CreatePact(ctx context.Context, arg CreatePactParams) (Pact, e
 }
 
 const getInvite = `-- name: GetInvite :one
-select token_hash, pact_id, email, expires_at, used_at, created_at from pact_invites where token_hash = $1
+select token_hash, pact_id, email, expires_at, used_at, created_at, emailed_at from pact_invites where token_hash = $1
 `
 
 func (q *Queries) GetInvite(ctx context.Context, tokenHash string) (PactInvite, error) {
@@ -209,6 +245,7 @@ func (q *Queries) GetInvite(ctx context.Context, tokenHash string) (PactInvite, 
 		&i.ExpiresAt,
 		&i.UsedAt,
 		&i.CreatedAt,
+		&i.EmailedAt,
 	)
 	return i, err
 }
@@ -360,6 +397,57 @@ func (q *Queries) IncrementRestDaysUsed(ctx context.Context, arg IncrementRestDa
 	return err
 }
 
+const listMembersForPacts = `-- name: ListMembersForPacts :many
+select m.pact_id, m.user_id, m.role, m.line_color, m.accepted_terms_hash, m.accepted_at, m.signature_name, m.rest_days_used, u.display_name, u.email from pact_members m
+join users u on u.id = m.user_id
+where m.pact_id = any($1::uuid[])
+order by m.pact_id, m.role
+`
+
+type ListMembersForPactsRow struct {
+	PactID            uuid.UUID
+	UserID            uuid.UUID
+	Role              string
+	LineColor         string
+	AcceptedTermsHash *string
+	AcceptedAt        *time.Time
+	SignatureName     *string
+	RestDaysUsed      int32
+	DisplayName       string
+	Email             string
+}
+
+func (q *Queries) ListMembersForPacts(ctx context.Context, pactIds []uuid.UUID) ([]ListMembersForPactsRow, error) {
+	rows, err := q.db.Query(ctx, listMembersForPacts, pactIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListMembersForPactsRow{}
+	for rows.Next() {
+		var i ListMembersForPactsRow
+		if err := rows.Scan(
+			&i.PactID,
+			&i.UserID,
+			&i.Role,
+			&i.LineColor,
+			&i.AcceptedTermsHash,
+			&i.AcceptedAt,
+			&i.SignatureName,
+			&i.RestDaysUsed,
+			&i.DisplayName,
+			&i.Email,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPactMembers = `-- name: ListPactMembers :many
 select m.pact_id, m.user_id, m.role, m.line_color, m.accepted_terms_hash, m.accepted_at, m.signature_name, m.rest_days_used, u.display_name, u.email from pact_members m
 join users u on u.id = m.user_id
@@ -457,6 +545,67 @@ func (q *Queries) ListPactsForUser(ctx context.Context, userID uuid.UUID) ([]Pac
 	return items, nil
 }
 
+const listPactsForUserPage = `-- name: ListPactsForUserPage :many
+select p.id, p.title, p.description, p.status, p.created_by, p.backer_id, p.terms, p.terms_version, p.terms_hash, p.timezone, p.starts_on, p.ends_on, p.overrides_used, p.scheduled_at, p.settled_at, p.completed_at, p.created_at, p.updated_at from pacts p
+join pact_members m on m.pact_id = p.id and m.user_id = $1
+where $2::timestamptz is null
+   or (p.created_at, p.id) < ($2::timestamptz, $3::uuid)
+order by p.created_at desc, p.id desc
+limit $4
+`
+
+type ListPactsForUserPageParams struct {
+	UserID   uuid.UUID
+	BeforeAt *time.Time
+	BeforeID *uuid.UUID
+	MaxRows  int32
+}
+
+// Keyset page, newest first. The cursor is the last row's (created_at, id).
+func (q *Queries) ListPactsForUserPage(ctx context.Context, arg ListPactsForUserPageParams) ([]Pact, error) {
+	rows, err := q.db.Query(ctx, listPactsForUserPage,
+		arg.UserID,
+		arg.BeforeAt,
+		arg.BeforeID,
+		arg.MaxRows,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Pact{}
+	for rows.Next() {
+		var i Pact
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.CreatedBy,
+			&i.BackerID,
+			&i.Terms,
+			&i.TermsVersion,
+			&i.TermsHash,
+			&i.Timezone,
+			&i.StartsOn,
+			&i.EndsOn,
+			&i.OverridesUsed,
+			&i.ScheduledAt,
+			&i.SettledAt,
+			&i.CompletedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSettlablePacts = `-- name: ListSettlablePacts :many
 select p.id from pacts p
 where p.status = 'active'
@@ -490,6 +639,15 @@ func (q *Queries) ListSettlablePacts(ctx context.Context, arg ListSettlablePacts
 		return nil, err
 	}
 	return items, nil
+}
+
+const releaseInviteEmail = `-- name: ReleaseInviteEmail :exec
+update pact_invites set emailed_at = null where token_hash = $1
+`
+
+func (q *Queries) ReleaseInviteEmail(ctx context.Context, tokenHash string) error {
+	_, err := q.db.Exec(ctx, releaseInviteEmail, tokenHash)
+	return err
 }
 
 const resetAcceptances = `-- name: ResetAcceptances :exec

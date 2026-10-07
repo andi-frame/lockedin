@@ -78,7 +78,7 @@ Audience: human developers and coding agents. Read `PRODUCT.md` (why) and `docs/
 │       │   ├── media/            # sniffing, ffmpeg/vips wrappers, limits
 │       │   ├── storage/          # BlobStore interface: s3 (Garage) and fs drivers
 │       │   ├── auth/             # argon2id, sessions, CSRF
-│       │   └── notify/           # in-app + SMTP email
+│       │   └── notify/           # email copy, SPEC §9 delivery table, SMTP sender
 │       ├── db/migrations/        # goose SQL migrations
 │       ├── db/queries/           # sqlc .sql files
 │       └── sqlc.yaml
@@ -118,13 +118,15 @@ cmd/tepatictl                       ─┘                 │
 
 ### Middleware stack (Fiber v3, in order)
 
-`requestid` → `recover` → structured access log (slog JSON) → `cors` (dev only; prod is same-origin) → **rate limiter** (Redis storage; 300 req/min/IP global, stricter per route: auth 10/min, upload-intent 30/min) → session auth → CSRF (double-submit token header for unsafe methods) → **idempotency** (`Idempotency-Key` header on POSTs that create or transition; the response is cached in Redis for 24 h) → body limit (1 MB JSON; uploads never pass through the API) → handler.
+`requestid` → structured access log and metrics → `recover` → `cors` (dev only; prod is same-origin) → **rate limiter** (Redis storage; 300 req/min/IP global, stricter per route: auth 10/min, upload-intent 30/min) → session auth + CSRF (double-submit token header for unsafe methods; only register, login and the invite preview are public) → **idempotency** (`Idempotency-Key` header on mutating requests; the 2xx response is cached in Redis for 24 h, scoped by user, method and path; failures release the key) → body limit (1 MB JSON, enforced by Fiber while it reads the request; uploads never pass through the API) → handler.
+
+The access log sits outside `recover` on purpose, so a panic is logged as the 500 it became. Logs carry the route pattern, never the raw path (invite tokens live in paths), and never bodies or tokens. `/healthz`, `/readyz` and `/metrics` are mounted at the origin root, are exempt from rate limits, and `/metrics` must not be proxied to the internet (Caddy, PLAN 7.2). Request IDs come from `X-Request-Id` and are echoed in every problem body.
 
 ### Load and burst handling
 
 - The API is stateless, so scale with `--scale api=N`; Caddy load-balances (`lb_policy least_conn`).
 - Use a `pgxpool` per instance (`max_conns = 4 × vCPU`). Add PgBouncer (transaction mode) only when `instances × max_conns > 80% of max_connections`.
-- Heavy or slow work (media transcoding, emails, settlement) **never** runs in a request. It goes to asynq queues with priorities `critical: 6` (settlement), `default: 3` (notifications), `media: 1` (transcode), and a separate worker concurrency for `media` (2) to protect the CPU.
+- Heavy or slow work (media transcoding, emails, settlement) **never** runs in a request. It goes to asynq queues with priorities `critical: 6` (settlement), `default: 3` (notifications), `media: 1` (transcode), and a separate worker concurrency for `media` (2) to protect the CPU. asynq has one worker pool per server and no per-queue cap, so the media cap is a semaphore inside the `media:process` handler (PLAN 4.2); the server itself runs the three queues with weights 6/3/1 and `WORKER_CONCURRENCY` (default 10).
 - Cache read-heavy aggregates in Redis (pot balance, the Today summary per user) with a 30 s TTL plus explicit invalidation on ledger or check-in writes. Postgres stays the truth.
 - Use backpressure on media: if the `media` queue size exceeds `MEDIA_QUEUE_MAX` (default 500), the upload-intent endpoint returns `503` with `Retry-After`.
 
@@ -222,6 +224,9 @@ create table payouts (
 
 create table notifications (id bigserial primary key, user_id uuid not null, kind text not null, payload jsonb not null, read_at timestamptz, created_at timestamptz not null default now());
 create table outbox (id bigserial primary key, topic text not null, payload jsonb not null, created_at timestamptz not null default now(), dispatched_at timestamptz);
+-- one row per (check-in, reminder kind) already sent; makes the 5-minute reminder job idempotent
+create table reminders_sent (check_in_id uuid not null references check_ins(id) on delete cascade, kind text not null, sent_at timestamptz not null default now(), primary key (check_in_id, kind));
+-- email dedupe (migration 20261009000001): notifications.emailed_at and pact_invites.emailed_at are set when an email task claims the row, cleared if the send fails
 ```
 
 Enforce append-only at the database level too:
@@ -233,7 +238,7 @@ create trigger ledger_no_update before update or delete on ledger_entries for ea
 
 ## 5. HTTP API (summary; the full contract is `api/openapi.yaml`)
 
-Base path `/api/v1`. Authentication uses session cookies. Errors use `problem+json`.
+Base path `/api/v1`. Authentication uses session cookies. Errors use `problem+json`, with the status of every `code` listed under `ErrorCode` in the contract. `/healthz`, `/readyz`, and `/metrics` sit at the origin root. Go code is generated into `internal/http/api` (`bun run codegen`), and the web types into `apps/web/src/lib/api/schema.d.ts`.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -243,7 +248,8 @@ Base path `/api/v1`. Authentication uses session cookies. Errors use `problem+js
 | GET/POST | `/pacts` | list mine / create draft |
 | GET/PATCH | `/pacts/{id}` | detail / edit terms (draft/proposed only) |
 | POST | `/pacts/{id}/propose` | send invite (returns invite link) |
-| GET | `/invites/{token}` | preview terms for the invitee |
+| GET | `/invites/{token}` | preview terms for the invitee (public: the token is the credential) |
+| POST | `/invites/{token}/join` | the invitee takes the doer slot; the terms hash changes, so they then call `accept` |
 | POST | `/pacts/{id}/accept` | body `{terms_hash, signature_name}` |
 | GET | `/pacts/{id}/ledger?cursor=` | passbook lines with running balance (window function) |
 | GET | `/pacts/{id}/check-ins?from=&to=` | calendar |
@@ -259,6 +265,8 @@ Base path `/api/v1`. Authentication uses session cookies. Errors use `problem+js
 | POST | `/pacts/{id}/payout/mark-paid` · `/confirm` | settlement |
 | GET | `/notifications` · POST `/notifications/read` | inbox |
 | GET | `/healthz` · `/readyz` | liveness / readiness (DB + Redis + S3 ping) |
+
+Request bodies are JSON only: an empty body on a POST, PUT, or PATCH counts as `{}` (the generated handlers bind a body even where the contract calls it optional), and any other content type gets `415 request.unsupported_media_type`. `uploads`, `uploads/{id}/complete`, and `attachments/{id}` answer `503 server.unavailable` until PLAN 4.1/4.2. The client IP behind Caddy comes from `X-Forwarded-For`, trusted only from a loopback or private peer, so the production Caddyfile must not list untrusted proxies and must overwrite any inbound `X-Forwarded-For`.
 
 ## 6. Upload and compression pipeline
 
@@ -289,10 +297,12 @@ client                         api                          garage              
 ```
 
 - **Defence in depth on size:** (1) a client pre-check, (2) the intent rejects declared bytes over the limit, (3) the signed `Content-Length` header means Garage rejects a mismatched PUT, (4) `complete` HEADs the object and rejects a mismatch, (5) the worker re-checks actual pixels and duration, (6) the post-transcode size is capped. Caddy also caps any request body to the API at 2 MB.
-- **Garage presign caveat:** verify in integration test `TestPresignedPutRejectsWrongLength` that Garage enforces a signed `Content-Length`. If it does not, switch the `storage` driver option `UPLOAD_MODE=proxy`: the client PUTs to `/api/v1/uploads/{id}/body`, which streams to Garage through `io.LimitReader(max+1)`. Caddy then allows a larger body only on that route. Both modes must exist behind the same interface.
-- Lifecycle: a periodic job deletes `awaiting_upload`/`uploaded` attachments older than 24 h and staging objects older than 24 h. Orphan `ready` attachments (never attached to a proof) are deleted after 7 days.
+- **Garage presign caveat (checked 2026-10-07, see ADR-0005):** `TestPresignedPutRejectsWrongLength` shows Garage enforces the signed `Content-Length`, so presigned mode is the default. The proxy fallback below is only needed if that ever changes. If it does not, switch the `storage` driver option `UPLOAD_MODE=proxy`: the client PUTs to `/api/v1/uploads/{id}/body`, which streams to Garage through `io.LimitReader(max+1)`. Caddy then allows a larger body only on that route. Both modes must exist behind the same interface.
+- Lifecycle (`uploads:gc`, hourly): deletes `awaiting_upload`/`uploaded` attachments older than 24 h together with their staging objects, deletes `ready` or `rejected` attachments that never joined a proof after 7 days together with their media objects, and queues `media:process` again for attachments still `uploaded` after 5 minutes.
+- `media:process` runs on its own asynq server (concurrency 2), is idempotent per attachment (task id `media-<id>`), retries 3 times, and when the retries run out the attachment is rejected with "Pemrosesan gagal. Coba unggah ulang.". A `RejectError` from the media package (wrong type, over a limit, unreadable file) is an answer, not a failure: the attachment is rejected at once and nothing is retried. The API answers `503 upload.queue_busy` with `Retry-After: 10` when the media queue holds `MEDIA_QUEUE_MAX` tasks.
+- Tools run with `VIPS_BLOCK_UNTRUSTED=1` and ffmpeg with `-protocol_whitelist file`; videos are re-encoded with `-map_metadata -1`, images saved with `strip`.
 - Media is served via short-lived signed GET URLs (never public buckets). Only pact members can obtain them.
-- The `fs` storage driver (for no-Docker mode) implements the same interface. It uses an HMAC-signed local URL `/api/v1/blob/{key}?sig=` and is not for production.
+- The `fs` storage driver (for no-Docker mode) implements the same interface. It uses an HMAC-signed local URL `/api/v1/blob/{bucket}/{key}?m=&exp=&len=&ct=&sig=` (method, expiry, and for PUT the length and content type are all signed), served by `FS.ServeHTTP` mounted by the API ahead of the session gate. Fiber has a single body limit, so with this driver it is raised to the largest upload limit and JSON routes are re-capped at 1 MB. It is not for production.
 
 ## 7. Frontend design (Next.js)
 
@@ -329,6 +339,7 @@ S3_BUCKET_STAGING=tepati-staging     S3_BUCKET_MEDIA=tepati-media      S3_PUBLIC
 STORAGE_DRIVER=s3|fs                 FS_STORAGE_DIR=./.data/blobs       UPLOAD_MODE=presigned|proxy
 UPLOAD_IMAGE_MAX_BYTES=15728640      UPLOAD_VIDEO_MAX_BYTES=209715200   UPLOAD_VIDEO_MAX_SECONDS=180
 UPLOAD_FILE_MAX_BYTES=20971520       MEDIA_QUEUE_MAX=500
+WORKER_CONCURRENCY=10                WORKER_METRICS_PORT=9091   # 0 disables the worker's /metrics listener
 FFMPEG_PATH=ffmpeg                   VIPS_PATH=vips
 SMTP_URL=smtp://localhost:1025       MAIL_FROM="Tepati <no-reply@tepati.local>"
 SESSION_SECRET=…                     API_INTERNAL_URL=http://localhost:8080   # used by Next server-side
@@ -339,7 +350,7 @@ SESSION_SECRET=…                     API_INTERNAL_URL=http://localhost:8080   
 ## 10. Observability
 
 - Logging uses `log/slog` JSON with `request_id`, `user_id`, and `pact_id`, and the web uses pino-style JSON. Never log proof bodies or tokens.
-- `/metrics` (Prometheus) on the API and worker exposes request latency, asynq queue sizes, settlement transitions by type, and media processing time and failures.
+- `/metrics` (Prometheus) on the API and worker exposes request latency, asynq queue sizes, settlement transitions by type, and media processing time and failures. The worker's listener is `WORKER_METRICS_PORT` (default 9091) and serves `tepati_asynq_queue_tasks{queue,state}`, `tepati_asynq_queue_latency_seconds{queue}`, `tepati_settlement_transitions_total{type=deadline|activated|closed}`, `tepati_outbox_relayed_total`, `tepati_outbox_skipped_total`, `tepati_reminders_queued_total`, `tepati_emails_total{result=sent|skipped|failed|enqueue_failed}`, and `tepati_job_runs_total{task,result}` with `tepati_job_duration_seconds{task}`. Media metrics arrive with PLAN 4.2.
 - asynqmon UI (dev and staging only, behind basic auth in staging).
 
 ## 11. Testing strategy

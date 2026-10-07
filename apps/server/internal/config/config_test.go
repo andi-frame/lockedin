@@ -24,6 +24,9 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	if cfg.APIPort != 8080 || cfg.Storage.Driver != "s3" || cfg.Upload.ImageMaxBytes != 15<<20 {
 		t.Fatalf("defaults not applied: %+v", cfg)
 	}
+	if cfg.WorkerConcurrency != 10 || cfg.WorkerMetricsPort != 9091 {
+		t.Fatalf("worker defaults not applied: %+v", cfg)
+	}
 	if cfg.Upload.VideoMaxSeconds != 180 || cfg.Storage.BucketStaging != "tepati-staging" {
 		t.Fatalf("defaults not applied: %+v", cfg)
 	}
@@ -55,6 +58,8 @@ func TestValidateRules(t *testing.T) {
 		{"s3 without keys", func(e map[string]string) { delete(e, "S3_ACCESS_KEY") }, "S3_ACCESS_KEY"},
 		{"bad driver", func(e map[string]string) { e["STORAGE_DRIVER"] = "ftp" }, "STORAGE_DRIVER"},
 		{"bad upload mode", func(e map[string]string) { e["UPLOAD_MODE"] = "magic" }, "UPLOAD_MODE"},
+		{"zero worker concurrency", func(e map[string]string) { e["WORKER_CONCURRENCY"] = "0" }, "WORKER_CONCURRENCY"},
+		{"worker metrics port out of range", func(e map[string]string) { e["WORKER_METRICS_PORT"] = "70000" }, "WORKER_METRICS_PORT"},
 		{"clock override in production", func(e map[string]string) {
 			e["APP_ENV"] = "production"
 			e["CLOCK_OVERRIDE"] = "true"

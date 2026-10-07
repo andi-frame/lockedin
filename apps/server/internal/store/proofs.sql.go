@@ -38,6 +38,39 @@ func (q *Queries) AttachToProof(ctx context.Context, arg AttachToProofParams) (i
 	return result.RowsAffected(), nil
 }
 
+const claimAttachmentForProcessing = `-- name: ClaimAttachmentForProcessing :one
+update attachments set status = 'processing' where id = $1 and status in ('uploaded', 'processing') returning id, owner_id, pact_id, proof_id, kind, status, staging_key, media_key, thumb_key, declared_mime, sniffed_mime, declared_bytes, stored_bytes, width, height, duration_ms, reject_reason, created_at, ready_at
+`
+
+// 'processing' is claimable again so a task retried after a crash picks up where it died; asynq
+// runs one attempt of a task at a time and the task id is unique per attachment.
+func (q *Queries) ClaimAttachmentForProcessing(ctx context.Context, id uuid.UUID) (Attachment, error) {
+	row := q.db.QueryRow(ctx, claimAttachmentForProcessing, id)
+	var i Attachment
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.PactID,
+		&i.ProofID,
+		&i.Kind,
+		&i.Status,
+		&i.StagingKey,
+		&i.MediaKey,
+		&i.ThumbKey,
+		&i.DeclaredMime,
+		&i.SniffedMime,
+		&i.DeclaredBytes,
+		&i.StoredBytes,
+		&i.Width,
+		&i.Height,
+		&i.DurationMs,
+		&i.RejectReason,
+		&i.CreatedAt,
+		&i.ReadyAt,
+	)
+	return i, err
+}
+
 const countAttachmentsByStatus = `-- name: CountAttachmentsByStatus :many
 select status, count(*)::int as n from attachments
 where id = any($1::uuid[]) and owner_id = $2 and pact_id = $3
@@ -76,8 +109,8 @@ func (q *Queries) CountAttachmentsByStatus(ctx context.Context, arg CountAttachm
 }
 
 const createAttachment = `-- name: CreateAttachment :one
-insert into attachments (id, owner_id, pact_id, kind, declared_mime, declared_bytes, staging_key)
-values ($1, $2, $3, $4, $5, $6, $7)
+insert into attachments (id, owner_id, pact_id, kind, declared_mime, declared_bytes, staging_key, created_at)
+values ($1, $2, $3, $4, $5, $6, $7, $8)
 returning id, owner_id, pact_id, proof_id, kind, status, staging_key, media_key, thumb_key, declared_mime, sniffed_mime, declared_bytes, stored_bytes, width, height, duration_ms, reject_reason, created_at, ready_at
 `
 
@@ -89,6 +122,7 @@ type CreateAttachmentParams struct {
 	DeclaredMime  *string
 	DeclaredBytes *int64
 	StagingKey    *string
+	CreatedAt     time.Time
 }
 
 func (q *Queries) CreateAttachment(ctx context.Context, arg CreateAttachmentParams) (Attachment, error) {
@@ -100,6 +134,7 @@ func (q *Queries) CreateAttachment(ctx context.Context, arg CreateAttachmentPara
 		arg.DeclaredMime,
 		arg.DeclaredBytes,
 		arg.StagingKey,
+		arg.CreatedAt,
 	)
 	var i Attachment
 	err := row.Scan(
@@ -124,6 +159,15 @@ func (q *Queries) CreateAttachment(ctx context.Context, arg CreateAttachmentPara
 		&i.ReadyAt,
 	)
 	return i, err
+}
+
+const deleteAttachment = `-- name: DeleteAttachment :exec
+delete from attachments where id = $1
+`
+
+func (q *Queries) DeleteAttachment(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAttachment, id)
+	return err
 }
 
 const getAttachment = `-- name: GetAttachment :one
@@ -327,6 +371,58 @@ func (q *Queries) ListDecisions(ctx context.Context, checkInID uuid.UUID) ([]Lis
 	return items, nil
 }
 
+const listOrphanAttachments = `-- name: ListOrphanAttachments :many
+select id, owner_id, pact_id, proof_id, kind, status, staging_key, media_key, thumb_key, declared_mime, sniffed_mime, declared_bytes, stored_bytes, width, height, duration_ms, reject_reason, created_at, ready_at from attachments
+where status in ('ready', 'rejected') and proof_id is null and created_at < $1
+order by created_at limit $2
+`
+
+type ListOrphanAttachmentsParams struct {
+	CreatedAt time.Time
+	Limit     int32
+}
+
+// Processed but never attached to a proof, or rejected, older than the cutoff.
+func (q *Queries) ListOrphanAttachments(ctx context.Context, arg ListOrphanAttachmentsParams) ([]Attachment, error) {
+	rows, err := q.db.Query(ctx, listOrphanAttachments, arg.CreatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Attachment{}
+	for rows.Next() {
+		var i Attachment
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerID,
+			&i.PactID,
+			&i.ProofID,
+			&i.Kind,
+			&i.Status,
+			&i.StagingKey,
+			&i.MediaKey,
+			&i.ThumbKey,
+			&i.DeclaredMime,
+			&i.SniffedMime,
+			&i.DeclaredBytes,
+			&i.StoredBytes,
+			&i.Width,
+			&i.Height,
+			&i.DurationMs,
+			&i.RejectReason,
+			&i.CreatedAt,
+			&i.ReadyAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProofs = `-- name: ListProofs :many
 select id, check_in_id, version, body_doc, body_text, word_count, links, created_at from proofs where check_in_id = $1 order by version desc
 `
@@ -358,4 +454,198 @@ func (q *Queries) ListProofs(ctx context.Context, checkInID uuid.UUID) ([]Proof,
 		return nil, err
 	}
 	return items, nil
+}
+
+const listStaleUploads = `-- name: ListStaleUploads :many
+select id, owner_id, pact_id, proof_id, kind, status, staging_key, media_key, thumb_key, declared_mime, sniffed_mime, declared_bytes, stored_bytes, width, height, duration_ms, reject_reason, created_at, ready_at from attachments
+where status in ('awaiting_upload', 'uploaded') and created_at < $1
+order by created_at limit $2
+`
+
+type ListStaleUploadsParams struct {
+	CreatedAt time.Time
+	Limit     int32
+}
+
+// Slots never completed, or completed and never processed, older than the cutoff.
+func (q *Queries) ListStaleUploads(ctx context.Context, arg ListStaleUploadsParams) ([]Attachment, error) {
+	rows, err := q.db.Query(ctx, listStaleUploads, arg.CreatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Attachment{}
+	for rows.Next() {
+		var i Attachment
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerID,
+			&i.PactID,
+			&i.ProofID,
+			&i.Kind,
+			&i.Status,
+			&i.StagingKey,
+			&i.MediaKey,
+			&i.ThumbKey,
+			&i.DeclaredMime,
+			&i.SniffedMime,
+			&i.DeclaredBytes,
+			&i.StoredBytes,
+			&i.Width,
+			&i.Height,
+			&i.DurationMs,
+			&i.RejectReason,
+			&i.CreatedAt,
+			&i.ReadyAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStuckUploaded = `-- name: ListStuckUploaded :many
+select id, owner_id, pact_id, proof_id, kind, status, staging_key, media_key, thumb_key, declared_mime, sniffed_mime, declared_bytes, stored_bytes, width, height, duration_ms, reject_reason, created_at, ready_at from attachments where status = 'uploaded' and created_at < $1 order by created_at limit $2
+`
+
+type ListStuckUploadedParams struct {
+	CreatedAt time.Time
+	Limit     int32
+}
+
+// Completed uploads whose processing task never ran (for example Redis was down at enqueue time).
+func (q *Queries) ListStuckUploaded(ctx context.Context, arg ListStuckUploadedParams) ([]Attachment, error) {
+	rows, err := q.db.Query(ctx, listStuckUploaded, arg.CreatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Attachment{}
+	for rows.Next() {
+		var i Attachment
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerID,
+			&i.PactID,
+			&i.ProofID,
+			&i.Kind,
+			&i.Status,
+			&i.StagingKey,
+			&i.MediaKey,
+			&i.ThumbKey,
+			&i.DeclaredMime,
+			&i.SniffedMime,
+			&i.DeclaredBytes,
+			&i.StoredBytes,
+			&i.Width,
+			&i.Height,
+			&i.DurationMs,
+			&i.RejectReason,
+			&i.CreatedAt,
+			&i.ReadyAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markAttachmentReady = `-- name: MarkAttachmentReady :exec
+update attachments
+set status = 'ready', media_key = $2, thumb_key = $3, sniffed_mime = $4, stored_bytes = $5,
+    width = $6, height = $7, duration_ms = $8, ready_at = $9
+where id = $1
+`
+
+type MarkAttachmentReadyParams struct {
+	ID          uuid.UUID
+	MediaKey    *string
+	ThumbKey    *string
+	SniffedMime *string
+	StoredBytes *int64
+	Width       *int32
+	Height      *int32
+	DurationMs  *int32
+	ReadyAt     *time.Time
+}
+
+func (q *Queries) MarkAttachmentReady(ctx context.Context, arg MarkAttachmentReadyParams) error {
+	_, err := q.db.Exec(ctx, markAttachmentReady,
+		arg.ID,
+		arg.MediaKey,
+		arg.ThumbKey,
+		arg.SniffedMime,
+		arg.StoredBytes,
+		arg.Width,
+		arg.Height,
+		arg.DurationMs,
+		arg.ReadyAt,
+	)
+	return err
+}
+
+const markAttachmentUploaded = `-- name: MarkAttachmentUploaded :one
+update attachments set status = 'uploaded' where id = $1 and status = 'awaiting_upload' returning id, owner_id, pact_id, proof_id, kind, status, staging_key, media_key, thumb_key, declared_mime, sniffed_mime, declared_bytes, stored_bytes, width, height, duration_ms, reject_reason, created_at, ready_at
+`
+
+// Only the first call wins; a repeat of "complete" finds no row and reads the current one.
+func (q *Queries) MarkAttachmentUploaded(ctx context.Context, id uuid.UUID) (Attachment, error) {
+	row := q.db.QueryRow(ctx, markAttachmentUploaded, id)
+	var i Attachment
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.PactID,
+		&i.ProofID,
+		&i.Kind,
+		&i.Status,
+		&i.StagingKey,
+		&i.MediaKey,
+		&i.ThumbKey,
+		&i.DeclaredMime,
+		&i.SniffedMime,
+		&i.DeclaredBytes,
+		&i.StoredBytes,
+		&i.Width,
+		&i.Height,
+		&i.DurationMs,
+		&i.RejectReason,
+		&i.CreatedAt,
+		&i.ReadyAt,
+	)
+	return i, err
+}
+
+const rejectAttachment = `-- name: RejectAttachment :exec
+update attachments set status = 'rejected', reject_reason = $2 where id = $1
+`
+
+type RejectAttachmentParams struct {
+	ID           uuid.UUID
+	RejectReason *string
+}
+
+func (q *Queries) RejectAttachment(ctx context.Context, arg RejectAttachmentParams) error {
+	_, err := q.db.Exec(ctx, rejectAttachment, arg.ID, arg.RejectReason)
+	return err
+}
+
+const sumPactAttachmentBytes = `-- name: SumPactAttachmentBytes :one
+select coalesce(sum(coalesce(stored_bytes, declared_bytes)), 0)::bigint from attachments
+where pact_id = $1 and status <> 'rejected'
+`
+
+func (q *Queries) SumPactAttachmentBytes(ctx context.Context, pactID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, sumPactAttachmentBytes, pactID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }

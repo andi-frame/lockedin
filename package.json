@@ -23,7 +23,8 @@
     "db:migrate": "bun scripts/db.ts migrate",
     "db:rollback": "bun scripts/db.ts rollback",
     "db:new": "bun scripts/db.ts new",
-    "db:seed": "bun scripts/todo.ts db:seed 3.1",
+    "db:seed": "bun scripts/seed.ts",
+    "ctl": "bun scripts/ctl.ts",
     "codegen": "bun scripts/codegen.ts",
     "test": "bun test scripts && cd apps/server && go test ./...",
     "test:integration": "cd apps/server && go test -tags=integration -count=1 ./...",
@@ -38,6 +39,7 @@
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.1147.0",
     "@types/bun": "latest",
+    "openapi-typescript": "^7.13.0",
     "typescript": "^5.9.0"
   }
 }

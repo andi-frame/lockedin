@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 
 	"github.com/gofiber/fiber/v3"
@@ -8,6 +9,10 @@ import (
 )
 
 const localsUser = "auth.user_id"
+
+// ctxUser carries the user in the request's context.Context, which is what the
+// generated strict handlers receive.
+type ctxUser struct{}
 
 // RequireUser rejects requests without a valid session cookie (401) and stores the
 // user id for handlers. Unsafe methods also need a CSRF header bound to the session.
@@ -25,6 +30,7 @@ func RequireUser(s *Sessions) fiber.Handler {
 			return fiber.NewError(fiber.StatusForbidden, "auth.csrf")
 		}
 		c.Locals(localsUser, user)
+		c.SetContext(context.WithValue(c.Context(), ctxUser{}, user))
 		return c.Next()
 	}
 }
@@ -32,6 +38,13 @@ func RequireUser(s *Sessions) fiber.Handler {
 // UserID returns the authenticated user set by RequireUser.
 func UserID(c fiber.Ctx) uuid.UUID {
 	id, _ := c.Locals(localsUser).(uuid.UUID)
+	return id
+}
+
+// UserFromContext is UserID for generated strict handlers, which receive a plain
+// context.Context (set by RequireUser) instead of a fiber.Ctx.
+func UserFromContext(ctx context.Context) uuid.UUID {
+	id, _ := ctx.Value(ctxUser{}).(uuid.UUID)
 	return id
 }
 

@@ -2,7 +2,7 @@
 
 > *Tepati janji belajarmu.* A pact between two friends: one puts up a coin pot, the other proves every day that they studied. Each missed day takes coins out of the pot.
 
-**Status:** design and architecture are done, and implementation hasn't started yet. See [`docs/PLAN.md`](docs/PLAN.md).
+**Status:** the backend is complete (Phases 0 to 4: API, worker, email, uploads and media). The web app (Phase 5 onwards) has not been started. Read [`docs/HANDOVER.md`](docs/HANDOVER.md) and [`docs/STATUS.md`](docs/STATUS.md) first; the task list is [`docs/PLAN.md`](docs/PLAN.md).
 
 ## How it works
 
@@ -17,7 +17,7 @@
 
 Next.js 16 on Bun · Go 1.26 + Fiber v3 · PostgreSQL 18 · Redis 8 + asynq · Garage (S3) · Caddy · Docker Compose (dev / staging / prod) plus hybrid and native modes.
 
-## Quick start (once Phase 0 is implemented)
+## Quick start
 
 ```bash
 bun install
@@ -32,6 +32,8 @@ Other modes: `bun run dev:docker` runs everything in Docker, and `bun run dev:na
 | File | For |
 |---|---|
 | [`AGENTS.md`](AGENTS.md) | Rules and workflow for coding agents (and humans) |
+| [`docs/HANDOVER.md`](docs/HANDOVER.md) | How to work here as any agent: environment, owner's rules, work loop, traps, next-task playbook |
+| [`docs/STATUS.md`](docs/STATUS.md) | Where the project stands, decisions made, known gaps, brief for the next phase |
 | [`PRODUCT.md`](PRODUCT.md) | Users, purpose, principles, terminology |
 | [`docs/SPEC.md`](docs/SPEC.md) | Behaviour: pact lifecycle, check-in state machine, ledger, settlement |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Services, layout, data model, API, uploads, security |

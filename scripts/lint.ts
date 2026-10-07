@@ -1,4 +1,4 @@
-// `bun run lint`: TypeScript typecheck for scripts, plus gofmt and go vet for the server.
+// `bun run lint`: TypeScript typecheck for scripts, OpenAPI lint, plus gofmt and go vet for the server.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { paths } from "./lib/paths.ts";
@@ -6,6 +6,9 @@ import { capture, fail, log, run } from "./lib/proc.ts";
 
 await run(["bunx", "tsc", "-p", join(paths.root, "tsconfig.json"), "--noEmit"]);
 log.ok("scripts typecheck");
+
+await run(["bunx", "@redocly/cli", "lint", join(paths.root, "api", "openapi.yaml")]);
+log.ok("openapi lint");
 
 const server = join(paths.root, "apps", "server");
 if (existsSync(join(server, "go.mod"))) {
