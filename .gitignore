@@ -28,3 +28,7 @@ docs/diagrams/**/*.delivery.json
 docs/diagrams/**/*.finalize.json
 docs/diagrams/**/*.finalize-summary.json
 graphify-out/.graphify_*
+
+# web build output
+*.tsbuildinfo
+next-env.d.ts

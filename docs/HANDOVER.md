@@ -1,12 +1,12 @@
 # Handover: working in this repo as any agent
 
-Written 2026-10-08, at the end of Phase 4, by the agent that built Phases 2 to 4 (Claude Code, Sonnet 5.5). It is for the **next agent, whatever it is** (Codex, Antigravity, another Claude model, a human). Nothing here depends on Claude-specific tools. `AGENTS.md` holds the rules, `docs/STATUS.md` holds the project state and decisions, and this file holds *how to actually get things done on this machine without repeating my mistakes*.
+Written 2026-10-08, after task 5.1, by the agent that built Phases 2 to 5.1 (Claude Code, Sonnet 5.5). It is for the **next agent, whatever it is** (Codex, Antigravity, another Claude model, a human). Nothing here depends on Claude-specific tools. `AGENTS.md` holds the rules, `docs/STATUS.md` holds the project state and decisions, and this file holds *how to actually get things done on this machine without repeating my mistakes*.
 
 ## 0. In one minute
 
 - **Tepati** is a study-pact app (two peers, a coin IOU ledger, daily proof). Folder name is `lockedin`; product name is Tepati.
-- **Done:** Phases 0 to 4. The whole backend works: auth, pacts, check-ins, review and disputes, settlement worker, payouts, notifications and email, uploads and media processing. **There is no web app yet** (`apps/web` only holds a generated `schema.d.ts`).
-- **Next task:** `docs/PLAN.md` **5.1 Next.js app on Bun**. Branch `p5.1-nextjs-app`, cut from `main`. Playbook in §9.
+- **Done:** Phases 0 to 4 (the whole backend) and **5.1** (the `apps/web` scaffold: Next 16, Tailwind v4, next-intl, TanStack Query, the typed API client with CSRF and idempotency helpers). 5.1 is on branch `p5.1-nextjs-app`, committed, **not pushed or merged**.
+- **Next task:** `docs/PLAN.md` **5.2 Design tokens and primitives**. Branch `p5.2-tokens-primitives`, cut from `p5.1-nextjs-app` while that is unmerged (otherwise from `main`). Playbook in §9.
 - **Phases 2 to 4 are merged into `main`** (pull request #1, https://github.com/andi-frame/lockedin/pull/1, merge commit `054e61a`, 2026-10-08, not squashed). `origin` is `https://github.com/andi-frame/lockedin.git`. The seven task branches (`p2.1-openapi` ... `p4.2-uploads`) were deleted on 2026-10-08 at the owner's request; their commits are in `main`. Do not delete branches unasked. The owner asked for the push and the merge explicitly each time: push, open PRs and merge only when they ask, and never force-push.
 - **First three commands in a new Git Bash terminal:**
 
@@ -124,6 +124,7 @@ All merged into `main` through PR #1; the original task branches are kept on `or
 | 3.2 Email | `p3.2-notifications-email` | `ed2eca4`..`755c9e7` | invite mail event, `emailed_at` claims, `internal/notify` (SMTP, Indonesian copy), email tasks. Live: invite email in Mailpit |
 | 4.1 BlobStore | `p4.1-blobstore` | `2ee6dce`..`b776f61` | `internal/storage` (s3 + fs), one contract suite for both. Garage enforces the signed length (mutation-checked) |
 | 4.2 Uploads | `p4.2-uploads` | `ac7b781`..`f540af3` | `internal/media`, upload service and endpoints, `media:process` on its own server, `uploads:gc`. Golden tests plus an end-to-end test through Garage and the worker |
+| 5.1 Web scaffold | `p5.1-nextjs-app` | `21e40b4`..`b671f19` | `apps/web`: build, typecheck, eslint, 20 unit tests. Live: proxy to the API, CSRF 403 without and 204 with the header |
 
 Phases 0 and 1 (repository foundation, schema, domain rules, services) are on `main`.
 
@@ -141,14 +142,14 @@ Phases 0 and 1 (repository foundation, schema, domain rules, services) are on `m
 
 If your tool wants its own instruction file (`GEMINI.md`, `.codex/...`), make it a short pointer to `AGENTS.md` and this file. Do not copy rules into several places; they drift.
 
-## 9. Playbook for the next task: 5.1 Next.js app on Bun
+## 9. Playbook for the next task: 5.2 Design tokens and primitives
 
-1. `git checkout main && git pull --ff-only && git checkout -b p5.1-nextjs-app`. `source scripts/dev-env.sh`. `bun run infra:up`, `bun run db:migrate`, `bun run dev:hybrid`.
-2. Read `docs/PLAN.md` Phase 5 (opening paragraph and 5.1), `docs/ARCHITECTURE.md §7`, `docs/adr/0010-api-conventions.md`, `docs/STATUS.md §7`. For anything visual also the direction contract (§2 item 9).
-3. Create `apps/web` per PLAN 5.1: TypeScript strict, App Router with `src/`, `bun --bun next dev`, Tailwind v4 (`@tailwindcss/postcss`), ESLint, `next/font` Geist and Geist Mono, next-intl (default `id`, no URL prefix), TanStack Query provider, an `openapi-fetch` client using the existing `src/lib/api/schema.d.ts`, with CSRF (`X-CSRF-Token` from the `tepati_csrf` cookie) and `Idempotency-Key` helpers. Server-side fetches use `API_INTERNAL_URL` and forward cookies; dev rewrites send `/api/*` to `http://localhost:8080`.
-4. `scripts/dev.ts` starts the web app only if it exists (`appSpecs` there prints "web (PLAN 5.1)" as missing today). Wire `apps/web` into `dev:hybrid`, `lint` and `test` (`scripts/lint.ts`, root `package.json`).
-5. Verify per PLAN: `cd apps/web && bun run build && bun run typecheck`. Then tick 5.1 in PLAN with the range, Result and Deviations, and update `docs/STATUS.md`.
-6. Stop there. 5.2 (tokens and primitives) and 5.3 (auth pages, shell, `auth.spec.ts`) are separate branches. 5.3 needs a way to move time for e2e; there is no test-clock endpoint yet (`CLOCK_OVERRIDE` exists in config only).
+1. `git checkout p5.1-nextjs-app && git checkout -b p5.2-tokens-primitives` (or from `main` once 5.1 is merged). `source scripts/dev-env.sh`, `bun install`.
+2. This is UI work. Load the *impeccable* skill (or read `~/.claude/skills/impeccable/SKILL.md`; the extend-an-existing-surface path applies, no new direction round), then read `~/.claude/skills/impeccable/reference/craft-floor.md` right before editing. Read the whole direction contract `.impeccable/surfaces/apps-web-src-app-app.md`, `docs/design/README.md`, `docs/adr/0009-visual-direction.md`, and `AGENTS.md` "UI work". Read Next 16 and Tailwind v4 docs for what you touch (`apps/web/node_modules/next/dist/docs/`, tailwindcss.com); context7 is unauthenticated.
+3. Translate the contract's hex values into OKLCH tokens in `apps/web/src/styles/tokens.css` (import it from `globals.css`, expose it to Tailwind with `@theme`), a light theme and a designed dark "desk lamp" theme (not an inverted one). Add the owned shadcn-style primitives (button, input, textarea, dialog, sheet, tabs, select, toast, tooltip, badge) restyled to the contract, plus `Amount`, `Countdown`, `StatusChip`, `MemberLine`. Phosphor icons only.
+4. Done when `/dev/kitchen-sink` (dev builds only) shows every primitive in both themes at 390 and 1440 px. Take Playwright screenshots of all four combinations and look at them, then run `impeccable detect --json <changed files>` once.
+5. Tests: `Amount` and `Countdown` formatting are logic, so write them table-driven first (`Intl.NumberFormat('id-ID')`, no floats in money paths). All copy goes in `messages/id.json` with the `en.json` mirror.
+6. Verify per PLAN (`bun run build`, screenshots), then `bun run lint && bun run test`, tick 5.2 in PLAN with range, Result and Deviations, update `docs/STATUS.md`, and stop. 5.3 (auth pages, shell, `auth.spec.ts`) is a separate branch. It needs a way to move time for e2e; there is no test-clock endpoint yet (`CLOCK_OVERRIDE` exists in config only).
 
 Things the web app must provide because the backend already points at them: routes `/pacts/<id>`, `/review`, `/invite/<token>` (emails link there), and the upload client flow described in `docs/STATUS.md §7`.
 

@@ -26,7 +26,7 @@
     "db:seed": "bun scripts/seed.ts",
     "ctl": "bun scripts/ctl.ts",
     "codegen": "bun scripts/codegen.ts",
-    "test": "bun test scripts && cd apps/server && go test ./...",
+    "test": "bun test scripts && cd apps/web && bun test src && cd ../server && go test ./...",
     "test:integration": "cd apps/server && go test -tags=integration -count=1 ./...",
     "test:e2e": "bun scripts/todo.ts test:e2e 5.3",
     "lint": "bun scripts/lint.ts",

@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-08, at the end of Phase 4 (the backend is complete). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-08, after task 5.1 (the web app is scaffolded; the backend is complete). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -11,10 +11,10 @@ Last updated: 2026-10-08, at the end of Phase 4 (the backend is complete). This 
 | 2 API contract and HTTP | done | OpenAPI contract, Fiber app, all 31 operations |
 | 3 Worker | done | 3.1 asynq worker, schedule, outbox relay, reminders, `tepatictl seed`/`pact show`, air files. 3.2 notifications and email (Mailpit) |
 | 4 Uploads and media | done | 4.1 BlobStore drivers (s3 and fs, Garage enforces the signed length). 4.2 upload endpoints, `media:process`, `uploads:gc` |
-| **5 Web foundation** | **next** | 5.1 Next.js app on Bun, 5.2 design tokens and primitives, 5.3 auth pages and app shell |
+| **5 Web foundation** | **in progress** | 5.1 Next.js app on Bun: done (branch `p5.1-nextjs-app`, not merged yet). 5.2 design tokens and primitives, 5.3 auth pages and app shell: next |
 | 6–9 | not started | Web features, Docker, quality gates, staging |
 
-The first unchecked task in `docs/PLAN.md` is **5.1**.
+The first unchecked task in `docs/PLAN.md` is **5.2**.
 
 ## 2. Branch and merge state
 
@@ -25,7 +25,7 @@ e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-han
 ```
 
 - The seven task branches (`p2.1-openapi` ... `p4.2-uploads`) were deleted from `origin` and locally on 2026-10-08, at the owner's request, after the merge. Their commits are in `main`.
-- Branch for 5.1: cut `p5.1-nextjs-app` from `main`. From now on each task branch starts from `main` (or from the previous task's branch only while that one is still unmerged).
+- 5.1 lives on `p5.1-nextjs-app` (three commits, `21e40b4..b671f19`, plus a docs commit). It is cut from `main` and is not pushed or merged yet. Cut 5.2 from it if it is still unmerged, otherwise from `main`. From now on each task branch starts from `main` (or from the previous task's branch only while that one is still unmerged).
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -160,7 +160,15 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 
 **Read first:** `docs/PLAN.md` Phase 5 (tasks 5.1 to 5.3) and its opening paragraph, `.impeccable/surfaces/apps-web-src-app-app.md` (the direction contract), `docs/design/README.md`, `docs/ARCHITECTURE.md §7`, and `AGENTS.md` "UI work". Before any UI code load the *impeccable* skill, then read `~/.claude/skills/impeccable/reference/craft-floor.md`, and use *taste-skill* sections 3, 4.4-4.6, 6 and 9 as a checklist. Use context7 for Next.js 16, Tailwind v4, next-intl and TanStack Query (it needs authenticating first, see §6).
 
-**Backend is complete for the MVP loop** (phases 0-4): register/login, pacts and the agreement flow, check-ins and review, settlement and payouts, notifications and email, uploads and media. The OpenAPI contract is `api/openapi.yaml` and `apps/web/src/lib/api/schema.d.ts` is already generated from it (`bun run codegen`). There is **no `apps/web` yet**.
+**Backend is complete for the MVP loop** (phases 0-4): register/login, pacts and the agreement flow, check-ins and review, settlement and payouts, notifications and email, uploads and media. The OpenAPI contract is `api/openapi.yaml` and `apps/web/src/lib/api/schema.d.ts` is generated from it (`bun run codegen`).
+
+**What 5.1 added (`apps/web`):**
+- Next 16 App Router, `src/`, Turbopack, `output: "standalone"`. `bun run dev|build|start|typecheck|lint|test` inside `apps/web`; the root `bun run lint` and `bun run test` run them too, and `bun run dev:hybrid` starts it on `WEB_PORT`.
+- `src/app/layout.tsx` (Geist and Geist Mono through the `geist` package, `NextIntlClientProvider`, `Providers`), `src/app/providers.tsx` (TanStack Query; 4xx are never retried), `src/app/page.tsx` (placeholder), `src/app/globals.css` (`@import "tailwindcss"` and the font variables only; tokens are 5.2).
+- i18n: `src/i18n/request.ts` reads the `tepati_locale` cookie (`id` default, `en`), no URL prefix. Copy lives in `messages/id.json` and `en.json`; the `Errors` namespace is keyed by API error `code` and `errorMessageKey(code)` falls back to `Errors.unknown`. Add a message for every code a screen can show.
+- API access: `src/lib/api/client.ts` (`createApiClient`), `browser.ts` (`api`, base `/api/v1`, same origin), `server.ts` (`serverApi()` for Server Components and actions: `API_INTERNAL_URL`, forwards the cookie jar and the CSRF cookie), `unwrap.ts` (turns an openapi-fetch result into data or a thrown `ApiError`), `errors.ts` (`ApiError` with `code`, `status`, `requestId`, `fieldErrors`, `retryAfterSeconds`), `csrf.ts`, `idempotency.ts`. Unsafe requests get `X-CSRF-Token` and an `Idempotency-Key`; a caller that retries one action passes its own key.
+- Dev: `next.config.ts` rewrites `/api/*` to `API_INTERNAL_URL` (default `http://localhost:8080`) outside production, so the cookies stay same-origin. In production Caddy does that.
+- `apps/web/AGENTS.md` is written by `next dev` (Next's own agent rules: read `node_modules/next/dist/docs/` before relying on memory of Next 16). Next 16 differences already hit or to expect: `middleware.ts` is now `proxy.ts` (5.3's auth guard), `next lint` is gone (plain `eslint .`), `next build` uses Turbopack.
 
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
@@ -169,4 +177,4 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - Email links point at `/pacts/<id>`, `/review` and `/invite/<token>`; these routes must exist.
 - A test-clock endpoint (`CLOCK_OVERRIDE`) does not exist yet; the e2e tests in 5.3 and Phase 6 will need one or a different way to move time.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p5.1-nextjs-app`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 5.2 in the same session as 5.1 unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p5.1-nextjs-app`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 5.3 in the same session as 5.2 unless asked.

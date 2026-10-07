@@ -33,8 +33,9 @@ await spawn(["bunx", "openapi-typescript", spec, "-o", tsSchema], paths.root, "o
 log.ok("openapi-typescript (web schema.d.ts)");
 
 if (check) {
+  // (apps/web/src/lib/api also holds the hand-written client, so only schema.d.ts is checked.)
   // Compare the regenerated files with what is staged/committed, and catch new untracked files.
-  const generated = ["apps/server/internal/store", "apps/server/internal/http/api", "apps/web/src/lib/api"];
+  const generated = ["apps/server/internal/store", "apps/server/internal/http/api", "apps/web/src/lib/api/schema.d.ts"];
   const changed = await capture(["git", "-C", paths.root, "diff", "--name-only", "--", ...generated]);
   const untracked = await capture(["git", "-C", paths.root, "ls-files", "--others", "--exclude-standard", "--", ...generated]);
   const stale = (changed.stdout + untracked.stdout).trim();

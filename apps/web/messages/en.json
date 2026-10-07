@@ -1,0 +1,19 @@
+{
+  "Meta": {
+    "title": "Tepati",
+    "description": "Keep your study promises. Two friends, one agreement, one coin ledger."
+  },
+  "Home": {
+    "name": "Tepati",
+    "tagline": "A study promise, kept by two.",
+    "building": "The app is under construction. Sign-in and Today are coming."
+  },
+  "Errors": {
+    "unknown": "Something went wrong. Try again in a moment.",
+    "network": "Can't reach the server. Check your connection and try again.",
+    "auth.unauthenticated": "Your session has ended. Sign in again to continue.",
+    "rate_limited": "Too many requests. Wait a moment and try again.",
+    "server.internal": "Something broke on our side. Try again in a moment.",
+    "server.unavailable": "The server is busy. Try again in a moment."
+  }
+}
