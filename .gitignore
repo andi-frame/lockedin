@@ -27,3 +27,4 @@ docs/diagrams/**/*.browser-check.json
 docs/diagrams/**/*.delivery.json
 docs/diagrams/**/*.finalize.json
 docs/diagrams/**/*.finalize-summary.json
+graphify-out/.graphify_*
