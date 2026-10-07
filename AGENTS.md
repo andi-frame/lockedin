@@ -45,7 +45,7 @@ If `graphify-out/GRAPH_REPORT.md` exists, read it before searching the code. It 
 **Go** (`apps/server`)
 - Use the standard layout described in ARCHITECTURE §2–3.
 - Errors are wrapped with `%w`. Domain errors map to problem+json `code`s.
-- `gofmt` plus `golangci-lint` (config in repo).
+- `gofmt` and `go vet` (run by `bun run lint`).
 - Name things in the SPEC's vocabulary: `Pact`, `CheckIn`, `Proof`, `LedgerEntry`, `Backer`, `Doer`.
 
 **TypeScript** (`apps/web`)

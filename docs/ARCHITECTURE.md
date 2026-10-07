@@ -63,7 +63,8 @@ Audience: human developers and coding agents. Read `PRODUCT.md` (why) and `docs/
 │   │   ├── src/lib/api/          # generated types (openapi-typescript) + openapi-fetch client
 │   │   ├── src/i18n/             # next-intl config; messages/id.json, messages/en.json
 │   │   └── tests/e2e/            # Playwright
-│   └── server/                   # Go module github.com/<owner>/tepati/server
+│   └── server/                   # Go module github.com/andi-frame/lockedin/apps/server
+│       ├── tools/                # separate module: goose, sqlc, oapi-codegen (run from that folder: `bun run go:tool <name>`)
 │       ├── cmd/api/main.go
 │       ├── cmd/worker/main.go
 │       ├── cmd/tepatictl/main.go # admin CLI: seed, replay settlement, garage check

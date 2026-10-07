@@ -50,7 +50,8 @@ bun run setup                     # copies deploy/env/*.example → .env files i
 | `bun run test` | Go unit tests and web unit tests |
 | `bun run test:integration` | Go integration tests (testcontainers; Docker required) |
 | `bun run test:e2e` | Playwright against `dev:docker` with the test clock enabled |
-| `bun run lint` | golangci-lint, eslint, tsc `--noEmit`, and a check that generated code is fresh |
+| `bun run lint` | tsc `--noEmit` for scripts, `gofmt -l`, `go vet` (eslint and the generated-code freshness check join in PLAN 2.1/5.1) |
+| `bun run go:tool <tool> …` | runs goose / sqlc / oapi-codegen pinned in `apps/server/tools/go.mod` (Go downloads the 1.26 toolchain for that module automatically) |
 | `bun run deploy:build -- --env staging` | builds and tags images `tepati-web`/`tepati-server:<git sha>` |
 | `bun run deploy:up -- --env staging` | `docker compose -f deploy/compose.yaml -f deploy/compose.prod.yaml --env-file deploy/env/.env.staging --profile infra --profile app --profile edge up -d`, then runs `migrate` |
 

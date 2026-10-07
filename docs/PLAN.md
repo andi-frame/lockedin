@@ -40,8 +40,8 @@ Legend: ⇄ parallel-safe · 🔒 touches money/time invariants (extra review: r
 
 Use *superpowers:test-driven-development* (or *tdd*) for every task in this phase.
 
-- [ ] **1.1 Go module, config, logging**
-  - Do: `apps/server/go.mod` (Go 1.25). `internal/config` uses `caarlos0/env` and validates on start, and the error lists every missing var. Logging uses slog JSON. `cmd/api`, `cmd/worker`, and `cmd/tepatictl` each print their version and exit cleanly on SIGTERM. Add `tools.go` pinning goose, sqlc, oapi-codegen, and golangci-lint.
+- [x] **1.1 Go module, config, logging**
+  - Do: `apps/server/go.mod` (Go 1.25). `internal/config` uses `caarlos0/env` and validates on start, and the error lists every missing var. Logging uses slog JSON. `cmd/api`, `cmd/worker`, and `cmd/tepatictl` each print their version and exit cleanly on SIGTERM. Pin goose, sqlc, and oapi-codegen as `tool` directives in a separate module `apps/server/tools/go.mod` (keeps the server module small and on Go 1.25; run them with `bun run go:tool <name>`).
   - Verify: `cd apps/server && go build ./... && go vet ./...`
 
 - [ ] **1.2 Migrations: initial schema**

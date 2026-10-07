@@ -2,7 +2,9 @@
   "name": "tepati",
   "private": true,
   "type": "module",
-  "workspaces": ["apps/*"],
+  "workspaces": [
+    "apps/*"
+  ],
   "engines": {
     "bun": ">=1.3.14"
   },
@@ -23,13 +25,14 @@
     "db:new": "bun scripts/todo.ts db:new 1.2",
     "db:seed": "bun scripts/todo.ts db:seed 3.1",
     "codegen": "bun scripts/todo.ts codegen 1.4",
-    "test": "bun test scripts",
+    "test": "bun test scripts && cd apps/server && go test ./...",
     "test:integration": "bun scripts/todo.ts test:integration 1.5",
     "test:e2e": "bun scripts/todo.ts test:e2e 5.3",
-    "lint": "tsc -p tsconfig.json --noEmit",
+    "lint": "bun scripts/lint.ts",
     "deploy:build": "bun scripts/todo.ts deploy:build 7.1",
     "deploy:up": "bun scripts/todo.ts deploy:up 7.2",
-    "deploy:scale": "bun scripts/todo.ts deploy:scale 7.2"
+    "deploy:scale": "bun scripts/todo.ts deploy:scale 7.2",
+    "go:tool": "cd apps/server/tools && go tool"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.1147.0",
