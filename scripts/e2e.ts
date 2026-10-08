@@ -30,23 +30,37 @@ log.skip("the API allows 10 auth requests a minute per IP; wait a minute between
 // the real service rules (tepatictl seed --scenario today), with new users on every run. One doer
 // per spec and per Playwright project, because a spec changes the data it works on (a rest day, a
 // submitted proof) and the next one must find the day as the seed left it.
-async function seed(scenario: "today" | "passbook", project: string): Promise<{ email: string; password: string }> {
-  const seeded = await capture(["bun", join(import.meta.dir, "ctl.ts"), "seed", "--scenario", scenario]);
-  const doer = parseSeedLogin(seeded.stdout, "doer");
-  if (seeded.code !== 0 || !doer) fail(`could not seed the ${scenario} scenario for ${project}:
-${seeded.stderr || seeded.stdout}`);
-  log.ok(`seeded ${doer.email} for ${project}`);
-  return doer;
+async function seed(scenario: "today" | "passbook" | "review", project: string): Promise<{ email: string; password: string; backer: string }> {
+  // The passbook scenario walks a fake clock over past days of an active pact, and the running
+  // worker sweeps on the real clock every minute, so once in a while it settles a day the seed was
+  // about to act on and the seed stops with "not possible in the current state". Every attempt
+  // makes new users, so trying again is safe.
+  let last = "";
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const seeded = await capture(["bun", join(import.meta.dir, "ctl.ts"), "seed", "--scenario", scenario]);
+    const doer = parseSeedLogin(seeded.stdout, "doer");
+    const backer = parseSeedLogin(seeded.stdout, "backer");
+    if (seeded.code === 0 && doer && backer) {
+      log.ok(`seeded ${doer.email} for ${project}`);
+      return { ...doer, backer: backer.email };
+    }
+    last = seeded.stderr || seeded.stdout;
+  }
+  return fail(`could not seed the ${scenario} scenario for ${project}:
+${last}`);
 }
 // passbook.spec.ts gets the passbook scenario (24 days of printed lines) and moves its pact's clock
 // once, so it too has one pact per project.
-const [todayDesktop, todayMobile, proofDesktop, proofMobile, bookDesktop, bookMobile] = [
+// review.spec.ts gets a backer with three proofs to review (and the doer, for the dispute).
+const [todayDesktop, todayMobile, proofDesktop, proofMobile, bookDesktop, bookMobile, reviewDesktop, reviewMobile] = [
   await seed("today", "today/desktop"),
   await seed("today", "today/mobile"),
   await seed("today", "proof/desktop"),
   await seed("today", "proof/mobile"),
   await seed("passbook", "passbook/desktop"),
   await seed("passbook", "passbook/mobile"),
+  await seed("review", "review/desktop"),
+  await seed("review", "review/mobile"),
 ];
 
 await run(["bunx", "playwright", "test", ...process.argv.slice(2)], {
@@ -58,6 +72,10 @@ await run(["bunx", "playwright", "test", ...process.argv.slice(2)], {
     E2E_PROOF_EMAIL_MOBILE: proofMobile.email,
     E2E_BOOK_EMAIL_DESKTOP: bookDesktop.email,
     E2E_BOOK_EMAIL_MOBILE: bookMobile.email,
+    E2E_REVIEW_BACKER_DESKTOP: reviewDesktop.backer,
+    E2E_REVIEW_DOER_DESKTOP: reviewDesktop.email,
+    E2E_REVIEW_BACKER_MOBILE: reviewMobile.backer,
+    E2E_REVIEW_DOER_MOBILE: reviewMobile.email,
     E2E_TODAY_PASSWORD: todayDesktop.password,
   },
 });
