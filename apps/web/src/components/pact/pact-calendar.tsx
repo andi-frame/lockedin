@@ -31,8 +31,7 @@ const bar: Record<MemberSlot, string> = { 0: "bg-member-a", 1: "bg-member-b" };
 
 /**
  * A month grid of the pact: for each day, both members' check-in status as a symbol plus colour.
- * Today wears the highlighter. A day links to its page only when the viewer has a check-in on it
- * (that page is their own check-in); the other member's days are read in the grid.
+ * Today wears the highlighter. A day links to its page, which shows both members' check-ins for it.
  */
 export function PactCalendar({
   pactId,
@@ -103,7 +102,10 @@ export function PactCalendar({
                     ? t("noCheckIn")
                     : cell.marks.map((m) => t("mark", { name: byId.get(m.memberId)?.name ?? "", status: ts(m.status).toLowerCase() })).join(", ")
                 }`;
+                // The day opens on the viewer's own check-in, or on the other member's when the
+                // viewer has none that day (a backer who does not commit).
                 const mine = cell.marks.find((m) => m.memberId === me);
+                const target = mine ?? cell.marks[0];
                 const body = (
                   <>
                     <span className="sr-only">{readable}</span>
@@ -132,8 +134,8 @@ export function PactCalendar({
                 );
                 return (
                   <td key={cell.date} data-date={cell.date} data-today={cell.today || undefined} className="p-0 align-top">
-                    {mine && cell.inPact ? (
-                      <Link href={`/pacts/${pactId}/days/${cell.date}`} className={cn(frame, "hover:ring-rule-strong")}>
+                    {target && cell.inPact ? (
+                      <Link href={`/pacts/${pactId}/days/${cell.date}${mine ? "" : `?of=${target.memberId}`}`} className={cn(frame, "hover:ring-rule-strong")}>
                         {body}
                       </Link>
                     ) : (

@@ -7,7 +7,7 @@ import { memberSlot } from "@/lib/member";
 
 type Item = components["schemas"]["ReviewQueueItem"];
 
-/** Submissions waiting for the signed-in person's decision, soonest review deadline first. */
+/** Submissions waiting for the signed-in person's decision, soonest review deadline first. A row opens the check-in itself. */
 export function ReviewRows({ items, total, serverNow }: { items: Item[]; total: number; serverNow: string }) {
   const t = useTranslations("Today");
   if (total === 0) return null;
@@ -25,7 +25,7 @@ export function ReviewRows({ items, total, serverNow }: { items: Item[]; total: 
         {items.map((it) => (
           <li key={it.check_in.id}>
             <Link
-              href="/review"
+              href={`/pacts/${it.check_in.pact_id}/days/${it.check_in.local_date}?of=${it.member.user_id}`}
               className="flex min-h-14 flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 outline-offset-4 hover:bg-sunken focus-visible:outline-2 focus-visible:outline-ring sm:px-2"
             >
               <span className="min-w-0">
