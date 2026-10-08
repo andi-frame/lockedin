@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,10 +23,12 @@ const usage = `usage: tepatictl <command>
 
 commands:
   version                          print the build version
-  seed --scenario overdue|invite   create development data
+  seed --scenario overdue|invite|today   create development data
                                      overdue  an active pact with check-ins past their deadline;
                                               the worker should mark them missed within 2 minutes
                                      invite   a proposed pact with an open invite link
+                                     today    new users with four active pacts whose check-ins
+                                              dated today are open, submitted, approved and missed
   pact show <id>                   print a pact, its check-ins and its ledger
 
 Reads DATABASE_URL and the rest of the app config from the environment (see .env).
@@ -62,16 +65,16 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 func runSeed(ctx context.Context, args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("seed", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	scenario := fs.String("scenario", "", "overdue or invite")
+	scenario := fs.String("scenario", "", "overdue, invite or today")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	switch *scenario {
 	case "":
-		return errors.New("seed needs --scenario overdue|invite")
-	case "overdue", "invite":
+		return errors.New("seed needs --scenario overdue|invite|today")
+	case "overdue", "invite", "today":
 	default:
-		return fmt.Errorf("unknown scenario %q (want overdue or invite)", *scenario)
+		return fmt.Errorf("unknown scenario %q (want overdue, invite or today)", *scenario)
 	}
 
 	cfg, st, closeDB, err := open(ctx)
@@ -82,10 +85,14 @@ func runSeed(ctx context.Context, args []string, out io.Writer) error {
 
 	now := time.Now()
 	var s ctl.Seeded
-	if *scenario == "overdue" {
+	switch *scenario {
+	case "overdue":
 		s, err = ctl.SeedOverdue(ctx, st, now)
-	} else {
+	case "invite":
 		s, err = ctl.SeedInvite(ctx, st, now)
+	default:
+		// A new tag per run gives new users, so repeated runs never hit the open-pact limit.
+		s, err = ctl.SeedToday(ctx, st, now, strconv.FormatInt(now.UnixMilli(), 36))
 	}
 	if err != nil {
 		return err
