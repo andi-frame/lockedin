@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-08, after task 7.2 (compose and Caddy; the backend is complete, Phases 5 and 6 are done and Phase 7 is in progress). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-08, after task 7.3 (native mode polish, which closes Phase 7; the backend is complete, Phases 5, 6 and 7 are done). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -13,10 +13,10 @@ Last updated: 2026-10-08, after task 7.2 (compose and Caddy; the backend is comp
 | 4 Uploads and media | done | 4.1 BlobStore drivers (s3 and fs, Garage enforces the signed length). 4.2 upload endpoints, `media:process`, `uploads:gc` |
 | 5 Web foundation | done | 5.1 Next.js app on Bun (PR #3). 5.2 design tokens and primitives (PR #4). 5.3 auth pages, app shell, auth guard and the Playwright e2e (PR #5) |
 | 6 Web features | done | 6.1 new pact wizard and invite/accept flow (PR #6). 6.2 Today screen (PR #7). 6.3 proof editor and submission (PR #8). 6.4 pact page with the coin book and calendar (PR #9). 6.5 review queue and check-in detail (PR #10). 6.6 settlement and payout screens (PR #11). 6.7 notifications inbox and settings: done on `p6.7-notifications` (not pushed or merged yet). Next: Phase 7 |
-| 7 Docker and deploy | in progress | 7.1 Dockerfiles (PR #13). 7.2 compose dev and prod, Caddy, deploy:up, deploy:scale, backups: done on `p7.2-compose` (not pushed or merged yet). Next: 7.3 native mode polish |
+| 7 Docker and deploy | done | 7.1 Dockerfiles (PR #13). 7.2 compose dev and prod, Caddy, deploy:up, deploy:scale, backups (PR #14). 7.3 native mode polish: done on `p7.3-native-polish` (not pushed or merged yet) |
 | 8–9 | not started | Quality gates, staging |
 
-The first unchecked task in `docs/PLAN.md` is **7.3** (native mode polish). Phase 8 and the real staging deploy need the owner's decisions on the SMTP provider, the domain and DNS (a `media.` host too), see `docs/HANDOVER.md` §10.
+The first unchecked task in `docs/PLAN.md` is **8.1** (CI). The real staging deploy (9.1) needs the owner's decisions on the SMTP provider, the domain and DNS (a `media.` host too), see `docs/HANDOVER.md` §10.
 
 ## 2. Branch and merge state
 
@@ -32,7 +32,7 @@ e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-han
 - 5.3 was merged as PR #5 (merge commit `373f3aa`, 2026-10-08). The branch `p5.3-auth-shell` still exists on `origin`, like the other two.
 - 6.1 was merged as PR #6 (merge commit `ddff0a3`, 2026-10-08). The branch `p6.1-pact-wizard` still exists on `origin`.
 - 6.2 was merged as PR #7 (merge commit `88d0da4`, 2026-10-08). The branch `p6.2-today-screen` still exists on `origin`.
-- 6.3 was merged as PR #8 (`a54f2d7`), 6.4 as PR #9 (`d4e89b2`), 6.5 as PR #10 (`93d095a`), 6.6 as PR #11 (`e8121ad`), 6.7 as PR #12 (`72b934b`) and 7.1 as PR #13 (`fa114b0`). 7.2 lives on `p7.2-compose` (`7420358..7b1e17b`, plus a docs commit), cut from `main` after the 7.1 merge. It is not pushed or merged yet. Cut 7.3 from it if it is still unmerged, otherwise from `main`.
+- 6.3 was merged as PR #8 (`a54f2d7`), 6.4 as PR #9 (`d4e89b2`), 6.5 as PR #10 (`93d095a`), 6.6 as PR #11 (`e8121ad`), 6.7 as PR #12 (`72b934b`), 7.1 as PR #13 (`fa114b0`) and 7.2 as PR #14 (`c6bb76b`). 7.3 lives on `p7.3-native-polish` (`fe04c37`, plus a docs commit), cut from `main` after the 7.2 merge. It is not pushed or merged yet. Cut 8.1 from it if it is still unmerged, otherwise from `main`.
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -257,6 +257,15 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - **Backups:** `deploy/backup` (nightly `pg_dump` into the Garage bucket `tepati-backups`, 14 daily and 8 weekly). Restore steps are in RUNNING §6; there is no RUNBOOK yet.
 - **Not done:** a real domain, SMTP and TLS (nothing was deployed outside this machine); a restore into a scratch database was not rehearsed (the dump was written and the pruning verified, `pg_restore` was not run); the e2e `proof` spec ran through Caddy but the CSP was only checked by that run, not by a manual look at the browser console.
 
+**What 7.3 added (native mode):**
+- **Pre-flight** (`scripts/lib/checks.ts`, tested): a real Postgres login (wrong password, missing database and refused connection each get their own sentence; the version is shown) and a Redis version check (7.0 or newer, because the login limiter uses `EXPIRE ... NX`), besides ffmpeg, ffprobe, vips and vipsheader. All problems are listed at once.
+- **Migrations:** `dev:native` applies them to the native database before starting the apps.
+- **`.env.native`:** `deploy/env/.env.native.example` is the template; `TEPATI_NATIVE=1` makes `db:migrate`, `ctl` and the e2e seeds use it (`layerNativeEnv`, `readRootEnv`, `pickDatabaseUrl` in `scripts/lib/env.ts`). Bun puts the Docker `DATABASE_URL` from `.env` into the environment, so in native mode the layered file wins over it.
+- **e2e on a slow stack:** `E2E_TIMEOUT_MS` and `E2E_EXPECT_TIMEOUT_MS` (Playwright config and the per-spec timeouts).
+- **Docs:** `docs/RUNNING.md` section 7 (native mode, with a throwaway Postgres recipe).
+- **Verified** with a throwaway PostgreSQL 18 cluster, Redis 8 built in WSL, and the winget ffmpeg and vips: the full e2e passed natively with the fs driver. **Not verified:** Memurai, Postgres installed as a service, Postgres 16.
+- **Local leftovers (gitignored):** `.env.native` (ports 3010, 18090, 9092, Postgres 5440, Redis 6390), `.data/pg18-native/` (the throwaway cluster, stopped), and Redis 8 built under `/opt/src/redis-8.10.2` in the WSL Ubuntu (stopped; the Redis 6.2 already there is untouched).
+
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
 - Auth is cookie based with a CSRF header (`X-CSRF-Token`, value from the `tepati_csrf` cookie) on unsafe methods, and mutating calls take an `Idempotency-Key`. Details in `docs/adr/0010-api-conventions.md`.
@@ -264,4 +273,4 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - Email links point at `/pacts/<id>`, `/review` and `/invite/<token>`; these routes must exist.
 - The server does not check `starts_on` against the date: a pact proposed for tomorrow and signed after tomorrow starts with check-ins that are already overdue. The wizard only prevents choosing a start before tomorrow. Needs a rule in SPEC (refuse to schedule once `starts_on` has passed?) and a server check; not decided.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p7.3-native-polish`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 8.1 in the same session as 7.3 unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p8.1-ci`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 8.2 in the same session as 8.1 unless asked.
