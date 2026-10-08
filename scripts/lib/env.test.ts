@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { materialize, parseEnv, setEnvValue } from "./env.ts";
+import { layerNativeEnv, materialize, pickDatabaseUrl, parseEnv, setEnvValue } from "./env.ts";
 
 describe("parseEnv", () => {
   test("handles comments, quotes, and inline comments", () => {
@@ -39,5 +39,37 @@ describe("materialize", () => {
   });
   test("fails loudly on an undefined reference", () => {
     expect(() => materialize("URL=${NOPE}")).toThrow(/NOPE/);
+  });
+});
+
+test("native mode layers .env.native over .env and always uses the fs driver (Garage has no Windows build)", () => {
+  const base = new Map([["DATABASE_URL", "postgres://docker"], ["STORAGE_DRIVER", "s3"], ["API_PORT", "18080"]]);
+  const native = new Map([["DATABASE_URL", "postgres://native"], ["REDIS_URL", "redis://native"]]);
+  const out = layerNativeEnv(base, native);
+  expect(out.get("DATABASE_URL")).toBe("postgres://native");
+  expect(out.get("REDIS_URL")).toBe("redis://native");
+  expect(out.get("API_PORT")).toBe("18080");
+  expect(out.get("STORAGE_DRIVER")).toBe("fs");
+});
+
+test("layering does not change its inputs", () => {
+  const base = new Map([["A", "1"]]);
+  layerNativeEnv(base, new Map([["A", "2"]]));
+  expect(base.get("A")).toBe("1");
+});
+
+// Bun loads the root `.env` into process.env by itself, so a DATABASE_URL in the environment is
+// usually the Docker one; in native mode it must not beat `.env.native`.
+describe("pickDatabaseUrl", () => {
+  const files = new Map([["DATABASE_URL", "postgres://from-file"]]);
+  test("an explicit environment variable wins outside native mode", () => {
+    expect(pickDatabaseUrl({ DATABASE_URL: "postgres://explicit" }, files, false)).toBe("postgres://explicit");
+    expect(pickDatabaseUrl({}, files, false)).toBe("postgres://from-file");
+  });
+  test("in native mode the layered file wins over the environment", () => {
+    expect(pickDatabaseUrl({ DATABASE_URL: "postgres://docker-from-dotenv" }, files, true)).toBe("postgres://from-file");
+  });
+  test("nothing set is undefined", () => {
+    expect(pickDatabaseUrl({}, new Map(), false)).toBeUndefined();
   });
 });

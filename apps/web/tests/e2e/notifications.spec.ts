@@ -27,7 +27,7 @@ const unreadBell = (page: Page) => page.getByRole("link", { name: /^Notifikasi, 
 const quietBell = (page: Page) => page.getByRole("link", { name: "Notifikasi", exact: true });
 
 test("the bell opens the inbox, which reads each notification, links to where it points and clears the count", async ({ page, isMobile }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(Math.max(120_000, Number(process.env.E2E_TIMEOUT_MS ?? 0)));
   await signIn(page, emails(isMobile).backer);
 
   // The relay is asynchronous: reload Today until the bell has a count.
@@ -66,7 +66,7 @@ test("the bell opens the inbox, which reads each notification, links to where it
 });
 
 test("the doer is told, in words, that a proof was approved automatically", async ({ page, isMobile }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(Math.max(120_000, Number(process.env.E2E_TIMEOUT_MS ?? 0)));
   await signIn(page, emails(isMobile).doer);
 
   const row = page.getByTestId("notifications").locator('li[data-kind="proof_auto_approved"]', { hasText: "Review: override" });

@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { airCommand } from "./lib/air.ts";
 import { checkBinary, checkPostgres, checkRedis } from "./lib/checks.ts";
-import { readEnvFile } from "./lib/env.ts";
+import { readRootEnv } from "./lib/env.ts";
 import { paths } from "./lib/paths.ts";
 import { fail, log, run } from "./lib/proc.ts";
 import { supervise, type ProcSpec } from "./lib/supervisor.ts";
@@ -33,10 +33,9 @@ function appSpecs(env: Record<string, string>): { specs: ProcSpec[]; missing: st
 
 async function loadEnv(): Promise<Record<string, string>> {
   if (!existsSync(paths.rootEnv)) fail("missing .env, run `bun run setup` first");
-  const env = Object.fromEntries(await readEnvFile(paths.rootEnv));
-  // `.env.native` (optional, gitignored) overrides hosts/ports for natively installed services.
-  if (mode === "native") Object.assign(env, Object.fromEntries(await readEnvFile(join(paths.root, ".env.native"))));
-  return env;
+  // `.env.native` (optional, gitignored) overrides hosts and ports for natively installed services
+  // and forces the fs storage driver (Garage has no Windows build, ADR-0008).
+  return Object.fromEntries(await readRootEnv(paths.rootEnv, paths.nativeEnv, mode === "native"));
 }
 
 async function nativePreflight(env: Record<string, string>) {
@@ -70,8 +69,10 @@ switch (mode) {
     await startApps(env);
     break;
   case "native":
-    env.STORAGE_DRIVER = "fs"; // Garage has no Windows build; ADR-0008
     await nativePreflight(env);
+    // No Docker means no `bun run db:migrate` beforehand: apply the pending migrations to the native database.
+    log.step("migrations (native database)");
+    await run(["bun", join(paths.root, "scripts", "db.ts"), "migrate"], { env: { TEPATI_NATIVE: "1" } });
     await startApps(env);
     break;
   case "apps":

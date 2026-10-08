@@ -68,7 +68,7 @@ test("the queue lists what waits, and approving one prints it into the history",
 });
 
 test("reject needs a reason, the doer disputes, and the backer's ruling shows as power", async ({ page, browser, isMobile }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(Math.max(120_000, Number(process.env.E2E_TIMEOUT_MS ?? 0)));
   await signIn(page, emails(isMobile).backer);
   await openFromQueue(page, "Review: dispute");
   const dayUrl = page.url().replace(/\?of=.*$/, "");
@@ -124,7 +124,7 @@ test("reject needs a reason, the doer disputes, and the backer's ruling shows as
 });
 
 test("an override shows the remaining count, and the doer sees who cancelled it and why", async ({ page, browser, isMobile }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(Math.max(120_000, Number(process.env.E2E_TIMEOUT_MS ?? 0)));
   await signIn(page, emails(isMobile).backer);
   // The auto-approved proof is no longer in the queue; it opens from the pact's calendar.
   await page.goto("/pacts");

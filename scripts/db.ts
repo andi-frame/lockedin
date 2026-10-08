@@ -4,7 +4,7 @@
 //   bun run db:status
 //   bun run db:new -- <name>           create db/migrations/<timestamp>_<name>.sql
 import { join } from "node:path";
-import { readEnvFile } from "./lib/env.ts";
+import { pickDatabaseUrl, readRootEnv } from "./lib/env.ts";
 import { paths } from "./lib/paths.ts";
 import { fail, run } from "./lib/proc.ts";
 
@@ -12,8 +12,9 @@ const [action, ...rest] = process.argv.slice(2);
 const dir = join(paths.root, "apps", "server", "db", "migrations");
 const tools = join(paths.root, "apps", "server", "tools");
 
-const env = await readEnvFile(paths.rootEnv);
-const dsn = process.env.DATABASE_URL || env.get("DATABASE_URL");
+// TEPATI_NATIVE=1 aims it at the native database from `.env.native` (dev:native sets it).
+const env = await readRootEnv(paths.rootEnv, paths.nativeEnv);
+const dsn = pickDatabaseUrl(process.env, env, process.env.TEPATI_NATIVE === "1");
 if (!dsn) fail("DATABASE_URL is not set (run `bun run setup`)");
 
 async function goose(...args: string[]) {

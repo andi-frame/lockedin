@@ -59,7 +59,7 @@ test("a renamed file gets past the browser and is rejected by the server with a 
 });
 
 test("the button waits for words and ready attachments, then the proof is sent and can be edited", async ({ page, isMobile }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(Math.max(120_000, Number(process.env.E2E_TIMEOUT_MS ?? 0)));
   await openEditor(page, isMobile);
 
   // Nothing yet: disabled, and the line under it says what is missing.
