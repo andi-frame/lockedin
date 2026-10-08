@@ -61,6 +61,8 @@ func run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 			FileMaxBytes: cfg.Upload.FileMaxBytes, PactQuotaBytes: cfg.Upload.PactQuotaBytes,
 		},
 	})
+	limits := httpapi.DefaultLimits()
+	limits.Auth = cfg.AuthRateLimitPerMin
 	deps := httpapi.Deps{
 		Config:   cfg,
 		Log:      log,
@@ -69,7 +71,7 @@ func run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		// Cookies are Secure everywhere except plain-http local development.
 		Handlers: httpapi.NewHandlers(svc, authSvc, cfg.Env != "dev"),
 		Checks:   []httpapi.ReadyCheck{httpapi.DatabaseCheck(pool), httpapi.RedisCheck(rdb), httpapi.StorageCheck(cfg.Storage)},
-		Limits:   httpapi.DefaultLimits(),
+		Limits:   limits,
 	}
 	// Only the fs driver is served by the API; with s3 the browser talks to Garage directly.
 	if h, ok := blobs.(nethttp.Handler); ok {

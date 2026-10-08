@@ -122,3 +122,67 @@ func TestShowDescribesPactCheckInsAndLedger(t *testing.T) {
 		}
 	}
 }
+
+// The Today screen's e2e needs one signed-in doer who sees all four states at once. It goes
+// through the real service with a clock, so the states are the ones the rules produce.
+func TestSeedTodayGivesTheDoerEveryState(t *testing.T) {
+	st := testdb.New(t)
+	ctx := context.Background()
+	s, err := SeedToday(ctx, st, now, "t1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Pacts) != 4 {
+		t.Fatalf("want 4 pacts, got %d", len(s.Pacts))
+	}
+
+	svc := service.New(st, domain.NewFakeClock(now))
+	view, err := svc.Today(ctx, s.Doer.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{} // pact title -> status of the doer's check-in dated today
+	for _, c := range view.CheckIns {
+		got[c.PactTitle] = c.CheckIn.Status
+	}
+	want := map[string]string{
+		"Today: open": "open", "Today: submitted": "submitted", "Today: approved": "approved", "Today: missed": "missed",
+	}
+	for title, status := range want {
+		if got[title] != status {
+			t.Errorf("%s: doer's check-in is %q, want %q (all: %v)", title, got[title], status, got)
+		}
+	}
+	if len(view.Pacts) != 4 {
+		t.Errorf("the doer has %d live pacts, want 4", len(view.Pacts))
+	}
+	if view.ReviewCount != 1 {
+		t.Errorf("the doer has %d proofs to review, want 1 (the backer's, in the submitted pact)", view.ReviewCount)
+	}
+	// The missed day is a debit in its pact's passbook; the other pots are untouched.
+	for _, p := range view.Pacts {
+		want := int64(1000)
+		if p.Pact.Title == "Today: missed" {
+			want = 950 // the doer's 50-coin penalty; this backer does not commit, so nothing is added back
+		}
+		if p.Balance != want {
+			t.Errorf("%s: balance = %d, want %d", p.Pact.Title, p.Balance, want)
+		}
+	}
+}
+
+func TestSeedTodayCanRunRepeatedly(t *testing.T) {
+	st := testdb.New(t)
+	ctx := context.Background()
+	a, err := SeedToday(ctx, st, now, "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := SeedToday(ctx, st, now, "b")
+	if err != nil {
+		t.Fatalf("second run: %v", err)
+	}
+	if a.Doer.ID == b.Doer.ID || a.Doer.Email == b.Doer.Email {
+		t.Fatal("each run gets its own users, so the 10-pact limit is never reached")
+	}
+}

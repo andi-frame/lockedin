@@ -3,6 +3,7 @@
 //   bun run ctl -- pact show <id>
 //   bun run db:seed                      overdue scenario: an active pact the worker should settle
 //   bun run db:seed -- invite            a proposed pact with an open invite link
+//   bun run db:seed -- today             new users with four active pacts: open, submitted, approved, missed today
 import { join } from "node:path";
 import { readEnvFile } from "./lib/env.ts";
 import { paths } from "./lib/paths.ts";

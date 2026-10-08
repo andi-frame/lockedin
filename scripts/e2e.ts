@@ -2,7 +2,8 @@
 // (`bun run dev:hybrid`). Extra arguments go to Playwright, e.g. `bun run test:e2e -g login`.
 import { join } from "node:path";
 import { paths } from "./lib/paths.ts";
-import { fail, log, run } from "./lib/proc.ts";
+import { capture, fail, log, run } from "./lib/proc.ts";
+import { parseSeedLogin } from "./lib/seed-output.ts";
 
 const web = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const api = process.env.E2E_API_URL ?? "http://localhost:8080";
@@ -25,4 +26,25 @@ if (!webUp || !apiUp) {
 log.ok("web and api are up");
 log.skip("the API allows 10 auth requests a minute per IP; wait a minute between full runs");
 
-await run(["bunx", "playwright", "test", ...process.argv.slice(2)], { cwd: join(paths.root, "apps", "web") });
+// today.spec.ts signs in as a doer who has every check-in state at once. The states come from
+// the real service rules (tepatictl seed --scenario today), with new users on every run. One doer
+// per Playwright project, because a spec declares a rest day and that changes the data.
+async function seedToday(project: string): Promise<{ email: string; password: string }> {
+  const seeded = await capture(["bun", join(import.meta.dir, "ctl.ts"), "seed", "--scenario", "today"]);
+  const doer = parseSeedLogin(seeded.stdout, "doer");
+  if (seeded.code !== 0 || !doer) fail(`could not seed the today scenario for ${project}:
+${seeded.stderr || seeded.stdout}`);
+  log.ok(`seeded ${doer.email} for ${project}`);
+  return doer;
+}
+const desktop = await seedToday("desktop");
+const mobile = await seedToday("mobile");
+
+await run(["bunx", "playwright", "test", ...process.argv.slice(2)], {
+  cwd: join(paths.root, "apps", "web"),
+  env: {
+    E2E_TODAY_EMAIL_DESKTOP: desktop.email,
+    E2E_TODAY_EMAIL_MOBILE: mobile.email,
+    E2E_TODAY_PASSWORD: desktop.password,
+  },
+});

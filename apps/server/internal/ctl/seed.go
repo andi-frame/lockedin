@@ -30,6 +30,7 @@ const (
 // Seeded describes what a seed run created.
 type Seeded struct {
 	Pact         store.Pact
+	Pacts        []store.Pact // the today scenario: one pact per state
 	Backer, Doer store.User
 	InviteToken  string // invite scenario only
 	InviteEmail  string
@@ -104,6 +105,120 @@ func SeedInvite(ctx context.Context, st *store.Store, now time.Time) (Seeded, er
 		return Seeded{}, err
 	}
 	return Seeded{Pact: p, Backer: backer, Doer: doer, InviteToken: token, InviteEmail: email}, nil
+}
+
+// todayStates are the pacts SeedToday builds, one per state the Today screen draws for the doer's
+// check-in dated today.
+var todayStates = []struct {
+	title         string
+	backerCommits bool
+	cutoff        string
+	grace         int
+	doerSubmits   bool
+	backerSubmits bool
+	approve       bool
+}{
+	{title: "Today: open", backerCommits: true, cutoff: "23:59", grace: 30},
+	{title: "Today: submitted", backerCommits: true, cutoff: "23:59", grace: 30, doerSubmits: true, backerSubmits: true},
+	{title: "Today: approved", backerCommits: true, cutoff: "23:59", grace: 30, doerSubmits: true, approve: true},
+	// A cutoff at midnight with no grace has always passed, so the sweep below turns today's
+	// check-in into `missed` at once. The backer does not commit here, so the passbook has one line.
+	{title: "Today: missed", backerCommits: false, cutoff: "00:00", grace: 0},
+}
+
+const todayProof = `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Selesai latihan soal hari ini."}]}]}`
+
+// SeedToday gives one doer a Today screen with every state at once: an open check-in, a submitted
+// one (with the backer's own proof waiting for the doer to review), an approved one and a missed
+// one, each in its own active pact. Users are new on every run (named after tag) so the 10-pact
+// limit is never reached and a test can run it as often as it likes. Everything goes through the
+// service with a clock, and the real-time sweep makes the missed day, so the states are the ones
+// the rules produce (AGENTS.md invariant 3).
+func SeedToday(ctx context.Context, st *store.Store, now time.Time, tag string) (Seeded, error) {
+	loc, err := time.LoadLocation(seedTimezone)
+	if err != nil {
+		return Seeded{}, err
+	}
+	backer, err := seedUser(ctx, st, fmt.Sprintf("today-%s-backer@tepati.test", tag), "Andi (today)")
+	if err != nil {
+		return Seeded{}, err
+	}
+	doer, err := seedUser(ctx, st, fmt.Sprintf("today-%s-doer@tepati.test", tag), "Bima (today)")
+	if err != nil {
+		return Seeded{}, err
+	}
+	today := localDate(now, loc, 0)
+	clock := domain.NewFakeClock(noon(today, loc).Add(-24 * time.Hour))
+	svc := service.New(st, clock)
+
+	pacts := make([]store.Pact, 0, len(todayStates))
+	for _, sc := range todayStates {
+		terms := seedTerms(backer.ID, today, today.AddDays(13))
+		terms.CutoffLocalTime, terms.GraceMinutes, terms.BackerCommits = sc.cutoff, sc.grace, sc.backerCommits
+		for id, m := range terms.Members {
+			m.Evidence = domain.Evidence{}
+			if m.Role == domain.RoleBacker && !sc.backerCommits {
+				m.Schedule = nil
+			}
+			terms.Members[id] = m
+		}
+		p, err := svc.CreateDraft(ctx, backer.ID, service.DraftInput{Title: sc.title, Terms: terms})
+		if err != nil {
+			return Seeded{}, fmt.Errorf("%s: draft: %w", sc.title, err)
+		}
+		token, err := svc.Propose(ctx, backer.ID, p.ID, nil)
+		if err != nil {
+			return Seeded{}, fmt.Errorf("%s: propose: %w", sc.title, err)
+		}
+		if p, err = svc.JoinByInvite(ctx, doer.ID, token); err != nil {
+			return Seeded{}, fmt.Errorf("%s: join: %w", sc.title, err)
+		}
+		for _, signer := range []store.User{backer, doer} {
+			if _, err := svc.Accept(ctx, signer.ID, p.ID, p.TermsHash, signer.DisplayName); err != nil {
+				return Seeded{}, fmt.Errorf("%s: accept (%s): %w", sc.title, signer.DisplayName, err)
+			}
+		}
+		pacts = append(pacts, p)
+	}
+
+	clock.Set(now)
+	if _, err := svc.ActivateDuePacts(ctx); err != nil {
+		return Seeded{}, fmt.Errorf("activate: %w", err)
+	}
+	day := today.Time()
+	for i, sc := range todayStates {
+		rows, err := st.ListCheckInsForPact(ctx, store.ListCheckInsForPactParams{PactID: pacts[i].ID, FromDate: day, ToDate: day})
+		if err != nil {
+			return Seeded{}, err
+		}
+		proof := service.ProofInput{BodyDoc: []byte(todayProof)}
+		for _, ci := range rows {
+			switch {
+			case ci.MemberID == doer.ID && sc.doerSubmits:
+				if _, err := svc.SubmitProof(ctx, doer.ID, ci.ID, proof); err != nil {
+					return Seeded{}, fmt.Errorf("%s: doer submit: %w", sc.title, err)
+				}
+				if sc.approve {
+					if _, err := svc.Approve(ctx, backer.ID, ci.ID); err != nil {
+						return Seeded{}, fmt.Errorf("%s: approve: %w", sc.title, err)
+					}
+				}
+			case ci.MemberID == backer.ID && sc.backerSubmits:
+				if _, err := svc.SubmitProof(ctx, backer.ID, ci.ID, proof); err != nil {
+					return Seeded{}, fmt.Errorf("%s: backer submit: %w", sc.title, err)
+				}
+			}
+		}
+	}
+	if _, err := svc.SweepDeadlines(ctx, 500); err != nil {
+		return Seeded{}, fmt.Errorf("sweep: %w", err)
+	}
+	for i := range pacts {
+		if pacts[i], err = st.GetPact(ctx, pacts[i].ID); err != nil {
+			return Seeded{}, err
+		}
+	}
+	return Seeded{Pact: pacts[0], Pacts: pacts, Backer: backer, Doer: doer}, nil
 }
 
 func seedUsers(ctx context.Context, st *store.Store) (backer, doer store.User, err error) {

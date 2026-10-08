@@ -50,3 +50,8 @@ export function todayIn(zone: string, now: Date): string {
   // en-CA formats as YYYY-MM-DD.
   return new Intl.DateTimeFormat("en-CA", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
+
+/** "23:59": an instant's wall-clock time in `zone`, always 24-hour with a colon (id-ID would print a dot). */
+export function clockIn(iso: string, zone: string): string {
+  return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: zone }).format(new Date(iso));
+}
