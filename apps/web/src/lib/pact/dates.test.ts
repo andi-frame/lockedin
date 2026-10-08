@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { addDays, daysBetween, isDate, isoWeekday, isTimeZone, todayIn } from "./dates";
+import { addDays, clockIn, daysBetween, isDate, isoWeekday, isTimeZone, todayIn } from "./dates";
 
 describe("isDate", () => {
   test.each([
@@ -40,6 +40,15 @@ describe("todayIn", () => {
     expect(todayIn("Asia/Jakarta", instant)).toBe("2026-11-01");
     expect(todayIn("UTC", instant)).toBe("2026-10-31");
     expect(todayIn("America/Los_Angeles", instant)).toBe("2026-10-31");
+  });
+});
+
+describe("clockIn", () => {
+  // The terms print 23:59, so every screen prints a time the same way, whatever the UI language.
+  test("is HH:MM with a colon in the zone asked for", () => {
+    expect(clockIn("2026-10-08T16:59:00Z", "Asia/Jakarta")).toBe("23:59");
+    expect(clockIn("2026-10-08T17:29:00Z", "Asia/Jakarta")).toBe("00:29");
+    expect(clockIn("2026-10-08T17:29:00Z", "UTC")).toBe("17:29");
   });
 });
 

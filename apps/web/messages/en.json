@@ -27,7 +27,12 @@
     "pact_terms_mismatch": "The terms just changed. The page reloaded, so read them again before signing.",
     "pact_signature_mismatch": "That does not match the name on your account.",
     "pact_member_missing": "The doer has not joined yet, so there is nothing to sign.",
-    "pact_invite_invalid": "This invitation can no longer be used. Ask for a new link."
+    "pact_invite_invalid": "This invitation can no longer be used. Ask for a new link.",
+    "checkin_rest_limit": "No rest days are left in this pact.",
+    "checkin_deadline_passed": "The deadline has passed.",
+    "checkin_invalid_transition": "This check-in changed status. Reload the page.",
+    "checkin_not_allowed": "You cannot do this on this check-in.",
+    "checkin_conflict": "This check-in just changed. Reload and try again."
   },
   "Common": {
     "close": "Close",
@@ -109,8 +114,32 @@
   },
   "Today": {
     "title": "Today",
-    "greeting": "Hi, {name}.",
-    "empty": "No active pact yet. Pacts you create or accept will show up here."
+    "empty": "No active pact yet. A pact you create or accept will show up here.",
+    "newPact": "New pact",
+    "nextDeadline": "Next deadline: {title}",
+    "allDone": "Every check-in for today is taken care of.",
+    "nothingDue": "Nothing is due today in this pact.",
+    "yesterday": "Yesterday",
+    "cutoffNote": "Cutoff {cutoff}, grace until {until}",
+    "submit": "Send proof",
+    "submitSoon": "Sending proof arrives in the next update. You can already take a rest day.",
+    "restOpen": "Take a rest day",
+    "restTitle": "Take today as a rest day?",
+    "restBody": "Today does not count and carries no penalty. Your rest days go from {left} to {after}. This cannot be undone.",
+    "restCancel": "Cancel",
+    "restConfirm": "Yes, take a rest day",
+    "restWorking": "Working",
+    "restDone": "Rest day taken.",
+    "waitingReview": "Waiting for {partner} to review. If it is not reviewed before {until}, the proof is approved automatically.",
+    "words": "· {n} words",
+    "approvedBy": "Approved by {partner}.",
+    "autoApproved": "Approved automatically because no decision came in time.",
+    "missed": "Missed. The penalty is recorded in the coin book.",
+    "rejected": "Rejected by {partner}.",
+    "disputed": "Your dispute is being decided.",
+    "rested": "Rest day: today does not count.",
+    "toReview": "To review ({n})",
+    "seeAll": "See all"
   },
   "Pacts": {
     "title": "Pacts",
@@ -324,5 +353,19 @@
     "doerPlaceholder": "Doer",
     "scheduled": "The pact is scheduled and starts on {date}.",
     "laterScreens": "The passbook and calendar for a running pact arrive in a later update."
+  },
+  "Ledger": {
+    "open": "Full coin book",
+    "saldo": "Balance",
+    "empty": "No lines in the coin book yet.",
+    "caption": "The last three lines of the coin book for {title}",
+    "date": "Date",
+    "note": "Description",
+    "amount": "Amount",
+    "potInitial": "Starting pot",
+    "missed": "Missed {date}",
+    "clamped": "Missed {date}, pot already at its limit",
+    "reversal": "Reversal {date}",
+    "payout": "Payout to the doer"
   }
 }

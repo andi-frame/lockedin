@@ -23,7 +23,7 @@ async function logout(page: Page, isMobile: boolean) {
 test("register lands on /today, shows the right navigation, then logout returns to /login", async ({ page, isMobile }) => {
   await register(page, freshEmail());
   await expect(page.getByRole("heading", { level: 1, name: "Hari ini" })).toBeVisible();
-  await expect(page.getByText("Halo, Sari E2E.")).toBeVisible();
+  await expect(page.getByText("Belum ada kontrak aktif.")).toBeVisible();
 
   // One nav is visible at a time (rail on desktop, tab bar on a phone), with the same four items.
   const nav = page.getByRole("navigation", { name: "Menu utama" });

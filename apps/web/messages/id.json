@@ -27,7 +27,12 @@
     "pact_terms_mismatch": "Ketentuan baru saja berubah. Halaman dimuat ulang, baca lagi sebelum menandatangani.",
     "pact_signature_mismatch": "Namanya belum sama dengan nama di akunmu.",
     "pact_member_missing": "Pelaku belum bergabung, jadi belum ada yang bisa ditandatangani.",
-    "pact_invite_invalid": "Undangan ini sudah tidak bisa dipakai. Minta tautan yang baru."
+    "pact_invite_invalid": "Undangan ini sudah tidak bisa dipakai. Minta tautan yang baru.",
+    "checkin_rest_limit": "Hari jeda untuk kontrak ini sudah habis.",
+    "checkin_deadline_passed": "Batas waktunya sudah lewat.",
+    "checkin_invalid_transition": "Setoran ini sudah berubah statusnya. Muat ulang halaman.",
+    "checkin_not_allowed": "Kamu tidak bisa melakukan ini pada setoran ini.",
+    "checkin_conflict": "Setoran ini baru saja berubah. Muat ulang lalu coba lagi."
   },
   "Common": {
     "close": "Tutup",
@@ -109,8 +114,32 @@
   },
   "Today": {
     "title": "Hari ini",
-    "greeting": "Halo, {name}.",
-    "empty": "Belum ada kontrak aktif. Kontrak yang kamu buat atau terima akan muncul di sini."
+    "empty": "Belum ada kontrak aktif. Kontrak yang kamu buat atau terima akan muncul di sini.",
+    "newPact": "Buat kontrak",
+    "nextDeadline": "Batas terdekat: {title}",
+    "allDone": "Semua setoran hari ini sudah beres.",
+    "nothingDue": "Tidak ada setoran hari ini di kontrak ini.",
+    "yesterday": "Kemarin",
+    "cutoffNote": "Batas {cutoff}, masa tenggang sampai {until}",
+    "submit": "Kirim bukti",
+    "submitSoon": "Mengirim bukti hadir di pembaruan berikutnya. Hari jeda sudah bisa kamu ambil.",
+    "restOpen": "Ambil hari jeda",
+    "restTitle": "Ambil hari jeda hari ini?",
+    "restBody": "Hari ini tidak dihitung dan tanpa denda. Sisa hari jeda berkurang dari {left} jadi {after}. Ini tidak bisa dibatalkan.",
+    "restCancel": "Batal",
+    "restConfirm": "Ya, ambil hari jeda",
+    "restWorking": "Memproses",
+    "restDone": "Hari jeda diambil.",
+    "waitingReview": "Menunggu tinjauan {partner}. Kalau belum ditinjau sebelum {until}, bukti disetujui otomatis.",
+    "words": "· {n} kata",
+    "approvedBy": "Disetujui {partner}.",
+    "autoApproved": "Disetujui otomatis karena tidak ada keputusan tepat waktu.",
+    "missed": "Terlewat. Dendanya tercatat di buku koin.",
+    "rejected": "Ditolak {partner}.",
+    "disputed": "Sanggahanmu sedang diputuskan.",
+    "rested": "Hari jeda: hari ini tidak dihitung.",
+    "toReview": "Perlu ditinjau ({n})",
+    "seeAll": "Lihat semua"
   },
   "Pacts": {
     "title": "Kontrak",
@@ -324,5 +353,19 @@
     "doerPlaceholder": "Pelaku",
     "scheduled": "Kontrak terjadwal dan dimulai {date}.",
     "laterScreens": "Buku tabungan dan kalender untuk kontrak yang berjalan menyusul di pembaruan berikutnya."
+  },
+  "Ledger": {
+    "open": "Buku lengkap",
+    "saldo": "Saldo",
+    "empty": "Belum ada baris di buku koin.",
+    "caption": "Tiga baris terakhir buku koin {title}",
+    "date": "Tanggal",
+    "note": "Keterangan",
+    "amount": "Jumlah",
+    "potInitial": "Pot awal",
+    "missed": "Terlewat {date}",
+    "clamped": "Terlewat {date}, pot sudah di batasnya",
+    "reversal": "Pembalikan {date}",
+    "payout": "Pembayaran ke pelaku"
   }
 }
