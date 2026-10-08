@@ -283,3 +283,34 @@ func TestAdvancePrintsTheNextMissAsADebit(t *testing.T) {
 		t.Fatalf("a pact with no open check-in should say so, got %v", err)
 	}
 }
+
+// Two pacts share the same 23:59 cutoff. Advancing one must not print the other's miss, or specs
+// that each own a pact would spoil each other's data.
+func TestAdvanceLeavesOtherPactsAlone(t *testing.T) {
+	st := testdb.New(t)
+	ctx := context.Background()
+	a, err := SeedPassbook(ctx, st, now, "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := SeedPassbook(ctx, st, now, "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Advance(ctx, st, a.Pact.ID); err != nil {
+		t.Fatal(err)
+	}
+	svc := service.New(st, domain.NewFakeClock(now))
+	pageA, _ := svc.LedgerPage(ctx, a.Doer.ID, a.Pact.ID, nil, 1)
+	pageB, err := svc.LedgerPage(ctx, b.Doer.ID, b.Pact.ID, nil, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pageA.Balance != 610 || pageB.Balance != 660 {
+		t.Fatalf("advanced pact %d (want 610), the other %d (want 660)", pageA.Balance, pageB.Balance)
+	}
+	// The next advance for b still finds today's open check-in, which proves it was not swept.
+	if adv, err := Advance(ctx, st, b.Pact.ID); err != nil || adv.Moved != 1 {
+		t.Fatalf("advance b: %+v, %v", adv, err)
+	}
+}

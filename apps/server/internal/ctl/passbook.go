@@ -166,10 +166,9 @@ type Advanced struct {
 var ErrNothingToAdvance = errors.New("this pact has no open check-in left to run past its deadline")
 
 // Advance is the e2e's test clock (decided with the owner on 2026-10-08: no endpoint). It moves a
-// clock to one second after the pact's soonest open submit deadline and runs the real sweep, so
-// the miss is printed by the same service code the worker runs. The sweep is not scoped to the
-// pact, so it also settles anything else that was due by then; the e2e seeds a pact whose cutoff
-// (23:59, no grace) comes before every other seeded deadline, which keeps that to this pact.
+// clock to one second after the pact's soonest open submit deadline and ticks that pact's open
+// check-ins with it, so the miss is printed by the same service code the worker runs. Only this
+// pact's check-ins are ticked: other pacts, seeded for other specs, are left as they are.
 func Advance(ctx context.Context, st *store.Store, pactID uuid.UUID) (Advanced, error) {
 	rows, err := st.ListCheckInsForPact(ctx, store.ListCheckInsForPactParams{
 		PactID: pactID, FromDate: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC), ToDate: time.Date(2200, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -187,7 +186,13 @@ func Advance(ctx context.Context, st *store.Store, pactID uuid.UUID) (Advanced, 
 		return Advanced{}, ErrNothingToAdvance
 	}
 	at := next.SubmitDeadline.Add(time.Second)
-	moved, err := service.New(st, domain.NewFakeClock(at)).SweepDeadlines(ctx, 500)
+	var open []uuid.UUID
+	for _, r := range rows {
+		if r.Status == "open" {
+			open = append(open, r.ID)
+		}
+	}
+	moved, err := service.New(st, domain.NewFakeClock(at)).SweepCheckIns(ctx, open)
 	if err != nil {
 		return Advanced{}, fmt.Errorf("sweep: %w", err)
 	}

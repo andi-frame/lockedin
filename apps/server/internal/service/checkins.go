@@ -271,6 +271,14 @@ func (s *Service) SweepDeadlines(ctx context.Context, batch int32) (int, error) 
 	if err != nil {
 		return 0, err
 	}
+	return s.SweepCheckIns(ctx, ids)
+}
+
+// SweepCheckIns runs the same tick as SweepDeadlines on the check-ins it is given, and nothing
+// else. One that is not due yet by this service's clock does not move, so the caller may pass
+// more than it expects to change; `tepatictl advance` passes one pact's check-ins so that moving
+// its clock cannot settle another pact's day.
+func (s *Service) SweepCheckIns(ctx context.Context, ids []uuid.UUID) (int, error) {
 	moved := 0
 	for _, id := range ids {
 		changed, err := s.tickOne(ctx, id)
