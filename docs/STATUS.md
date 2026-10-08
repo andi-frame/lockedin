@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-08, after task 5.2 (design tokens and primitives; the backend is complete). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-08, after task 5.3 (auth pages and app shell; the backend is complete and Phase 5 is done). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -11,10 +11,11 @@ Last updated: 2026-10-08, after task 5.2 (design tokens and primitives; the back
 | 2 API contract and HTTP | done | OpenAPI contract, Fiber app, all 31 operations |
 | 3 Worker | done | 3.1 asynq worker, schedule, outbox relay, reminders, `tepatictl seed`/`pact show`, air files. 3.2 notifications and email (Mailpit) |
 | 4 Uploads and media | done | 4.1 BlobStore drivers (s3 and fs, Garage enforces the signed length). 4.2 upload endpoints, `media:process`, `uploads:gc` |
-| **5 Web foundation** | **in progress** | 5.1 Next.js app on Bun: done and merged (PR #3). 5.2 design tokens and primitives: done on `p5.2-tokens-primitives` (not pushed or merged yet). 5.3 auth pages and app shell: next |
+| 5 Web foundation | done | 5.1 Next.js app on Bun (PR #3). 5.2 design tokens and primitives (PR #4). 5.3 auth pages, app shell, auth guard and the Playwright e2e: done on `p5.3-auth-shell` (not pushed or merged yet) |
+| **6 Web features** | **next** | 6.1 new pact wizard and invite/accept flow |
 | 6–9 | not started | Web features, Docker, quality gates, staging |
 
-The first unchecked task in `docs/PLAN.md` is **5.3**.
+The first unchecked task in `docs/PLAN.md` is **6.1**.
 
 ## 2. Branch and merge state
 
@@ -26,7 +27,8 @@ e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-han
 
 - The seven task branches (`p2.1-openapi` ... `p4.2-uploads`) were deleted from `origin` and locally on 2026-10-08, at the owner's request, after the merge. Their commits are in `main`.
 - 5.1 was merged into `main` as PR #3 (merge commit `f715daf`, 2026-10-08). The branch `p5.1-nextjs-app` still exists on `origin` (the owner has not asked to delete it).
-- 5.2 lives on `p5.2-tokens-primitives` (five commits, `05047de..6008608`, plus a docs commit), cut from `main` after the 5.1 merge. It is not pushed or merged yet. Cut 5.3 from it if it is still unmerged, otherwise from `main`.
+- 5.2 was merged as PR #4 (merge commit `e189035`, 2026-10-08). The branch `p5.2-tokens-primitives` still exists on `origin`, like `p5.1-nextjs-app` (the owner has not asked to delete them).
+- 5.3 lives on `p5.3-auth-shell` (four code commits, `a9f3db3..884e87d`, plus a docs commit), cut from `main` after the 5.2 merge. It is not pushed or merged yet. Cut 6.1 from it if it is still unmerged, otherwise from `main`.
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -157,7 +159,7 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - No test-clock endpoint yet (`CLOCK_OVERRIDE`); the e2e work (5.3/6.x) needs it. The API and worker use `domain.SystemClock`.
 - context7 MCP was never authenticated in these sessions; asynq, Prometheus and aws-sdk-go-v2 APIs were checked by reading module source under `~/go/pkg/mod`. For Phase 5 (Next.js 16, Tailwind v4, next-intl, Tiptap 3) read the official docs, or authenticate context7, before relying on memory of those APIs.
 
-## 7. Brief for Phase 5 (web foundation)
+## 7. Brief for Phase 5 (web foundation) and the start of Phase 6
 
 **Read first:** `docs/PLAN.md` Phase 5 (tasks 5.1 to 5.3) and its opening paragraph, `.impeccable/surfaces/apps-web-src-app-app.md` (the direction contract), `docs/design/README.md`, `docs/ARCHITECTURE.md §7`, and `AGENTS.md` "UI work". Before any UI code load the *impeccable* skill, then read `~/.claude/skills/impeccable/reference/craft-floor.md`, and use *taste-skill* sections 3, 4.4-4.6, 6 and 9 as a checklist. Use context7 for Next.js 16, Tailwind v4, next-intl and TanStack Query (it needs authenticating first, see §6).
 
@@ -178,13 +180,20 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - **Domain components** (`src/components`): `Amount` (`coins`, `direction` debit|credit|balance, optional `rate` for the Rupiah line, sizes sm to xl), `Countdown` (`until`, optional `serverNow`, `onCover`; digits in fixed cells, one polite live region per minute), `StatusChip` (a `Record` over the generated `CheckInStatus`, so a new API status fails the typecheck until it has a chip), `MemberLine` (monogram and name in the member's fixed colour; `memberSlot(id, ids)` in `src/lib/member.ts` picks the slot from the sorted ids). Pure logic is in `src/lib/format.ts` (Intl `id-ID`, BigInt Rupiah), `countdown.ts` and `member.ts`, all table-tested.
 - **Kitchen sink:** `/dev/kitchen-sink` (404 in a production build) shows everything with a fixed server clock and synthetic data. Use it to look at a primitive in both themes (`ThemeToggle` in its header, or emulate `prefers-color-scheme`).
 - **Gotchas found:** next-intl message keys cannot contain `.` (use `auth_email_taken` for the code `auth.email_taken`; `errorMessageKey` does the mapping). Big heredocs fail in Git Bash: write component files with the Write tool. The Playwright MCP only writes screenshots under the repo (use `.playwright-mcp/`, gitignored), and an element screenshot with `section >> nth=N` is the way to look closely at one part of a long page. The Next dev indicator badge overlaps content in screenshots; it does not exist in production.
-- **Not built yet:** the passbook print animation (6.4), a wordmark (text wordmark until one exists), the `(app)` shell (5.3), Tiptap (6.3).
+- **Not built yet:** the passbook print animation (6.4), a wordmark (text wordmark until one exists), Tiptap (6.3).
+
+**What 5.3 added (sign-in and the shell):**
+- **Guard:** `src/proxy.ts` (Next 16's `middleware`) redirects a request without a `tepati_session` cookie to `/login?next=<path>`, and `/` to `/login` or `/today`. Public: `/login`, `/register`, `/dev/*`. The pure rules and `safeNext` (same-site paths only, no open redirect) are in `src/lib/auth/guard.ts` with table tests. The proxy only sees the cookie, so the `(app)` layout calls `/me` through `getCurrentUser()` (`src/lib/auth/session.ts`, server only) and redirects on 401; `/login` and `/register` do the reverse for a live session. The proxy must not redirect signed-in visitors away from `/login` (a stale cookie would loop). Look for `proxy.ts: Nms` in the dev log to know it ran.
+- **Pages:** `(auth)` group (`/login`, `/register`: cover band with the text wordmark, form on the ground) and `(app)` group (`/today`, `/pacts`, `/review`, `/settings`). The shell is `src/app/(app)/layout.tsx`: a cover-teal rail with guilloche from `lg` up (nav, unread bell, name and email, sign out) and a fixed bottom tab bar below `lg`; both read `navItems` and `isActive` from `src/lib/nav.ts`. Pages inside the shell only provide their own `<h1>` and content; `max-w-5xl` is applied by the layout. `error.tsx` is the error boundary for the group.
+- **Forms:** `LoginForm` and `RegisterForm` (`src/components/auth`) validate with `src/lib/auth/forms.ts` (`validateLogin`, `validateRegister`, `formErrorFromApi`, which maps API codes to fields; wrong credentials stay form-level on purpose), call `api` through `unwrap()`, focus the first invalid field, and clear the TanStack cache on sign-in and sign-out. Copy keys are full paths (`Auth.emailInvalid`, `Errors.auth_email_taken`).
+- **Placeholders:** Hari ini, Kontrak and Tinjau show an honest empty state until Phase 6; Pengaturan is real. The bell shows the unread count and is not a button yet.
+- **e2e:** `@playwright/test` in `apps/web`, `playwright.config.ts` (desktop 1440 and mobile 390 projects, one worker), `tests/e2e/auth.spec.ts`. `bun run test:e2e` expects the stack to be running. The API allows 10 auth requests a minute per IP (not configurable); one full run uses about 7, so wait a minute between runs and keep new specs frugal (register one account per spec, reuse `storageState` where you can).
 
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
 - Auth is cookie based with a CSRF header (`X-CSRF-Token`, value from the `tepati_csrf` cookie) on unsafe methods, and mutating calls take an `Idempotency-Key`. Details in `docs/adr/0010-api-conventions.md`.
 - Upload client flow: `POST /uploads` -> `PUT` the file to `put_url` with exactly the returned `headers` (the browser adds `Content-Length`) -> `POST /uploads/{id}/complete` -> poll `GET /attachments/{id}` (1 s backing off to 5 s) until `ready` or `rejected`. With the fs storage driver `put_url` points at the API (`/api/v1/blob/...`), with Garage at port 3900; CORS in dev already allows `Content-Type`.
 - Email links point at `/pacts/<id>`, `/review` and `/invite/<token>`; these routes must exist.
-- A test-clock endpoint (`CLOCK_OVERRIDE`) does not exist yet; the e2e tests in 5.3 and Phase 6 will need one or a different way to move time.
+- A test-clock endpoint (`CLOCK_OVERRIDE`) does not exist yet; the Phase 6 e2e tests (`today.spec.ts` needs open, submitted, approved and missed) will need one or a different way to move time.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p5.3-auth-shell`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 6.1 in the same session as 5.3 unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p6.1-pact-wizard`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 6.2 in the same session as 6.1 unless asked.

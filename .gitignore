@@ -33,3 +33,7 @@ graphify-out/.graphify_*
 *.tsbuildinfo
 next-env.d.ts
 .playwright-mcp/
+
+# Playwright e2e output
+apps/web/test-results/
+apps/web/playwright-report/

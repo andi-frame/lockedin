@@ -3,18 +3,21 @@
     "title": "Tepati",
     "description": "Keep your study promises. Two friends, one agreement, one coin ledger."
   },
-  "Home": {
-    "name": "Tepati",
-    "tagline": "A study promise, kept by two.",
-    "building": "The app is under construction. Sign-in and Today are coming."
-  },
   "Errors": {
     "unknown": "Something went wrong. Try again in a moment.",
     "network": "Can't reach the server. Check your connection and try again.",
     "auth_unauthenticated": "Your session has ended. Sign in again to continue.",
     "rate_limited": "Too many requests. Wait a moment and try again.",
     "server_internal": "Something broke on our side. Try again in a moment.",
-    "server_unavailable": "The server is busy. Try again in a moment."
+    "server_unavailable": "The server is busy. Try again in a moment.",
+    "auth_invalid_credentials": "That email and password don't match. Check them and try again.",
+    "auth_email_taken": "This email already has an account. Sign in, or use another email.",
+    "auth_weak_password": "That password is too easy to guess. Use at least 8 characters and avoid common ones.",
+    "auth_invalid_email": "That email doesn't look right. Example: name@campus.ac.id",
+    "auth_invalid_name": "That name can't be used. Write the name you'll type when you sign a pact.",
+    "auth_rate_limited": "Too many attempts. Wait a moment and try again.",
+    "auth_rate_limited_wait": "Too many attempts. Try again in {seconds} seconds.",
+    "validation_failed": "This entry isn't valid yet. Check it again."
   },
   "Common": {
     "close": "Close",
@@ -54,5 +57,70 @@
     "system": "Match system",
     "light": "Light",
     "dark": "Dark"
+  },
+  "Auth": {
+    "loginTitle": "Sign in",
+    "loginLead": "Pick up your study promise where you left it.",
+    "registerTitle": "Create an account",
+    "registerLead": "One account for all your study promises.",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "passwordHint": "At least 8 characters.",
+    "nameLabel": "Name",
+    "nameHint": "Also the name you type when you sign a pact.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "login": "Sign in",
+    "register": "Create account",
+    "working": "Working",
+    "noAccount": "No account yet?",
+    "haveAccount": "Already have an account?",
+    "emailRequired": "Enter your email.",
+    "emailInvalid": "That email doesn't look right. Example: name@campus.ac.id",
+    "passwordRequired": "Enter your password.",
+    "passwordShort": "Password needs at least 8 characters.",
+    "passwordLong": "Password can be at most 128 characters.",
+    "nameRequired": "Enter your name.",
+    "nameLong": "Name can be at most 80 characters.",
+    "brandLine": "Study promises, kept between two.",
+    "brandBody": "Send proof of study before the cutoff. Every coin that moves gets its own line in the coin book."
+  },
+  "Nav": {
+    "main": "Main menu",
+    "today": "Today",
+    "pacts": "Pacts",
+    "review": "Review",
+    "settings": "Settings",
+    "notifications": "Notifications",
+    "notificationsUnread": "Notifications, {count} unread",
+    "skip": "Skip to content",
+    "logout": "Sign out",
+    "loggingOut": "Signing out"
+  },
+  "Today": {
+    "title": "Today",
+    "greeting": "Hi, {name}.",
+    "empty": "No active pact yet. Pacts you create or accept will show up here."
+  },
+  "Pacts": {
+    "title": "Pacts",
+    "empty": "No pacts yet."
+  },
+  "Review": {
+    "title": "Review",
+    "empty": "No proof is waiting for your decision."
+  },
+  "Settings": {
+    "title": "Settings",
+    "account": "Account",
+    "name": "Name",
+    "email": "Email",
+    "timezone": "Time zone",
+    "appearance": "Appearance"
+  },
+  "Boundary": {
+    "title": "This page failed to load",
+    "body": "Try reloading. If it keeps happening, let us know.",
+    "retry": "Reload"
   }
 }

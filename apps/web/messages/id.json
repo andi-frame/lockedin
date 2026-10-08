@@ -3,18 +3,21 @@
     "title": "Tepati",
     "description": "Tepati janji belajarmu. Dua teman, satu kesepakatan, satu buku koin."
   },
-  "Home": {
-    "name": "Tepati",
-    "tagline": "Janji belajar yang dijaga berdua.",
-    "building": "Aplikasinya sedang dibangun. Halaman masuk dan Hari ini menyusul."
-  },
   "Errors": {
     "unknown": "Terjadi kesalahan. Coba lagi sebentar lagi.",
     "network": "Tidak bisa terhubung ke server. Periksa koneksimu lalu coba lagi.",
     "auth_unauthenticated": "Sesimu sudah berakhir. Masuk lagi untuk melanjutkan.",
     "rate_limited": "Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.",
     "server_internal": "Ada masalah di sisi kami. Coba lagi sebentar lagi.",
-    "server_unavailable": "Server sedang sibuk. Coba lagi sebentar lagi."
+    "server_unavailable": "Server sedang sibuk. Coba lagi sebentar lagi.",
+    "auth_invalid_credentials": "Email atau kata sandi belum cocok. Periksa lagi lalu coba masuk.",
+    "auth_email_taken": "Email ini sudah terdaftar. Coba masuk, atau pakai email lain.",
+    "auth_weak_password": "Kata sandi terlalu mudah ditebak. Pakai minimal 8 karakter dan hindari yang umum.",
+    "auth_invalid_email": "Format email belum benar. Contoh: nama@kampus.ac.id",
+    "auth_invalid_name": "Nama ini belum bisa dipakai. Tulis nama yang akan kamu ketik saat menandatangani kontrak.",
+    "auth_rate_limited": "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.",
+    "auth_rate_limited_wait": "Terlalu banyak percobaan. Coba lagi dalam {seconds} detik.",
+    "validation_failed": "Isian ini belum valid. Periksa lagi."
   },
   "Common": {
     "close": "Tutup",
@@ -54,5 +57,70 @@
     "system": "Ikuti sistem",
     "light": "Terang",
     "dark": "Gelap"
+  },
+  "Auth": {
+    "loginTitle": "Masuk",
+    "loginLead": "Lanjutkan janji belajarmu.",
+    "registerTitle": "Buat akun",
+    "registerLead": "Satu akun untuk semua janji belajarmu.",
+    "emailLabel": "Email",
+    "passwordLabel": "Kata sandi",
+    "passwordHint": "Minimal 8 karakter.",
+    "nameLabel": "Nama",
+    "nameHint": "Juga nama yang kamu ketik saat menandatangani kontrak.",
+    "showPassword": "Tampilkan kata sandi",
+    "hidePassword": "Sembunyikan kata sandi",
+    "login": "Masuk",
+    "register": "Buat akun",
+    "working": "Memproses",
+    "noAccount": "Belum punya akun?",
+    "haveAccount": "Sudah punya akun?",
+    "emailRequired": "Isi emailmu.",
+    "emailInvalid": "Format email belum benar. Contoh: nama@kampus.ac.id",
+    "passwordRequired": "Isi kata sandimu.",
+    "passwordShort": "Kata sandi minimal 8 karakter.",
+    "passwordLong": "Kata sandi maksimal 128 karakter.",
+    "nameRequired": "Isi namamu.",
+    "nameLong": "Nama maksimal 80 karakter.",
+    "brandLine": "Janji belajar yang dijaga berdua.",
+    "brandBody": "Kirim bukti belajar sebelum batas waktu. Setiap koin yang bergerak punya barisnya sendiri di buku koin."
+  },
+  "Nav": {
+    "main": "Menu utama",
+    "today": "Hari ini",
+    "pacts": "Kontrak",
+    "review": "Tinjau",
+    "settings": "Pengaturan",
+    "notifications": "Notifikasi",
+    "notificationsUnread": "Notifikasi, {count} belum dibaca",
+    "skip": "Lewati ke konten",
+    "logout": "Keluar",
+    "loggingOut": "Sedang keluar"
+  },
+  "Today": {
+    "title": "Hari ini",
+    "greeting": "Halo, {name}.",
+    "empty": "Belum ada kontrak aktif. Kontrak yang kamu buat atau terima akan muncul di sini."
+  },
+  "Pacts": {
+    "title": "Kontrak",
+    "empty": "Belum ada kontrak."
+  },
+  "Review": {
+    "title": "Tinjau",
+    "empty": "Tidak ada bukti yang menunggu keputusanmu."
+  },
+  "Settings": {
+    "title": "Pengaturan",
+    "account": "Akun",
+    "name": "Nama",
+    "email": "Email",
+    "timezone": "Zona waktu",
+    "appearance": "Tampilan"
+  },
+  "Boundary": {
+    "title": "Halaman ini gagal dimuat",
+    "body": "Coba muat ulang. Kalau masih begini, kabari kami.",
+    "retry": "Muat ulang"
   }
 }

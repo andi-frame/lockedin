@@ -2,7 +2,7 @@
 
 > *Tepati janji belajarmu.* A pact between two friends: one puts up a coin pot, the other proves every day that they studied. Each missed day takes coins out of the pot.
 
-**Status:** the backend is complete (Phases 0 to 4: API, worker, email, uploads and media). The web app is scaffolded (task 5.1: Next.js 16 on Bun with the typed API client); the design tokens, the dark theme and the UI primitives are in (task 5.2, `/dev/kitchen-sink` in dev); the auth pages, app shell and screens (5.3 onwards) are next. Read [`docs/HANDOVER.md`](docs/HANDOVER.md) and [`docs/STATUS.md`](docs/STATUS.md) first; the task list is [`docs/PLAN.md`](docs/PLAN.md).
+**Status:** the backend is complete (Phases 0 to 4: API, worker, email, uploads and media). The web app is scaffolded (task 5.1: Next.js 16 on Bun with the typed API client); the design tokens, the dark theme and the UI primitives are in (task 5.2, `/dev/kitchen-sink` in dev); the sign-in and register pages and the signed-in shell (rail on desktop, tab bar on a phone) are in (task 5.3, with a Playwright e2e); the pact screens (6.1 onwards) are next. Read [`docs/HANDOVER.md`](docs/HANDOVER.md) and [`docs/STATUS.md`](docs/STATUS.md) first; the task list is [`docs/PLAN.md`](docs/PLAN.md).
 
 ## How it works
 

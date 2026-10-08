@@ -50,7 +50,7 @@ bun run setup                     # copies deploy/env/*.example → .env files i
 | `bun run dev:apps` | only the three app processes (when infra is already running anywhere) |
 | `bun run test` | Go unit tests and web unit tests |
 | `bun run test:integration` | Go integration tests (`-tags=integration`) against the **running dev infra** (`bun run infra:up`): each test gets a throwaway Postgres database, and Redis tests use their own logical DB (auth 15, http 14, jobs 13). Add `-race` when running `go test` by hand |
-| `bun run test:e2e` | Playwright against `dev:docker` with the test clock enabled |
+| `bun run test:e2e` | Playwright specs in `apps/web/tests/e2e` against a stack that is already running (`bun run dev:hybrid`; the script checks web and API first and extra arguments go to Playwright). The API allows 10 auth requests a minute per IP, so wait a minute between full runs. A test clock does not exist yet |
 | `bun run lint` | tsc `--noEmit` for scripts, Redocly lint of `api/openapi.yaml`, `gofmt -l`, `go vet` and, in `apps/web`, `tsc --noEmit` plus ESLint |
 | `bun run go:tool <tool> …` | runs goose / sqlc / oapi-codegen pinned in `apps/server/tools/go.mod` (Go downloads the 1.26 toolchain for that module automatically) |
 | `bun run deploy:build -- --env staging` | builds and tags images `tepati-web`/`tepati-server:<git sha>` |
