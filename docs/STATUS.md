@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-08, after task 5.3 (auth pages and app shell; the backend is complete and Phase 5 is done). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-08, after task 6.1 (new pact wizard and invite/accept flow; the backend is complete, Phase 5 is done and Phase 6 has started). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -11,11 +11,11 @@ Last updated: 2026-10-08, after task 5.3 (auth pages and app shell; the backend 
 | 2 API contract and HTTP | done | OpenAPI contract, Fiber app, all 31 operations |
 | 3 Worker | done | 3.1 asynq worker, schedule, outbox relay, reminders, `tepatictl seed`/`pact show`, air files. 3.2 notifications and email (Mailpit) |
 | 4 Uploads and media | done | 4.1 BlobStore drivers (s3 and fs, Garage enforces the signed length). 4.2 upload endpoints, `media:process`, `uploads:gc` |
-| 5 Web foundation | done | 5.1 Next.js app on Bun (PR #3). 5.2 design tokens and primitives (PR #4). 5.3 auth pages, app shell, auth guard and the Playwright e2e: done on `p5.3-auth-shell` (not pushed or merged yet) |
-| **6 Web features** | **next** | 6.1 new pact wizard and invite/accept flow |
+| 5 Web foundation | done | 5.1 Next.js app on Bun (PR #3). 5.2 design tokens and primitives (PR #4). 5.3 auth pages, app shell, auth guard and the Playwright e2e (PR #5) |
+| **6 Web features** | **in progress** | 6.1 new pact wizard and invite/accept flow: done on `p6.1-pact-wizard` (not pushed or merged yet). Next: 6.2 Today screen |
 | 6–9 | not started | Web features, Docker, quality gates, staging |
 
-The first unchecked task in `docs/PLAN.md` is **6.1**.
+The first unchecked task in `docs/PLAN.md` is **6.2**.
 
 ## 2. Branch and merge state
 
@@ -28,7 +28,8 @@ e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-han
 - The seven task branches (`p2.1-openapi` ... `p4.2-uploads`) were deleted from `origin` and locally on 2026-10-08, at the owner's request, after the merge. Their commits are in `main`.
 - 5.1 was merged into `main` as PR #3 (merge commit `f715daf`, 2026-10-08). The branch `p5.1-nextjs-app` still exists on `origin` (the owner has not asked to delete it).
 - 5.2 was merged as PR #4 (merge commit `e189035`, 2026-10-08). The branch `p5.2-tokens-primitives` still exists on `origin`, like `p5.1-nextjs-app` (the owner has not asked to delete them).
-- 5.3 lives on `p5.3-auth-shell` (four code commits, `a9f3db3..884e87d`, plus a docs commit), cut from `main` after the 5.2 merge. It is not pushed or merged yet. Cut 6.1 from it if it is still unmerged, otherwise from `main`.
+- 5.3 was merged as PR #5 (merge commit `373f3aa`, 2026-10-08). The branch `p5.3-auth-shell` still exists on `origin`, like the other two.
+- 6.1 lives on `p6.1-pact-wizard` (three code commits, `632b9cd..2a94628`, plus a docs commit), cut from `main` after the 5.3 merge. It is not pushed or merged yet. Cut 6.2 from it if it is still unmerged, otherwise from `main`.
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -189,11 +190,20 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - **Placeholders:** Hari ini, Kontrak and Tinjau show an honest empty state until Phase 6; Pengaturan is real. The bell shows the unread count and is not a button yet.
 - **e2e:** `@playwright/test` in `apps/web`, `playwright.config.ts` (desktop 1440 and mobile 390 projects, one worker), `tests/e2e/auth.spec.ts`. `bun run test:e2e` expects the stack to be running. The API allows 10 auth requests a minute per IP (not configurable); one full run uses about 7, so wait a minute between runs and keep new specs frugal (register one account per spec, reuse `storageState` where you can).
 
+**What 6.1 added (pacts: create, invite, sign):**
+- **Pure logic** in `src/lib/pact` (all table-tested): `dates.ts` (plain `YYYY-MM-DD` strings; "today" is always asked for a named zone and an instant), `draft.ts` (the wizard's working copy with numbers as strings, `validateStep` per step mirroring SPEC §4 and `Terms.Validate`, `buildTerms`, `draftFromPact`; the doer slot is keyed by the nil UUID until someone joins), `summary.ts` (the plain-language terms as `{key, params}` lines; wording is in `messages/*.json` under `Terms`, and a test checks every key and every `{placeholder}` exists in both languages), `agreement.ts` (`checkSignature`, `inviteUrl`, `agreementState`).
+- **Screens:** `/pacts` (list, minimal), `/pacts/new` and `/pacts/[id]/edit` (the same `Wizard`: Dasar, Komitmen, Koin dan aturan, Tinjau ketentuan), `/pacts/[id]` (signatures, terms, sign form, invite tools, edit link; nothing about the ledger yet) and `/invite/[token]` (private on purpose; the proxy sends a signed-out invitee to `/login?next=...` and `safeNext` brings them back).
+- **Signing** is stamp violet (`SignForm`: tick, then type your display name exactly, case-insensitive). The invitee's button does `joinInvite` then `acceptPact` with the new hash. Any edit calls `updatePact`, which clears both signatures; the pact page says so when `terms_version > 1` and nobody has signed.
+- **Retries:** the wizard keeps one `Idempotency-Key` per logical action and per payload; if Propose fails after the draft was created, a retry does not create a second pact (it updates the draft if the person changed something, then proposes again).
+- **e2e:** `pact-create.spec.ts` (desktop only; two contexts; registers two users). With the other specs a full `bun run test:e2e` costs 9 of the 10 auth requests a minute.
+- **Local only:** if port 8080 is busy, set `API_PORT` and `API_INTERNAL_URL` in `.env` (gitignored) and run the e2e with `E2E_API_URL`.
+
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
 - Auth is cookie based with a CSRF header (`X-CSRF-Token`, value from the `tepati_csrf` cookie) on unsafe methods, and mutating calls take an `Idempotency-Key`. Details in `docs/adr/0010-api-conventions.md`.
 - Upload client flow: `POST /uploads` -> `PUT` the file to `put_url` with exactly the returned `headers` (the browser adds `Content-Length`) -> `POST /uploads/{id}/complete` -> poll `GET /attachments/{id}` (1 s backing off to 5 s) until `ready` or `rejected`. With the fs storage driver `put_url` points at the API (`/api/v1/blob/...`), with Garage at port 3900; CORS in dev already allows `Content-Type`.
 - Email links point at `/pacts/<id>`, `/review` and `/invite/<token>`; these routes must exist.
+- The server does not check `starts_on` against the date: a pact proposed for tomorrow and signed after tomorrow starts with check-ins that are already overdue. The wizard only prevents choosing a start before tomorrow. Needs a rule in SPEC (refuse to schedule once `starts_on` has passed?) and a server check; not decided.
 - A test-clock endpoint (`CLOCK_OVERRIDE`) does not exist yet; the Phase 6 e2e tests (`today.spec.ts` needs open, submitted, approved and missed) will need one or a different way to move time.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p6.1-pact-wizard`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 6.2 in the same session as 6.1 unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p6.2-today-screen`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 6.3 in the same session as 6.2 unless asked.
