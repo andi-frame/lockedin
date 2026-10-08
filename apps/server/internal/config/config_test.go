@@ -60,6 +60,11 @@ func TestValidateRules(t *testing.T) {
 		{"bad upload mode", func(e map[string]string) { e["UPLOAD_MODE"] = "magic" }, "UPLOAD_MODE"},
 		{"zero worker concurrency", func(e map[string]string) { e["WORKER_CONCURRENCY"] = "0" }, "WORKER_CONCURRENCY"},
 		{"worker metrics port out of range", func(e map[string]string) { e["WORKER_METRICS_PORT"] = "70000" }, "WORKER_METRICS_PORT"},
+		{"zero auth rate limit", func(e map[string]string) { e["AUTH_RATE_LIMIT_PER_MIN"] = "0" }, "AUTH_RATE_LIMIT_PER_MIN"},
+		{"raised auth rate limit in production", func(e map[string]string) {
+			e["APP_ENV"] = "production"
+			e["AUTH_RATE_LIMIT_PER_MIN"] = "11"
+		}, "AUTH_RATE_LIMIT_PER_MIN"},
 		{"clock override in production", func(e map[string]string) {
 			e["APP_ENV"] = "production"
 			e["CLOCK_OVERRIDE"] = "true"
@@ -84,5 +89,22 @@ func TestFSDriverDoesNotNeedS3Keys(t *testing.T) {
 	env["STORAGE_DRIVER"] = "fs"
 	if _, err := LoadFrom(env); err != nil {
 		t.Fatalf("fs driver should not require S3 keys: %v", err)
+	}
+}
+
+func TestAuthRateLimitDefaultsToTenAndCanBeRaisedOutsideProduction(t *testing.T) {
+	cfg, err := LoadFrom(validEnv())
+	if err != nil || cfg.AuthRateLimitPerMin != 10 {
+		t.Fatalf("default = %d, err %v", cfg.AuthRateLimitPerMin, err)
+	}
+	env := validEnv()
+	env["AUTH_RATE_LIMIT_PER_MIN"] = "200"
+	if cfg, err = LoadFrom(env); err != nil || cfg.AuthRateLimitPerMin != 200 {
+		t.Fatalf("raised in dev = %d, err %v", cfg.AuthRateLimitPerMin, err)
+	}
+	env["APP_ENV"] = "production"
+	env["AUTH_RATE_LIMIT_PER_MIN"] = "5" // lowering it is always allowed
+	if _, err = LoadFrom(env); err != nil {
+		t.Fatalf("lowered in production: %v", err)
 	}
 }

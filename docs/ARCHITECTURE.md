@@ -340,6 +340,7 @@ S3_BUCKET_STAGING=tepati-staging     S3_BUCKET_MEDIA=tepati-media      S3_PUBLIC
 STORAGE_DRIVER=s3|fs                 FS_STORAGE_DIR=./.data/blobs       UPLOAD_MODE=presigned|proxy
 UPLOAD_IMAGE_MAX_BYTES=15728640      UPLOAD_VIDEO_MAX_BYTES=209715200   UPLOAD_VIDEO_MAX_SECONDS=180
 UPLOAD_FILE_MAX_BYTES=20971520       MEDIA_QUEUE_MAX=500
+AUTH_RATE_LIMIT_PER_MIN=10           # per IP; may be raised outside production (e2e), validation caps it at 10 in production
 WORKER_CONCURRENCY=10                WORKER_METRICS_PORT=9091   # 0 disables the worker's /metrics listener
 FFMPEG_PATH=ffmpeg                   VIPS_PATH=vips
 SMTP_URL=smtp://localhost:1025       MAIL_FROM="Tepati <no-reply@tepati.local>"
