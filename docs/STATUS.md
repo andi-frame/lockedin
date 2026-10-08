@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-08, after task 6.7 (the notifications inbox and settings, which closes Phase 6; the backend is complete, Phases 5 and 6 are done). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-08, after task 7.1 (the Dockerfiles; the backend is complete, Phases 5 and 6 are done and Phase 7 has started). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -13,9 +13,10 @@ Last updated: 2026-10-08, after task 6.7 (the notifications inbox and settings, 
 | 4 Uploads and media | done | 4.1 BlobStore drivers (s3 and fs, Garage enforces the signed length). 4.2 upload endpoints, `media:process`, `uploads:gc` |
 | 5 Web foundation | done | 5.1 Next.js app on Bun (PR #3). 5.2 design tokens and primitives (PR #4). 5.3 auth pages, app shell, auth guard and the Playwright e2e (PR #5) |
 | 6 Web features | done | 6.1 new pact wizard and invite/accept flow (PR #6). 6.2 Today screen (PR #7). 6.3 proof editor and submission (PR #8). 6.4 pact page with the coin book and calendar (PR #9). 6.5 review queue and check-in detail (PR #10). 6.6 settlement and payout screens (PR #11). 6.7 notifications inbox and settings: done on `p6.7-notifications` (not pushed or merged yet). Next: Phase 7 |
-| 6–9 | not started | Web features, Docker, quality gates, staging |
+| 7 Docker and deploy | in progress | 7.1 Dockerfiles for the server (api, worker, tepatictl, goose) and the web app: done on `p7.1-dockerfiles` (not pushed or merged yet). Next: 7.2 compose and Caddy |
+| 8–9 | not started | Quality gates, staging |
 
-The first unchecked task in `docs/PLAN.md` is **7.1** (Phase 7 needs the owner's decisions on SMTP and TLS before 7.2 and later, see `docs/HANDOVER.md` §10).
+The first unchecked task in `docs/PLAN.md` is **7.2** (compose and Caddy; the real SMTP provider and TLS settings are the owner's decisions, see `docs/HANDOVER.md` §10, and can wait until staging).
 
 ## 2. Branch and merge state
 
@@ -31,7 +32,7 @@ e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-han
 - 5.3 was merged as PR #5 (merge commit `373f3aa`, 2026-10-08). The branch `p5.3-auth-shell` still exists on `origin`, like the other two.
 - 6.1 was merged as PR #6 (merge commit `ddff0a3`, 2026-10-08). The branch `p6.1-pact-wizard` still exists on `origin`.
 - 6.2 was merged as PR #7 (merge commit `88d0da4`, 2026-10-08). The branch `p6.2-today-screen` still exists on `origin`.
-- 6.3 was merged as PR #8 (`a54f2d7`), 6.4 as PR #9 (`d4e89b2`), 6.5 as PR #10 (`93d095a`) and 6.6 as PR #11 (`e8121ad`). 6.7 lives on `p6.7-notifications` (`d2035d7..a55c373`, plus a docs commit), cut from `main` after the 6.6 merge. It is not pushed or merged yet. Cut 7.1 from it if it is still unmerged, otherwise from `main`.
+- 6.3 was merged as PR #8 (`a54f2d7`), 6.4 as PR #9 (`d4e89b2`), 6.5 as PR #10 (`93d095a`), 6.6 as PR #11 (`e8121ad`) and 6.7 as PR #12 (`72b934b`). 7.1 lives on `p7.1-dockerfiles` (`70baeca..745061b`, plus a docs commit), cut from `main` after the 6.7 merge. It is not pushed or merged yet. Cut 7.2 from it if it is still unmerged, otherwise from `main`.
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -157,7 +158,7 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - A `go test -race ./...` of the whole module can run out of memory on the dev machine (`fatal error: runtime: cannot allocate memory` during a link). It passed with `-p 3`.
 - No ClamAV or content scanning: a PDF is only checked for the `%PDF-` header and stored as is (SPEC §8). Videos keep working only for H.264/HEVC/VP9 inputs ffmpeg can decode.
 - Uploads have no per-user rate limit beyond the global 30/min on `POST /uploads`, and no resumable upload; a dropped connection means starting that file again.
-- The worker has `/metrics` and `/healthz` only, no `/readyz`. Fine for now; add one with the compose healthchecks (7.1).
+- The worker has `/metrics` and `/healthz` only, no `/readyz`. Fine for now; add one with the compose healthchecks (7.2).
 - `tepati_settlement_transitions_total` is by job type, see §5.
 - No test-clock endpoint (`CLOCK_OVERRIDE` is config only), by the owner's decision. The e2e gets time-dependent states from seed scenarios built through the service (`today`, `passbook`), and moves time with `tepatictl advance --pact <id>`, which ticks one pact's open check-ins with a clock set just past their deadline (6.4).
 - `getToday` returns `review_queue_count` without rows, and `TodayCheckIn` has no commitment or rest-day count, so the Today page also calls `getReviewQueue` and `getPact` per active pact. Folding that into `getToday` would be a contract change.
@@ -242,6 +243,12 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - **Settings:** unchanged controls. The page now says the account cannot be changed from the app yet, and has a Notifikasi section that says what is sent where and links to the inbox.
 - **Open question for the owner:** the API has no `PATCH /me` and no notification preferences. Should the MVP get them (name, time zone, language; per-kind email on or off), or stay without? Not decided; nothing was invented.
 
+**What 7.1 added (Dockerfiles):**
+- `deploy/docker/server.Dockerfile`: Go 1.26 build stage (module cache and build cache mounts), then `debian:bookworm-slim` with `ffmpeg libvips-tools ca-certificates tzdata`, user 10001. One image holds `api`, `worker`, `tepatictl` and `goose` (in `/usr/local/bin`) and the migrations in `/app/migrations`; the default command is `api`, compose picks the others. The version is stamped with `-X ...buildinfo.Version`. 989 MB.
+- `deploy/docker/web.Dockerfile`: `oven/bun:1.4` builds with Next `output: "standalone"`, `oven/bun:1.4-slim` runs `bun apps/web/server.js` as user 10001 on port 3000. `API_INTERNAL_URL` is read at run time. 339 MB. In production there is no `/api` rewrite, so the API has to be reached through Caddy (7.2).
+- `bun run deploy:build -- --env staging|production [--only server|web]` (`scripts/deploy-build.ts`, rules in `scripts/lib/images.ts`, tested) builds both and tags `tepati-<image>:<env>` and `tepati-<image>:<git describe>`. Each Dockerfile has its own `.dockerignore` next to it.
+- Checked by running the images against the dev infra: api `/healthz` and `/readyz` green, worker starts and stops cleanly, goose lists the applied migrations, the web image serves `/login` and static chunks.
+
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
 - Auth is cookie based with a CSRF header (`X-CSRF-Token`, value from the `tepati_csrf` cookie) on unsafe methods, and mutating calls take an `Idempotency-Key`. Details in `docs/adr/0010-api-conventions.md`.
@@ -249,4 +256,4 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - Email links point at `/pacts/<id>`, `/review` and `/invite/<token>`; these routes must exist.
 - The server does not check `starts_on` against the date: a pact proposed for tomorrow and signed after tomorrow starts with check-ins that are already overdue. The wizard only prevents choosing a start before tomorrow. Needs a rule in SPEC (refuse to schedule once `starts_on` has passed?) and a server check; not decided.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p7.1-dockerfiles`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 7.2 in the same session as 7.1 unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p7.2-compose`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 7.3 in the same session as 7.2 unless asked.

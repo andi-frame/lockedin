@@ -1,0 +1,9 @@
+**
+!package.json
+!bun.lock
+!apps/web/**
+apps/web/node_modules
+apps/web/.next
+apps/web/test-results
+apps/web/tests
+apps/web/tsconfig.tsbuildinfo

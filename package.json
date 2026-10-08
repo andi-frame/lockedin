@@ -30,7 +30,7 @@
     "test:integration": "cd apps/server && go test -tags=integration -count=1 ./...",
     "test:e2e": "bun scripts/e2e.ts",
     "lint": "bun scripts/lint.ts",
-    "deploy:build": "bun scripts/todo.ts deploy:build 7.1",
+    "deploy:build": "bun scripts/deploy-build.ts",
     "deploy:up": "bun scripts/todo.ts deploy:up 7.2",
     "deploy:scale": "bun scripts/todo.ts deploy:scale 7.2",
     "go:tool": "cd apps/server/tools && go tool",
