@@ -3,6 +3,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import { MemberLine } from "@/components/member-line";
 import { PactLive } from "@/components/pact/pact-live";
 import { PactStatusBadge } from "@/components/pact/status-badge";
+import { SettlementPanel } from "@/components/pact/settlement-panel";
 import { TermsSummary } from "@/components/pact/terms-summary";
 import { serverApi } from "@/lib/api/server";
 import type { components } from "@/lib/api/schema";
@@ -14,8 +15,8 @@ import { PAGE_SIZE } from "@/lib/passbook";
 type Pact = components["schemas"]["Pact"];
 
 /**
- * A pact that is live, settling or finished: the cover-teal header band, the coin book with its
- * saldo, the calendar, and the terms to look up. The agreement view (signatures, invite, sign)
+ * A pact that is live, settling or finished: the cover-teal header band, the settlement panel once
+ * there is a payout, the coin book with its saldo, the calendar, and the terms to look up. The agreement view (signatures, invite, sign)
  * is for the states before this one.
  */
 export async function RunningPact({ pact, me }: { pact: Pact; me: string }) {
@@ -42,6 +43,8 @@ export async function RunningPact({ pact, me }: { pact: Pact; me: string }) {
           {date(pact.starts_on)} – {date(pact.ends_on)}
         </p>
       </header>
+
+      <SettlementPanel pact={pact} timeZone={pact.timezone} />
 
       <PactLive
         pactId={pact.id}
