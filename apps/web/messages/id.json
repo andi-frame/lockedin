@@ -360,7 +360,10 @@
     "newInvite": "Buat tautan baru",
     "doerPlaceholder": "Pelaku",
     "scheduled": "Kontrak terjadwal dan dimulai {date}.",
-    "laterScreens": "Buku tabungan dan kalender untuk kontrak yang berjalan menyusul di pembaruan berikutnya."
+    "members": "Anggota",
+    "ledgerTitle": "Buku koin",
+    "calendarTitle": "Kalender",
+    "termsHint": "Ketentuan yang disepakati"
   },
   "Ledger": {
     "open": "Buku lengkap",
@@ -444,5 +447,32 @@
     "cancel": "Batal",
     "sent": "Bukti terkirim.",
     "updated": "Bukti diperbarui."
+  },
+  "Passbook": {
+    "saldo": "Saldo",
+    "caption": "Buku koin, dari baris terbaru",
+    "colDate": "Tanggal",
+    "colNote": "Keterangan",
+    "colDebit": "Debit",
+    "colCredit": "Kredit",
+    "colSaldo": "Saldo",
+    "debitShort": "D",
+    "creditShort": "K",
+    "loadMore": "Muat baris sebelumnya",
+    "loading": "Memuat baris…",
+    "loadError": "Belum bisa memuat baris sebelumnya.",
+    "retry": "Coba lagi",
+    "end": "Itu baris pertama buku ini.",
+    "printed": "Baris baru tercetak: {note}. Saldo sekarang {saldo} koin.",
+    "by": "oleh {name}"
+  },
+  "Calendar": {
+    "prev": "Bulan sebelumnya",
+    "next": "Bulan berikutnya",
+    "grid": "Status setoran per hari, {month}",
+    "noCheckIn": "tidak ada setoran",
+    "legend": "Arti simbol",
+    "day": "{date}: {marks}",
+    "mark": "{name} {status}"
   }
 }

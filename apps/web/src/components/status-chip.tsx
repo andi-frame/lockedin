@@ -17,7 +17,7 @@ export type CheckInStatus = components["schemas"]["CheckInStatus"];
 
 type Spec = {
   tone: NonNullable<BadgeProps["tone"]>;
-  Icon: ComponentType<{ "aria-hidden"?: boolean; weight?: "regular" | "bold" | "fill" }>;
+  Icon: ComponentType<{ "aria-hidden"?: boolean; weight?: "regular" | "bold" | "fill"; className?: string }>;
 };
 
 // A Record over the generated enum: adding a status to openapi.yaml fails the typecheck here until
@@ -33,6 +33,9 @@ const specs: Record<CheckInStatus, Spec> = {
   missed: { tone: "debit", Icon: CalendarX },
   rest: { tone: "quiet", Icon: Moon },
 };
+
+/** The symbol of a status, for places that cannot afford a whole chip (the calendar). */
+export const statusIcon = (status: CheckInStatus) => specs[status].Icon;
 
 export const checkInStatuses = Object.keys(specs) as CheckInStatus[];
 

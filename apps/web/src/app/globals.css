@@ -73,11 +73,33 @@
   }
 }
 
+/* Passbook print, the signature move: a new line slides in and its mono digits type left to right
+   in 320ms, in as many steps as there are characters (--chars). Only the `from` frames are written,
+   so the line ends exactly where it is laid out. */
+@keyframes print-slide {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+@keyframes print-type {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+.print-line {
+  animation: print-slide 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.print-digits {
+  animation: print-type 320ms steps(var(--chars, 6), end) 120ms both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
