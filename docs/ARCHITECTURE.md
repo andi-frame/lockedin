@@ -340,7 +340,8 @@ S3_BUCKET_STAGING=tepati-staging     S3_BUCKET_MEDIA=tepati-media      S3_PUBLIC
 STORAGE_DRIVER=s3|fs                 FS_STORAGE_DIR=./.data/blobs       UPLOAD_MODE=presigned|proxy
 UPLOAD_IMAGE_MAX_BYTES=15728640      UPLOAD_VIDEO_MAX_BYTES=209715200   UPLOAD_VIDEO_MAX_SECONDS=180
 UPLOAD_FILE_MAX_BYTES=20971520       MEDIA_QUEUE_MAX=500
-AUTH_RATE_LIMIT_PER_MIN=10           # per IP; may be raised outside production (e2e), validation caps it at 10 in production
+AUTH_RATE_LIMIT_PER_MIN=10           # /auth/* requests and login attempts a minute per IP; may be raised outside production (e2e), capped at 10 in production
+RATE_LIMIT_PER_MIN=300               # all API requests a minute per client IP (the web server forwards the visitor's address)
 WORKER_CONCURRENCY=10                WORKER_METRICS_PORT=9091   # 0 disables the worker's /metrics listener
 FFMPEG_PATH=ffmpeg                   VIPS_PATH=vips
 SMTP_URL=smtp://localhost:1025       MAIL_FROM="Tepati <no-reply@tepati.local>"
@@ -353,7 +354,7 @@ SESSION_SECRET=…                     API_INTERNAL_URL=http://localhost:8080   
 
 - Logging uses `log/slog` JSON with `request_id`, `user_id`, and `pact_id`, and the web uses pino-style JSON. Never log proof bodies or tokens.
 - `/metrics` (Prometheus) on the API and worker exposes request latency, asynq queue sizes, settlement transitions by type, and media processing time and failures. The worker's listener is `WORKER_METRICS_PORT` (default 9091) and serves `tepati_asynq_queue_tasks{queue,state}`, `tepati_asynq_queue_latency_seconds{queue}`, `tepati_settlement_transitions_total{type=deadline|activated|closed}`, `tepati_outbox_relayed_total`, `tepati_outbox_skipped_total`, `tepati_reminders_queued_total`, `tepati_emails_total{result=sent|skipped|failed|enqueue_failed}`, and `tepati_job_runs_total{task,result}` with `tepati_job_duration_seconds{task}`. Media metrics arrive with PLAN 4.2.
-- asynqmon UI (dev and staging only, behind basic auth in staging).
+- asynqmon UI (the `tools` profile; it has no login, so it listens on the loopback only and a server reaches it through an SSH tunnel).
 
 ## 11. Testing strategy
 

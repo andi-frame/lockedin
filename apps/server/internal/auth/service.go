@@ -30,6 +30,7 @@ const (
 
 type Service struct {
 	st       *store.Store
+	rdb      *redis.Client
 	sessions *Sessions
 	login    *Limiter
 	// dummyHash keeps login timing similar whether or not the email exists.
@@ -40,10 +41,18 @@ func NewService(st *store.Store, rdb *redis.Client, sessionSecret string) *Servi
 	dummy, _ := HashPassword("timing-equaliser-password")
 	return &Service{
 		st:        st,
+		rdb:       rdb,
 		sessions:  NewSessions(rdb, sessionSecret),
 		login:     NewLimiter(rdb, "login", loginLimit, loginWindow),
 		dummyHash: dummy,
 	}
+}
+
+// WithLoginLimit sets how many login attempts one IP, and one email, may make a minute. The
+// default (10) is the production value; config.go lets a test suite raise it outside production.
+func (s *Service) WithLoginLimit(n int64) *Service {
+	s.login = NewLimiter(s.rdb, "login", n, loginWindow)
+	return s
 }
 
 func (s *Service) Sessions() *Sessions { return s.sessions }

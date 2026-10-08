@@ -10,7 +10,8 @@ const api = process.env.E2E_API_URL ?? "http://localhost:8080";
 
 async function reachable(url: string): Promise<boolean> {
   try {
-    return (await fetch(url, { signal: AbortSignal.timeout(3000) })).ok;
+    // https://localhost is a deploy:up stack on this machine, with a certificate from Caddy's own CA.
+    return (await fetch(url, { signal: AbortSignal.timeout(3000), tls: { rejectUnauthorized: !url.startsWith("https://localhost") } })).ok;
   } catch {
     return false;
   }

@@ -31,4 +31,6 @@ Proof often includes photos and videos from phones, and a raw phone video can be
 
 So the signature does pin the length. **`UPLOAD_MODE=presigned` stays the default** and the proxy mode is not implemented. If a deployment ever puts something in front of Garage that rewrites or drops those headers, run this test against it first; only then build the proxy endpoint (`/uploads/{id}/body` behind `io.LimitReader(max+1)`).
 
+Deploys (2026-10-08, task 7.2): the browser reaches Garage on its own host, `media.<DOMAIN>`, through Caddy, not under a `/s3` path prefix. A presigned URL signs its path, so a prefix that the proxy strips before Garage would fail every signature check. The bucket CORS rule is set from inside the compose network (`tepatictl storage-init`), because a deploy does not publish Garage's S3 port.
+
 Driver notes: the s3 client uses path-style addressing and signs presigned URLs for `S3_PUBLIC_ENDPOINT`, a separate client from the one the server uses (`S3_ENDPOINT`). The AWS SDK's default request checksums are switched off (`WhenRequired`).

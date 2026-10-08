@@ -1,0 +1,52 @@
+# Production and staging overrides: built images, no host ports except Caddy's, no source mounts,
+# resource limits, and nothing writable but tmpfs and the named volumes (docs/RUNNING.md §4).
+# Use it through `bun run deploy:up`, which sets TEPATI_ENV, the project name and the profiles.
+
+services:
+  postgres:
+    ports: !reset []
+    deploy:
+      resources:
+        limits: {cpus: "2", memory: 2g}
+  redis:
+    ports: !reset []
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 512m}
+  garage:
+    ports: !reset []
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 1g}
+  # Staging keeps Mailpit so no real mail leaves; the deploy script switches this profile on only
+  # when SMTP_URL points at it. Production sends through the real SMTP server.
+  mailpit:
+    profiles: !override [mail-sandbox]
+    ports: !reset []
+
+  api:
+    read_only: true
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 512m}
+  worker:
+    read_only: true
+    deploy:
+      resources:
+        # ffmpeg is the one heavy process; the tmpfs counts against this memory.
+        limits: {cpus: "2", memory: 2g}
+  web:
+    read_only: true
+    tmpfs: [/tmp]
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 512m}
+  caddy:
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 256m}
+  backup:
+    tmpfs: ["/tmp:size=2g"]
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 512m}

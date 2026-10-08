@@ -22,8 +22,12 @@ type Config struct {
 	SMTPURL       string `env:"SMTP_URL" envDefault:"smtp://localhost:1025"`
 	MailFrom      string `env:"MAIL_FROM" envDefault:"Tepati <no-reply@tepati.local>"`
 	MediaQueueMax int    `env:"MEDIA_QUEUE_MAX" envDefault:"500"`
-	// Requests a minute per IP on /auth/*. The default is the production value; a test suite that
-	// signs several users in raises it in dev (it cannot be raised in production).
+	// Requests a minute per client IP over the whole API (the web app's server-side calls count
+	// against the visitor they forward). Auth routes have their own, stricter budget below.
+	RateLimitPerMin int `env:"RATE_LIMIT_PER_MIN" envDefault:"300"`
+	// Requests a minute per IP on /auth/*, and login attempts a minute per IP and per email. The
+	// default is the production value; a test suite that signs several users in raises it in dev
+	// (it cannot be raised in production).
 	AuthRateLimitPerMin int `env:"AUTH_RATE_LIMIT_PER_MIN" envDefault:"10"`
 	// Worker: jobs run at once, and the port of its /metrics listener (0 turns it off).
 	WorkerConcurrency int `env:"WORKER_CONCURRENCY" envDefault:"10"`
@@ -98,6 +102,7 @@ func (c Config) validate() error {
 	}
 	// The test clock lets e2e tests move time; it must never be reachable in production.
 	check(!(c.ClockOverride && c.IsProduction()), "CLOCK_OVERRIDE must be false in production")
+	check(c.RateLimitPerMin >= 1, "RATE_LIMIT_PER_MIN must be at least 1")
 	check(c.AuthRateLimitPerMin >= 1, "AUTH_RATE_LIMIT_PER_MIN must be at least 1")
 	check(!(c.IsProduction() && c.AuthRateLimitPerMin > 10), "AUTH_RATE_LIMIT_PER_MIN must not exceed 10 in production")
 	check(c.APIPort > 0 && c.APIPort < 65536, "API_PORT out of range")

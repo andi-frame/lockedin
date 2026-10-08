@@ -1,0 +1,67 @@
+# Tepati edge: one origin for the app and the API, and a media host for presigned uploads and
+# downloads. DOMAIN and ACME_EMAIL come from the env file (compose.yaml passes them in).
+# `localhost` gets a certificate from Caddy's own CA; a real domain gets one from Let's Encrypt.
+# Mounted read-only (docs/RUNNING.md §4); the admin API is off, so a reload is a container restart.
+{
+	admin off
+	email {$ACME_EMAIL:nobody@localhost}
+}
+
+# api and web may run several copies (`bun run deploy:scale`): Docker's DNS answers with every
+# container's address and Caddy asks again every few seconds.
+(upstream) {
+	reverse_proxy {
+		dynamic a {
+			name {args[0]}
+			port {args[1]}
+			refresh 5s
+		}
+	}
+}
+
+(security) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		-Server
+	}
+}
+
+{$DOMAIN} {
+	import security
+	# Next.js writes small inline scripts and styles, so those two keep 'unsafe-inline'; everything
+	# else is the app itself and the media host. Nothing may frame the app.
+	header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://media.{$DOMAIN}; media-src 'self' blob: https://media.{$DOMAIN}; font-src 'self' data:; connect-src 'self' https://media.{$DOMAIN}; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+	encode zstd gzip
+
+	# Uploads never go through the API in presigned mode (invariant 7), so its bodies are small.
+	handle /api/* {
+		request_body {
+			max_size 2MB
+		}
+		import upstream api {$API_PORT}
+	}
+	# Liveness and readiness, for an uptime monitor.
+	handle /healthz {
+		import upstream api {$API_PORT}
+	}
+	handle /readyz {
+		import upstream api {$API_PORT}
+	}
+	handle {
+		import upstream web 3000
+	}
+}
+
+# Garage's S3 API. A separate host rather than a /s3 prefix: a presigned URL signs its path, and
+# a prefix stripped by the proxy would no longer match. The largest upload is a 200 MB video.
+media.{$DOMAIN} {
+	import security
+	request_body {
+		max_size 210MB
+	}
+	reverse_proxy garage:3900
+}

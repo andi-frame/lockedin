@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-08, after task 7.1 (the Dockerfiles; the backend is complete, Phases 5 and 6 are done and Phase 7 has started). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-08, after task 7.2 (compose and Caddy; the backend is complete, Phases 5 and 6 are done and Phase 7 is in progress). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -13,10 +13,10 @@ Last updated: 2026-10-08, after task 7.1 (the Dockerfiles; the backend is comple
 | 4 Uploads and media | done | 4.1 BlobStore drivers (s3 and fs, Garage enforces the signed length). 4.2 upload endpoints, `media:process`, `uploads:gc` |
 | 5 Web foundation | done | 5.1 Next.js app on Bun (PR #3). 5.2 design tokens and primitives (PR #4). 5.3 auth pages, app shell, auth guard and the Playwright e2e (PR #5) |
 | 6 Web features | done | 6.1 new pact wizard and invite/accept flow (PR #6). 6.2 Today screen (PR #7). 6.3 proof editor and submission (PR #8). 6.4 pact page with the coin book and calendar (PR #9). 6.5 review queue and check-in detail (PR #10). 6.6 settlement and payout screens (PR #11). 6.7 notifications inbox and settings: done on `p6.7-notifications` (not pushed or merged yet). Next: Phase 7 |
-| 7 Docker and deploy | in progress | 7.1 Dockerfiles for the server (api, worker, tepatictl, goose) and the web app: done on `p7.1-dockerfiles` (not pushed or merged yet). Next: 7.2 compose and Caddy |
+| 7 Docker and deploy | in progress | 7.1 Dockerfiles (PR #13). 7.2 compose dev and prod, Caddy, deploy:up, deploy:scale, backups: done on `p7.2-compose` (not pushed or merged yet). Next: 7.3 native mode polish |
 | 8–9 | not started | Quality gates, staging |
 
-The first unchecked task in `docs/PLAN.md` is **7.2** (compose and Caddy; the real SMTP provider and TLS settings are the owner's decisions, see `docs/HANDOVER.md` §10, and can wait until staging).
+The first unchecked task in `docs/PLAN.md` is **7.3** (native mode polish). Phase 8 and the real staging deploy need the owner's decisions on the SMTP provider, the domain and DNS (a `media.` host too), see `docs/HANDOVER.md` §10.
 
 ## 2. Branch and merge state
 
@@ -32,7 +32,7 @@ e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-han
 - 5.3 was merged as PR #5 (merge commit `373f3aa`, 2026-10-08). The branch `p5.3-auth-shell` still exists on `origin`, like the other two.
 - 6.1 was merged as PR #6 (merge commit `ddff0a3`, 2026-10-08). The branch `p6.1-pact-wizard` still exists on `origin`.
 - 6.2 was merged as PR #7 (merge commit `88d0da4`, 2026-10-08). The branch `p6.2-today-screen` still exists on `origin`.
-- 6.3 was merged as PR #8 (`a54f2d7`), 6.4 as PR #9 (`d4e89b2`), 6.5 as PR #10 (`93d095a`), 6.6 as PR #11 (`e8121ad`) and 6.7 as PR #12 (`72b934b`). 7.1 lives on `p7.1-dockerfiles` (`70baeca..745061b`, plus a docs commit), cut from `main` after the 6.7 merge. It is not pushed or merged yet. Cut 7.2 from it if it is still unmerged, otherwise from `main`.
+- 6.3 was merged as PR #8 (`a54f2d7`), 6.4 as PR #9 (`d4e89b2`), 6.5 as PR #10 (`93d095a`), 6.6 as PR #11 (`e8121ad`), 6.7 as PR #12 (`72b934b`) and 7.1 as PR #13 (`fa114b0`). 7.2 lives on `p7.2-compose` (`7420358..7b1e17b`, plus a docs commit), cut from `main` after the 7.1 merge. It is not pushed or merged yet. Cut 7.3 from it if it is still unmerged, otherwise from `main`.
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -249,6 +249,14 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - `bun run deploy:build -- --env staging|production [--only server|web]` (`scripts/deploy-build.ts`, rules in `scripts/lib/images.ts`, tested) builds both and tags `tepati-<image>:<env>` and `tepati-<image>:<git describe>`. Each Dockerfile has its own `.dockerignore` next to it.
 - Checked by running the images against the dev infra: api `/healthz` and `/readyz` green, worker starts and stops cleanly, goose lists the applied migrations, the web image serves `/login` and static chunks.
 
+**What 7.2 added (compose, Caddy, deploy scripts):**
+- **Compose:** `deploy/compose.yaml` has the `app` (migrate, api, worker, web), `edge` (caddy), `tools` (asynqmon 0.7.2, loopback only) and `backup` profiles besides `infra`. `compose.dev.yaml` swaps the app services for a Go dev image (`deploy/docker/dev-server.Dockerfile`: air, goose, ffmpeg, vips) and `oven/bun` with source bind mounts and the shadowing volumes of RUNNING §4. `compose.prod.yaml` adds `read_only`, tmpfs, resource limits, drops every host port but Caddy's and puts Mailpit behind a `mail-sandbox` profile.
+- **Edge:** `deploy/caddy/Caddyfile`: `<DOMAIN>` (web, `/api/*` with a 2 MB cap, `/healthz`, `/readyz`, security headers and a CSP) and `media.<DOMAIN>` (Garage S3, 210 MB cap). api and web are found through DNS so `deploy:scale` works.
+- **Scripts:** `deploy:up` and `deploy:scale` (`scripts/deploy-up.ts`, `deploy-scale.ts`, pure rules in `scripts/lib/deploy.ts`, tested); `garage-init.ts` takes a target; `ctl.ts` runs inside a deploy's api container with `TEPATI_CTL_PROJECT`; `e2e.ts` and the Playwright config accept `https://localhost`.
+- **Server:** `tepatictl probe <url>` (health checks) and `tepatictl storage-init` (CORS from inside the network); `RATE_LIMIT_PER_MIN`; the login attempt limit follows `AUTH_RATE_LIMIT_PER_MIN`. **Web:** `serverApi()` forwards the visitor's `x-forwarded-for`, so rate limits are per visitor.
+- **Backups:** `deploy/backup` (nightly `pg_dump` into the Garage bucket `tepati-backups`, 14 daily and 8 weekly). Restore steps are in RUNNING §6; there is no RUNBOOK yet.
+- **Not done:** a real domain, SMTP and TLS (nothing was deployed outside this machine); a restore into a scratch database was not rehearsed (the dump was written and the pruning verified, `pg_restore` was not run); the e2e `proof` spec ran through Caddy but the CSP was only checked by that run, not by a manual look at the browser console.
+
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
 - Auth is cookie based with a CSRF header (`X-CSRF-Token`, value from the `tepati_csrf` cookie) on unsafe methods, and mutating calls take an `Idempotency-Key`. Details in `docs/adr/0010-api-conventions.md`.
@@ -256,4 +264,4 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - Email links point at `/pacts/<id>`, `/review` and `/invite/<token>`; these routes must exist.
 - The server does not check `starts_on` against the date: a pact proposed for tomorrow and signed after tomorrow starts with check-ins that are already overdue. The wizard only prevents choosing a start before tomorrow. Needs a rule in SPEC (refuse to schedule once `starts_on` has passed?) and a server check; not decided.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p7.2-compose`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 7.3 in the same session as 7.2 unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p7.3-native-polish`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 8.1 in the same session as 7.3 unless asked.

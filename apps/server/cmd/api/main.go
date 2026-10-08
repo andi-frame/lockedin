@@ -42,7 +42,7 @@ func run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 
 	st := store.NewStore(pool)
 	svc := service.New(st, domain.SystemClock{})
-	authSvc := auth.NewService(st, rdb, cfg.SessionSecret)
+	authSvc := auth.NewService(st, rdb, cfg.SessionSecret).WithLoginLimit(int64(cfg.AuthRateLimitPerMin))
 
 	blobs, err := storage.FromConfig(cfg)
 	if err != nil {
@@ -62,6 +62,7 @@ func run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		},
 	})
 	limits := httpapi.DefaultLimits()
+	limits.Global = cfg.RateLimitPerMin
 	limits.Auth = cfg.AuthRateLimitPerMin
 	deps := httpapi.Deps{
 		Config:   cfg,

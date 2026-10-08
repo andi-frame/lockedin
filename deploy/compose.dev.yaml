@@ -1,0 +1,78 @@
+# Development overrides for `bun run dev:docker`: the source is bind-mounted and the services
+# reload on change. Mount rules are in docs/RUNNING.md §4: host node_modules and .next never enter
+# a Linux container (named volumes shadow them), Go caches live in named volumes, and file
+# watching polls because events do not cross bind mounts on Windows and macOS.
+
+x-dev-server: &dev-server
+  image: tepati-dev-server
+  build:
+    context: ..
+    dockerfile: deploy/docker/dev-server.Dockerfile
+  working_dir: /src/apps/server
+  volumes:
+    - ../apps/server:/src/apps/server
+    - go-mod:/go/pkg/mod
+    - go-build:/root/.cache/go-build
+    - server-tmp:/src/apps/server/tmp
+
+services:
+  migrate:
+    <<: *dev-server
+    entrypoint: ["sh", "-c", 'exec goose -dir /src/apps/server/db/migrations postgres "$$DATABASE_URL" up']
+    volumes:
+      - ../apps/server/db/migrations:/src/apps/server/db/migrations:ro
+
+  api:
+    <<: *dev-server
+    # air builds a Linux binary into the tmp volume; --build.* override the Windows names in .air.api.toml.
+    command: ["air", "-c", ".air.api.toml", "--build.cmd", "go build -o ./tmp/api ./cmd/api", "--build.bin", "./tmp/api", "--build.poll", "true", "--build.poll_interval", "500"]
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-8080}:${API_PORT:-8080}"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:${API_PORT:-8080}/readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 60s
+
+  worker:
+    <<: *dev-server
+    command: ["air", "-c", ".air.worker.toml", "--build.cmd", "go build -o ./tmp/worker ./cmd/worker", "--build.bin", "./tmp/worker", "--build.poll", "true", "--build.poll_interval", "500"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:${WORKER_METRICS_PORT:-9091}/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 60s
+
+  web:
+    image: oven/bun:1.4
+    working_dir: /app
+    # Install into the volumes on every start (a no-op once they are filled), then run Next's dev server.
+    command: ["sh", "-c", "bun install --frozen-lockfile && cd apps/web && exec bun --bun next dev -H 0.0.0.0 -p 3000"]
+    environment:
+      WATCHPACK_POLLING: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    volumes:
+      - ../package.json:/app/package.json:ro
+      - ../bun.lock:/app/bun.lock:ro
+      - ../apps/web:/app/apps/web
+      - web-node-modules:/app/node_modules
+      - web-app-node-modules:/app/apps/web/node_modules
+      - web-next:/app/apps/web/.next
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3000/login').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 5s
+      timeout: 10s
+      retries: 60
+      start_period: 120s
+
+volumes:
+  go-mod:
+  go-build:
+  server-tmp:
+  web-node-modules:
+  web-app-node-modules:
+  web-next:

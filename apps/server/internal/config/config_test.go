@@ -60,6 +60,7 @@ func TestValidateRules(t *testing.T) {
 		{"bad upload mode", func(e map[string]string) { e["UPLOAD_MODE"] = "magic" }, "UPLOAD_MODE"},
 		{"zero worker concurrency", func(e map[string]string) { e["WORKER_CONCURRENCY"] = "0" }, "WORKER_CONCURRENCY"},
 		{"worker metrics port out of range", func(e map[string]string) { e["WORKER_METRICS_PORT"] = "70000" }, "WORKER_METRICS_PORT"},
+		{"zero rate limit", func(e map[string]string) { e["RATE_LIMIT_PER_MIN"] = "0" }, "RATE_LIMIT_PER_MIN"},
 		{"zero auth rate limit", func(e map[string]string) { e["AUTH_RATE_LIMIT_PER_MIN"] = "0" }, "AUTH_RATE_LIMIT_PER_MIN"},
 		{"raised auth rate limit in production", func(e map[string]string) {
 			e["APP_ENV"] = "production"
@@ -106,5 +107,20 @@ func TestAuthRateLimitDefaultsToTenAndCanBeRaisedOutsideProduction(t *testing.T)
 	env["AUTH_RATE_LIMIT_PER_MIN"] = "5" // lowering it is always allowed
 	if _, err = LoadFrom(env); err != nil {
 		t.Fatalf("lowered in production: %v", err)
+	}
+}
+
+// The global budget is per client IP and counts every call, including the web app's own
+// server-side ones, so a busy deployment or a test suite may need more than the default.
+func TestRateLimitDefaultsTo300AndCanBeChanged(t *testing.T) {
+	cfg, err := LoadFrom(validEnv())
+	if err != nil || cfg.RateLimitPerMin != 300 {
+		t.Fatalf("default = %d, err %v", cfg.RateLimitPerMin, err)
+	}
+	env := validEnv()
+	env["RATE_LIMIT_PER_MIN"] = "1200"
+	env["APP_ENV"] = "production"
+	if cfg, err = LoadFrom(env); err != nil || cfg.RateLimitPerMin != 1200 {
+		t.Fatalf("raised in production = %d, err %v", cfg.RateLimitPerMin, err)
 	}
 }
