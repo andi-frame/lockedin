@@ -38,6 +38,7 @@ commands:
   advance --pact <id>              move a clock to just past the pact's next open deadline and run
                                    the real sweep (the e2e's test clock)
   pact show <id>                   print a pact, its check-ins and its ledger
+  probe [--timeout 3s] <url>       exit 0 if the URL answers 2xx (the containers' health check)
 
 Reads DATABASE_URL and the rest of the app config from the environment (see .env).
 `
@@ -66,6 +67,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runPact(ctx, args[1:], out)
 	case "advance":
 		return runAdvance(ctx, args[1:], out)
+	case "probe":
+		return runProbe(ctx, args[1:])
 	default:
 		fmt.Fprint(out, usage)
 		return fmt.Errorf("unknown command %q", args[0])
