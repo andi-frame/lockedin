@@ -15,6 +15,12 @@ KEEP_DAILY="${BACKUP_KEEP_DAILY:-14}"
 KEEP_WEEKLY="${BACKUP_KEEP_WEEKLY:-8}"
 HOUR_UTC="${BACKUP_HOUR_UTC:-3}"
 
+# A retention of 0 would prune today's backup along with the old ones.
+case "$KEEP_DAILY$KEEP_WEEKLY" in
+  *[!0-9]* | "") echo "BACKUP_KEEP_DAILY and BACKUP_KEEP_WEEKLY must be whole numbers" >&2; exit 2 ;;
+esac
+[ "$KEEP_DAILY" -ge 1 ] && [ "$KEEP_WEEKLY" -ge 1 ] || { echo "BACKUP_KEEP_DAILY and BACKUP_KEEP_WEEKLY must be at least 1" >&2; exit 2; }
+
 export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY" AWS_SECRET_ACCESS_KEY="$S3_SECRET_KEY" AWS_DEFAULT_REGION="${S3_REGION:-garage}"
 # Garage does not take the checksums newer SDKs add by default.
 export AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
