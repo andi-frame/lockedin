@@ -30,19 +30,23 @@ log.skip("the API allows 10 auth requests a minute per IP; wait a minute between
 // the real service rules (tepatictl seed --scenario today), with new users on every run. One doer
 // per spec and per Playwright project, because a spec changes the data it works on (a rest day, a
 // submitted proof) and the next one must find the day as the seed left it.
-async function seedToday(project: string): Promise<{ email: string; password: string }> {
-  const seeded = await capture(["bun", join(import.meta.dir, "ctl.ts"), "seed", "--scenario", "today"]);
+async function seed(scenario: "today" | "passbook", project: string): Promise<{ email: string; password: string }> {
+  const seeded = await capture(["bun", join(import.meta.dir, "ctl.ts"), "seed", "--scenario", scenario]);
   const doer = parseSeedLogin(seeded.stdout, "doer");
-  if (seeded.code !== 0 || !doer) fail(`could not seed the today scenario for ${project}:
+  if (seeded.code !== 0 || !doer) fail(`could not seed the ${scenario} scenario for ${project}:
 ${seeded.stderr || seeded.stdout}`);
   log.ok(`seeded ${doer.email} for ${project}`);
   return doer;
 }
-const [todayDesktop, todayMobile, proofDesktop, proofMobile] = [
-  await seedToday("today/desktop"),
-  await seedToday("today/mobile"),
-  await seedToday("proof/desktop"),
-  await seedToday("proof/mobile"),
+// passbook.spec.ts gets the passbook scenario (24 days of printed lines) and moves its pact's clock
+// once, so it too has one pact per project.
+const [todayDesktop, todayMobile, proofDesktop, proofMobile, bookDesktop, bookMobile] = [
+  await seed("today", "today/desktop"),
+  await seed("today", "today/mobile"),
+  await seed("today", "proof/desktop"),
+  await seed("today", "proof/mobile"),
+  await seed("passbook", "passbook/desktop"),
+  await seed("passbook", "passbook/mobile"),
 ];
 
 await run(["bunx", "playwright", "test", ...process.argv.slice(2)], {
@@ -52,6 +56,8 @@ await run(["bunx", "playwright", "test", ...process.argv.slice(2)], {
     E2E_TODAY_EMAIL_MOBILE: todayMobile.email,
     E2E_PROOF_EMAIL_DESKTOP: proofDesktop.email,
     E2E_PROOF_EMAIL_MOBILE: proofMobile.email,
+    E2E_BOOK_EMAIL_DESKTOP: bookDesktop.email,
+    E2E_BOOK_EMAIL_MOBILE: bookMobile.email,
     E2E_TODAY_PASSWORD: todayDesktop.password,
   },
 });
