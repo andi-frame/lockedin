@@ -365,6 +365,6 @@ SESSION_SECRET=…                     API_INTERNAL_URL=http://localhost:8080   
 | http | handler tests against the strict-server interface | auth, validation, problem codes |
 | media | golden files (small fixtures in `testdata/`) | sniffing, rejection, output dimensions |
 | web unit | `bun test` + Testing Library | formatters, reducers, editor schema |
-| e2e | Playwright (`apps/web/tests/e2e`) against the full Docker stack with `CLOCK_OVERRIDE` enabled in dev | create → accept → submit → approve → miss → passbook shows lines |
+| e2e | Playwright (`apps/web/tests/e2e`) against a running stack: `dev:hybrid`, `dev:docker`, `dev:native`, or the built images behind Caddy from `deploy:up` (what CI runs) | create → accept → submit → approve → miss → passbook shows lines; time-dependent states come from `tepatictl seed` scenarios and `tepatictl advance` (no test clock endpoint, decided 2026-10-08) |
 
-A test-only endpoint `POST /api/v1/_test/clock` (compiled only with build tag `testclock`) lets e2e tests advance time so settlement runs deterministically.
+CI (`.github/workflows/ci.yml`) runs three jobs: `check` (lint, generated code is fresh, unit tests), `integration` (Go integration tests against the dev infra in Docker) and `e2e` (the built images behind Caddy on `https://localhost`, then the Playwright suite).
