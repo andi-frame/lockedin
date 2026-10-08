@@ -1,12 +1,12 @@
 # Handover: working in this repo as any agent
 
-Written 2026-10-08, after task 7.1, by the agent that built Phases 2 to 5 (Claude Code, Sonnet 5.5). It is for the **next agent, whatever it is** (Codex, Antigravity, another Claude model, a human). Nothing here depends on Claude-specific tools. `AGENTS.md` holds the rules, `docs/STATUS.md` holds the project state and decisions, and this file holds *how to actually get things done on this machine without repeating my mistakes*.
+Written 2026-10-08, after task 7.2, by the agent that built Phases 2 to 5 (Claude Code, Sonnet 5.5). It is for the **next agent, whatever it is** (Codex, Antigravity, another Claude model, a human). Nothing here depends on Claude-specific tools. `AGENTS.md` holds the rules, `docs/STATUS.md` holds the project state and decisions, and this file holds *how to actually get things done on this machine without repeating my mistakes*.
 
 ## 0. In one minute
 
 - **Tepati** is a study-pact app (two peers, a coin IOU ledger, daily proof). Folder name is `lockedin`; product name is Tepati.
-- **Done:** Phases 0 to 4 (the whole backend), **5.1** (the `apps/web` scaffold, PR #3), **5.2** (design tokens, dark desk-lamp theme, UI primitives, `/dev/kitchen-sink`, PR #4) **5.3** (auth guard `src/proxy.ts`, `/login`, `/register`, the signed-in shell, `auth.spec.ts`, PR #5) and **6.1** (the pact wizard, the agreement page and the invite flow, PR #6) **6.2** (the Today screen, PR #7) **6.3** (the proof editor and submission, PR #8) and **6.4** (the pact page with the coin book and calendar, PR #9) and **6.5** (the review queue and the check-in detail, PR #10) and **6.6** (the settlement and payout screens, PR #11) and **6.7** (the notifications inbox and settings, PR #12, which closes Phase 6) and **7.1** (the Dockerfiles). 7.1 is on branch `p7.1-dockerfiles`, committed, **not pushed or merged**.
-- **Next task:** `docs/PLAN.md` **7.2 compose.dev.yaml and compose.prod.yaml, Caddy**. Branch `p7.2-compose`, cut from `p7.1-dockerfiles` while that is unmerged (otherwise from `main`). Playbook in §9.
+- **Done:** Phases 0 to 4 (the whole backend), **5.1** (the `apps/web` scaffold, PR #3), **5.2** (design tokens, dark desk-lamp theme, UI primitives, `/dev/kitchen-sink`, PR #4) **5.3** (auth guard `src/proxy.ts`, `/login`, `/register`, the signed-in shell, `auth.spec.ts`, PR #5) and **6.1** (the pact wizard, the agreement page and the invite flow, PR #6) **6.2** (the Today screen, PR #7) **6.3** (the proof editor and submission, PR #8) and **6.4** (the pact page with the coin book and calendar, PR #9) and **6.5** (the review queue and the check-in detail, PR #10) and **6.6** (the settlement and payout screens, PR #11) and **6.7** (the notifications inbox and settings, PR #12, which closes Phase 6) and **7.1** (the Dockerfiles, PR #13) and **7.2** (compose, Caddy, deploy scripts, backups). 7.2 is on branch `p7.2-compose`, committed, **not pushed or merged**.
+- **Next task:** `docs/PLAN.md` **7.3 Native mode polish**. Branch `p7.3-native-polish`, cut from `p7.2-compose` while that is unmerged (otherwise from `main`). Playbook in §9.
 - **Phases 2 to 4 are merged into `main`** (pull request #1, https://github.com/andi-frame/lockedin/pull/1, merge commit `054e61a`, 2026-10-08, not squashed). `origin` is `https://github.com/andi-frame/lockedin.git`. The seven task branches (`p2.1-openapi` ... `p4.2-uploads`) were deleted on 2026-10-08 at the owner's request; their commits are in `main`. Do not delete branches unasked. The owner asked for the push and the merge explicitly each time: push, open PRs and merge only when they ask, and never force-push.
 - **First three commands in a new Git Bash terminal:**
 
@@ -135,6 +135,7 @@ All merged into `main` through PR #1; the original task branches are kept on `or
 | 6.6 Settlement | `p6.6-settlement` | `07ab78b..224a79b` | `src/lib/pact/settlement.ts`, `src/components/pact/{settlement-panel,payout-actions}.tsx`, `tepatictl seed --scenario settlement`, `settlement.spec.ts` (paid first then confirmed; doer confirms alone after a warning). 480 web unit tests; screenshots at 390 and 1440, light and dark, looked at |
 | 6.7 Notifications | `p6.7-notifications` | `d2035d7..a55c373` | `src/lib/notification/inbox.ts`, `src/components/notification/notification-list.tsx`, `/notifications`, the bell as a link, Settings note, `notifications.spec.ts` (bell count, inbox copy and links, read state, doer's auto-approved row, Settings). 512 web unit tests; screenshots at 390 and 1440, light and dark, looked at |
 | 7.1 Dockerfiles | `p7.1-dockerfiles` | `70baeca..745061b` | `deploy/docker/{server,web}.Dockerfile` (+ per-file `.dockerignore`), `scripts/deploy-build.ts`, `scripts/lib/images.ts` (+ test). Images run against the dev infra: api health and readiness green, worker clean start and stop, goose status, web `/login`. 989 MB and 339 MB |
+| 7.2 Compose and Caddy | `p7.2-compose` | `7420358..7b1e17b` | `deploy/compose{,.dev,.prod}.yaml`, `deploy/caddy/Caddyfile`, `deploy/backup/`, `scripts/deploy-{up,scale}.ts` and `scripts/lib/deploy.ts` (+ test), `tepatictl probe` and `storage-init`, `RATE_LIMIT_PER_MIN`, forwarded client address. Dev and a local staging both ran the full e2e (37 passed, 5 skipped); scaling and backup pruning checked |
 
 Phases 0 and 1 (repository foundation, schema, domain rules, services) are on `main`.
 
@@ -152,21 +153,19 @@ Phases 0 and 1 (repository foundation, schema, domain rules, services) are on `m
 
 If your tool wants its own instruction file (`GEMINI.md`, `.codex/...`), make it a short pointer to `AGENTS.md` and this file. Do not copy rules into several places; they drift.
 
-## 9. Playbook for the next task: 7.2 compose.dev.yaml and compose.prod.yaml, Caddy
+## 9. Playbook for the next task: 7.3 Native mode polish
 
-1. `git checkout p7.1-dockerfiles && git checkout -b p7.2-compose` (or from `main` once 7.1 is merged). `source scripts/dev-env.sh`, Docker Desktop running. The images come from `bun run deploy:build -- --env staging`.
-2. Read `docs/PLAN.md` 7.2, `docs/RUNNING.md` §4 to §6 (**the mount rules**, Garage, staging and production), `deploy/compose.yaml` (it has the `infra` profile; it needs the `app`, `edge` and `tools` profiles from RUNNING §4) and `scripts/dev.ts` (`dev:docker` is a stub or partial: check what it does today) and `scripts/lib/compose.ts`.
-3. What 7.1 left you: `tepati-server:<env>` (commands `api`, `worker`, `tepatictl`, `goose`; migrations in `/app/migrations`; the default command is `api`, port 8080; the worker's metrics and `/healthz` are on `WORKER_METRICS_PORT`, default 9091) and `tepati-web:<env>` (port 3000, `API_INTERNAL_URL` at run time, no `/api` rewrite, so Caddy must route `/api/*` to the api on the same origin). The `migrate` one-shot is `goose -dir /app/migrations postgres "$DATABASE_URL" up`. No image has a `HEALTHCHECK`; give compose healthchecks (api `/readyz`, worker `/healthz`, web `/login`). The worker has no `/readyz` (STATUS §6).
-4. `docker run --env-file` does not strip inline comments (the dev `.env` has them) and keeps quotes; compose's `--env-file` does strip them, so pass env through compose. Inside the compose network the services reach each other by name (`postgres`, `redis`, `garage`, `api`), so `DATABASE_URL`, `REDIS_URL`, `S3_ENDPOINT` and `API_INTERNAL_URL` differ from the host values in `.env`.
-5. Dev profile: source bind mounts only with the shadowing volumes from RUNNING §4, air polling, `WATCHPACK_POLLING=true`. Prod overrides: `restart: unless-stopped`, resource limits, no source mounts, tmpfs `/tmp` (1 GB for the worker), `read_only` where it works, Caddyfile (same origin, `/api/*` to api, media under `/s3/*` or a `media.` host, security headers, request body caps), the `migrate` dependency, the `backup` profile. `deploy:up` and `deploy:scale` in `package.json` still point at `scripts/todo.ts`; replace them.
-6. Verify as PLAN says. Do not start 7.3 in the same session unless asked. Ask the owner before choosing a real SMTP provider or TLS mode (§10): `localhost` domains and Mailpit are enough for 7.2.
-7. Tick 7.2 in PLAN with range, Result and Deviations, update `docs/STATUS.md`, and stop.
+1. `git checkout p7.2-compose && git checkout -b p7.3-native-polish` (or from `main` once 7.2 is merged). `source scripts/dev-env.sh`.
+2. Read `docs/PLAN.md` 7.3 and `docs/RUNNING.md` §1 and §2 (prerequisites, native mode), ADR-0008 (`docs/adr/0008-*.md`, the run modes) and `scripts/dev.ts` (`nativePreflight`, `.env.native`, the forced `STORAGE_DRIVER=fs`).
+3. The verify line wants Docker stopped, Postgres, Redis (Memurai), ffmpeg and vips installed locally and the proof upload completed with `STORAGE_DRIVER=fs`. On the owner's machine ffmpeg and vips are installed (winget, user PATH) but Postgres and Redis are not and Docker holds the infra, so most of this cannot be run here without installing services. Do what can be checked without that (the preflight messages, `fs` driver paths, the docs) and **ask the owner** before installing Postgres or Memurai on their machine; if they say no, record in PLAN what was and was not verified instead of ticking it.
+4. Docker is not stopped by `dev:native`; do not stop the owner's containers for the check. If a native run is possible, use ports other than the Docker ones (`.env.native`).
+5. Tick 7.3 in PLAN with range, Result and Deviations (say what was not run), update `docs/STATUS.md`, and stop. Phase 8 is next (CI, finish review, release notes); a real staging deploy needs the owner's domain and SMTP provider (§10).
 
 ## 10. Questions that are the owner's to answer (do not decide silently)
 
 - Whether later PRs should be merged with merge commits (as PR #1 was, to keep the hashes in `docs/PLAN.md` valid) or squashed.
 - Whether to install Go 1.26 system-wide (removes the `dev-env.sh` Go workaround).
-- A real SMTP provider and TLS settings for staging and production.
+- A real SMTP provider, a domain and DNS for staging and production (both `<DOMAIN>` and `media.<DOMAIN>` must resolve to the host; Caddy gets the certificates by itself). Staging can keep Mailpit.
 - HEIC/AVIF handling: the sniffer accepts them, but decoding depends on the libvips build and was not tested with a real HEIC file.
 - Whether the MVP gets `PATCH /me` (name, time zone, language) and per-kind email preferences. The Settings page is read-only today and says so (6.7).
 - A "resend invite" endpoint (the invite email is the only place the plaintext token is mailed; see `docs/STATUS.md §6`).
