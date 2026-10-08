@@ -32,14 +32,15 @@ test("shows every state of today's check-in, each pact with its own deadline and
   await expect(band.getByText("lagi", { exact: true })).toBeVisible();
   if (isMobile) await expect(band.getByRole("img", { name: /Notifikasi/ })).toBeVisible();
 
-  // Sections follow the nearest deadline: the missed day's pact first, the open one next.
+  // Sections follow the nearest deadline: the missed day's pact first, then the open ones.
   const titles = await page.locator("h2 a").allTextContents();
-  expect(titles.slice(0, 2)).toEqual(["Today: missed", "Today: open"]);
-  expect(titles).toHaveLength(4);
+  expect(titles.slice(0, 3)).toEqual(["Today: missed", "Today: open", "Today: rules"]);
+  expect(titles).toHaveLength(5);
 
   const expected: [string, string][] = [
     ["Today: missed", "Terlewat"],
     ["Today: open", "Terbuka"],
+    ["Today: rules", "Terbuka"],
     ["Today: approved", "Disetujui"],
     ["Today: submitted", "Menunggu tinjauan"],
   ];
@@ -51,7 +52,7 @@ test("shows every state of today's check-in, each pact with its own deadline and
   // Open: a countdown, the cutoff with its grace, and sending proof says it is not here yet.
   const open = section(page, "Today: open");
   await expect(open.getByText("Batas 23:59, masa tenggang sampai 00:29")).toBeVisible();
-  await expect(open.getByRole("button", { name: "Kirim bukti" })).toBeDisabled();
+  await expect(open.getByRole("link", { name: "Kirim bukti" })).toHaveAttribute("href", /\/pacts\/[0-9a-f-]{36}\/days\/\d{4}-\d{2}-\d{2}$/);
   // Submitted: who is reviewing and by when, with the word count of the proof.
   await expect(section(page, "Today: submitted").getByText(/Menunggu tinjauan Andi \(today\)\. Kalau belum ditinjau sebelum/)).toBeVisible();
   await expect(section(page, "Today: submitted").getByText("5 kata")).toBeVisible();

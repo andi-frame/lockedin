@@ -132,8 +132,8 @@ func TestSeedTodayGivesTheDoerEveryState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(s.Pacts) != 4 {
-		t.Fatalf("want 4 pacts, got %d", len(s.Pacts))
+	if len(s.Pacts) != 5 {
+		t.Fatalf("want 5 pacts, got %d", len(s.Pacts))
 	}
 
 	svc := service.New(st, domain.NewFakeClock(now))
@@ -146,15 +146,15 @@ func TestSeedTodayGivesTheDoerEveryState(t *testing.T) {
 		got[c.PactTitle] = c.CheckIn.Status
 	}
 	want := map[string]string{
-		"Today: open": "open", "Today: submitted": "submitted", "Today: approved": "approved", "Today: missed": "missed",
+		"Today: open": "open", "Today: rules": "open", "Today: submitted": "submitted", "Today: approved": "approved", "Today: missed": "missed",
 	}
 	for title, status := range want {
 		if got[title] != status {
 			t.Errorf("%s: doer's check-in is %q, want %q (all: %v)", title, got[title], status, got)
 		}
 	}
-	if len(view.Pacts) != 4 {
-		t.Errorf("the doer has %d live pacts, want 4", len(view.Pacts))
+	if len(view.Pacts) != 5 {
+		t.Errorf("the doer has %d live pacts, want 5", len(view.Pacts))
 	}
 	if view.ReviewCount != 1 {
 		t.Errorf("the doer has %d proofs to review, want 1 (the backer's, in the submitted pact)", view.ReviewCount)
