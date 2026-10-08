@@ -1,12 +1,12 @@
 # Handover: working in this repo as any agent
 
-Written 2026-10-08, after task 5.2, by the agent that built Phases 2 to 5.2 (Claude Code, Sonnet 5.5). It is for the **next agent, whatever it is** (Codex, Antigravity, another Claude model, a human). Nothing here depends on Claude-specific tools. `AGENTS.md` holds the rules, `docs/STATUS.md` holds the project state and decisions, and this file holds *how to actually get things done on this machine without repeating my mistakes*.
+Written 2026-10-08, after task 5.3, by the agent that built Phases 2 to 5 (Claude Code, Sonnet 5.5). It is for the **next agent, whatever it is** (Codex, Antigravity, another Claude model, a human). Nothing here depends on Claude-specific tools. `AGENTS.md` holds the rules, `docs/STATUS.md` holds the project state and decisions, and this file holds *how to actually get things done on this machine without repeating my mistakes*.
 
 ## 0. In one minute
 
 - **Tepati** is a study-pact app (two peers, a coin IOU ledger, daily proof). Folder name is `lockedin`; product name is Tepati.
-- **Done:** Phases 0 to 4 (the whole backend), **5.1** (the `apps/web` scaffold, merged as PR #3) and **5.2** (design tokens, the dark desk-lamp theme, UI primitives, `Amount`/`Countdown`/`StatusChip`/`MemberLine`, `/dev/kitchen-sink`). 5.2 is on branch `p5.2-tokens-primitives`, committed, **not pushed or merged**.
-- **Next task:** `docs/PLAN.md` **5.3 Auth pages and app shell**. Branch `p5.3-auth-shell`, cut from `p5.2-tokens-primitives` while that is unmerged (otherwise from `main`). Playbook in §9.
+- **Done:** Phases 0 to 4 (the whole backend), **5.1** (the `apps/web` scaffold, PR #3), **5.2** (design tokens, dark desk-lamp theme, UI primitives, `/dev/kitchen-sink`, PR #4) and **5.3** (auth guard `src/proxy.ts`, `/login`, `/register`, the signed-in shell, `auth.spec.ts`). 5.3 is on branch `p5.3-auth-shell`, committed, **not pushed or merged**.
+- **Next task:** `docs/PLAN.md` **6.1 New pact wizard and invite/accept flow**. Branch `p6.1-pact-wizard`, cut from `p5.3-auth-shell` while that is unmerged (otherwise from `main`). Playbook in §9.
 - **Phases 2 to 4 are merged into `main`** (pull request #1, https://github.com/andi-frame/lockedin/pull/1, merge commit `054e61a`, 2026-10-08, not squashed). `origin` is `https://github.com/andi-frame/lockedin.git`. The seven task branches (`p2.1-openapi` ... `p4.2-uploads`) were deleted on 2026-10-08 at the owner's request; their commits are in `main`. Do not delete branches unasked. The owner asked for the push and the merge explicitly each time: push, open PRs and merge only when they ask, and never force-push.
 - **First three commands in a new Git Bash terminal:**
 
@@ -125,7 +125,8 @@ All merged into `main` through PR #1; the original task branches are kept on `or
 | 4.1 BlobStore | `p4.1-blobstore` | `2ee6dce`..`b776f61` | `internal/storage` (s3 + fs), one contract suite for both. Garage enforces the signed length (mutation-checked) |
 | 4.2 Uploads | `p4.2-uploads` | `ac7b781`..`f540af3` | `internal/media`, upload service and endpoints, `media:process` on its own server, `uploads:gc`. Golden tests plus an end-to-end test through Garage and the worker |
 | 5.1 Web scaffold | `p5.1-nextjs-app` (merged, PR #3) | `21e40b4`..`b671f19` | `apps/web`: build, typecheck, eslint, 20 unit tests. Live: proxy to the API, CSRF 403 without and 204 with the header |
-| 5.2 Tokens and primitives | `p5.2-tokens-primitives` | `05047de`..`6008608` | OKLCH tokens in two themes with a WCAG test, owned primitives, `Amount`/`Countdown`/`StatusChip`/`MemberLine`, `/dev/kitchen-sink`. 154 web unit tests; screenshots at 390 and 1440, light and dark, looked at |
+| 5.2 Tokens and primitives | `p5.2-tokens-primitives` (merged, PR #4) | `05047de`..`6008608` | OKLCH tokens in two themes with a WCAG test, owned primitives, `Amount`/`Countdown`/`StatusChip`/`MemberLine`, `/dev/kitchen-sink`. 154 web unit tests; screenshots at 390 and 1440, light and dark, looked at |
+| 5.3 Auth and shell | `p5.3-auth-shell` | `a9f3db3`..`884e87d` | `proxy.ts` guard with table-tested rules, login and register, rail and tab bar shell, Playwright `auth.spec.ts` (6 passed, 2 skipped on purpose). 243 web unit tests; screenshots at 390 and 1440, light and dark, looked at |
 
 Phases 0 and 1 (repository foundation, schema, domain rules, services) are on `main`.
 
@@ -143,16 +144,16 @@ Phases 0 and 1 (repository foundation, schema, domain rules, services) are on `m
 
 If your tool wants its own instruction file (`GEMINI.md`, `.codex/...`), make it a short pointer to `AGENTS.md` and this file. Do not copy rules into several places; they drift.
 
-## 9. Playbook for the next task: 5.3 Auth pages and app shell
+## 9. Playbook for the next task: 6.1 New pact wizard and invite/accept flow
 
-1. `git checkout p5.2-tokens-primitives && git checkout -b p5.3-auth-shell` (or from `main` once 5.2 is merged). `source scripts/dev-env.sh`, `bun install`, `bun run infra:up`, `bun run db:migrate`, `bun run dev:hybrid` (web on 3000, API on 8080; the web app proxies `/api/*`).
-2. UI work again: load the *impeccable* skill (extend-an-existing-surface path), read `~/.claude/skills/impeccable/reference/craft-floor.md` right before editing, re-read the direction contract and its FIRST VIEWPORT block, and skim `docs/STATUS.md §7` "What 5.2 added" for the token and primitive names. Use the primitives; do not restyle them inline.
-3. Build `/login` and `/register` (outside the shell) and the `(app)` layout: a cover-teal left rail on desktop (Hari ini, Kontrak, Tinjau, Pengaturan, notification bell) and a bottom tab bar with the same four items on mobile. Forms use `Field`, `Input` and `Button`; call the API with `api` from `src/lib/api/browser.ts` wrapped in `unwrap()`, send one `Idempotency-Key` per submit, and show errors from `errorMessageKey(code)` (add a message in `messages/id.json` and `en.json` for every code these forms can hit: `auth.invalid_credentials`, `auth.email_taken`, `auth.weak_password`, `auth.invalid_email`, `auth.invalid_name`, `auth.rate_limited`, `validation.failed`; keys use underscores). The auth guard is `src/proxy.ts` in Next 16 (it replaces `middleware.ts`); read `node_modules/next/dist/docs/` for its exact API. The session cookie is `tepati_session`, the CSRF cookie `tepati_csrf`.
-4. `/today` can be a placeholder inside the shell (6.2 builds it). Notification bell can be inert or read `GET /notifications`; check the contract.
-5. Add `@playwright/test` and a `playwright.config.ts` in `apps/web`, then `tests/e2e/auth.spec.ts` (register -> lands on `/today` -> logout) as PLAN asks, and wire `bun run test:e2e` (it is a `todo.ts` stub in the root `package.json` that points at 5.3). The e2e runs against the real API and Postgres, so use a unique email per run.
-6. Verify per PLAN, take screenshots at 390 and 1440 in light and dark and look at them, run `impeccable detect --json` once on the changed files, then `bun run lint && bun run test`. Tick 5.3 in PLAN with range, Result and Deviations, update `docs/STATUS.md`, and stop. Phase 6 starts with 6.1 (new pact wizard); the e2e specs there need a way to move time and there is no test-clock endpoint yet (`CLOCK_OVERRIDE` exists in config only).
+1. `git checkout p5.3-auth-shell && git checkout -b p6.1-pact-wizard` (or from `main` once 5.3 is merged). `source scripts/dev-env.sh`, `bun install`, `bun run infra:up`, `bun run db:migrate`, `bun run dev:hybrid` (web on 3000, API on 8080; the web app proxies `/api/*`). Watch the dev log for `proxy.ts:` timings; if the guard seems to do nothing, restart `next dev`.
+2. This task shows the terms to users, so it is marked 🔒: read `docs/SPEC.md §4` (the plain-language terms summary and what clears signatures) and the pact endpoints in `api/openapi.yaml` (`createPact`, `getPact`, `updatePact`, `proposePact`, `previewInvite`, `joinInvite`, `acceptPact`, `listPacts`). Do not invent terms wording: SPEC decides what is shown.
+3. UI work: load the *impeccable* skill (extend-an-existing-surface path), read `~/.claude/skills/impeccable/reference/craft-floor.md` right before editing, re-read the direction contract, and skim `docs/STATUS.md §7` ("What 5.2 added", "What 5.3 added") for tokens, primitives and the shell. Pages go in `src/app/(app)/pacts/new` and `src/app/(app)/pacts/[id]`; `/invite/[token]` must exist (emails link there) and is private on purpose: `proxy.ts` sends a signed-out invitee to `/login?next=/invite/<token>` and `safeNext` brings them back. Stamp violet (`decision` buttons) is for signing and accepting only.
+4. Add every message to `messages/id.json` and `en.json` (full-path keys, no dots inside a key), and every API code the wizard can hit to `Errors`. Use `Field`, `Input`, `Button`, `Dialog`; call the API with `api` from `src/lib/api/browser.ts` wrapped in `unwrap()`, and pass your own `Idempotency-Key` for a call you may retry.
+5. e2e: `tests/e2e/pact-create.spec.ts` with two browser contexts (A creates, B accepts) ending with the pact `scheduled`. The API allows only 10 auth requests a minute per IP and registering two users costs two, so reuse sessions (`storageState`) and keep the whole suite under the limit. There is still no test clock (`CLOCK_OVERRIDE` is config only); 6.1 does not need one, 6.2 does.
+6. Verify per PLAN, screenshots at 390 and 1440 in light and dark (look at them), `impeccable detect --json` once on the changed files, `bun run lint && bun run test`, `bun run test:e2e`. Tick 6.1 in PLAN with range, Result and Deviations, update `docs/STATUS.md`, and stop. Next is 6.2 (Today screen), which the placeholder `/today` is waiting for.
 
-Things the web app must provide because the backend already points at them: routes `/pacts/<id>`, `/review`, `/invite/<token>` (emails link there), and the upload client flow described in `docs/STATUS.md §7`.
+Things the web app must still provide because the backend points at them: `/pacts/<id>`, `/review`, `/invite/<token>` (emails link there), and the upload client flow in `docs/STATUS.md §7`.
 
 ## 10. Questions that are the owner's to answer (do not decide silently)
 
@@ -161,7 +162,7 @@ Things the web app must provide because the backend already points at them: rout
 - A real SMTP provider and TLS settings for staging and production.
 - HEIC/AVIF handling: the sniffer accepts them, but decoding depends on the libvips build and was not tested with a real HEIC file.
 - A "resend invite" endpoint (the invite email is the only place the plaintext token is mailed; see `docs/STATUS.md §6`).
-- A test-clock mechanism for e2e tests (Phase 5.3 and 6.x).
+- A test-clock mechanism for e2e tests (needed from 6.2), and whether the auth rate limit (10 a minute per IP) should be configurable for e2e.
 
 ## 11. Before you stop a session
 
