@@ -16,6 +16,7 @@ import (
 	"github.com/andi-frame/lockedin/apps/server/internal/buildinfo"
 	"github.com/andi-frame/lockedin/apps/server/internal/config"
 	"github.com/andi-frame/lockedin/apps/server/internal/ctl"
+	"github.com/andi-frame/lockedin/apps/server/internal/storage"
 	"github.com/andi-frame/lockedin/apps/server/internal/store"
 )
 
@@ -39,6 +40,8 @@ commands:
                                    the real sweep (the e2e's test clock)
   pact show <id>                   print a pact, its check-ins and its ledger
   probe [--timeout 3s] <url>       exit 0 if the URL answers 2xx (the containers' health check)
+  storage-init                     set the staging bucket's CORS rule for APP_BASE_URL (run by the
+                                   deploy, from inside the compose network; safe to repeat)
 
 Reads DATABASE_URL and the rest of the app config from the environment (see .env).
 `
@@ -69,6 +72,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runAdvance(ctx, args[1:], out)
 	case "probe":
 		return runProbe(ctx, args[1:])
+	case "storage-init":
+		return runStorageInit(ctx, out)
 	default:
 		fmt.Fprint(out, usage)
 		return fmt.Errorf("unknown command %q", args[0])
@@ -172,6 +177,26 @@ func runAdvance(ctx context.Context, args []string, out io.Writer) error {
 		return err
 	}
 	fmt.Fprintf(out, "advanced to %s: %d check-in(s) moved\n", adv.At.Format(time.RFC3339), adv.Moved)
+	return nil
+}
+
+func runStorageInit(ctx context.Context, out io.Writer) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	blobs, err := storage.FromConfig(cfg)
+	if err != nil {
+		return err
+	}
+	s3, ok := blobs.(*storage.S3)
+	if !ok {
+		return fmt.Errorf("storage-init: STORAGE_DRIVER=%s has no bucket to configure (use s3)", cfg.Storage.Driver)
+	}
+	if err := s3.PutStagingCORS(ctx, cfg.BaseURL); err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "CORS on %s allows PUT from %s\n", cfg.Storage.BucketStaging, cfg.BaseURL)
 	return nil
 }
 
