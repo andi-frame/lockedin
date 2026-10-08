@@ -4,9 +4,12 @@ package ctl
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/andi-frame/lockedin/apps/server/internal/domain"
 	"github.com/andi-frame/lockedin/apps/server/internal/service"
@@ -184,5 +187,99 @@ func TestSeedTodayCanRunRepeatedly(t *testing.T) {
 	}
 	if a.Doer.ID == b.Doer.ID || a.Doer.Email == b.Doer.Email {
 		t.Fatal("each run gets its own users, so the 10-pact limit is never reached")
+	}
+}
+
+// The passbook scenario: a month of printed lines, so the pact page has a second page to scroll to
+// and a calendar with every kind of day.
+func TestSeedPassbookPrintsAMonthOfLines(t *testing.T) {
+	st := testdb.New(t)
+	ctx := context.Background()
+	s, err := SeedPassbook(ctx, st, now, "p1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Pact.Status != "active" {
+		t.Fatalf("pact is %q, want active", s.Pact.Status)
+	}
+
+	svc := service.New(st, domain.NewFakeClock(now))
+	page, err := svc.LedgerPage(ctx, s.Doer.ID, s.Pact.ID, nil, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Opening pot, 14 doer days that cost 50 (13 missed + 1 rejected), 18 backer misses worth 20.
+	if len(page.Lines) != 1+14+18 {
+		t.Fatalf("the passbook has %d lines, want 33", len(page.Lines))
+	}
+	var sum int64
+	for _, l := range page.Lines {
+		sum += l.Amount
+	}
+	if want := int64(1000 - 14*50 + 18*20); page.Balance != want || sum != want {
+		t.Fatalf("balance %d, sum of lines %d, want %d", page.Balance, sum, want)
+	}
+	if page.Lines[0].BalanceAfter != page.Balance {
+		t.Fatalf("the newest line says %d, the pot is %d", page.Lines[0].BalanceAfter, page.Balance)
+	}
+
+	got := map[string]int{}
+	rows, err := st.ListCheckInsForPact(ctx, store.ListCheckInsForPactParams{
+		PactID: s.Pact.ID, FromDate: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), ToDate: time.Date(2100, 1, 1, 0, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range rows {
+		who := "backer"
+		if r.MemberID == s.Doer.ID {
+			who = "doer"
+		}
+		got[who+" "+r.Status]++
+	}
+	want := map[string]int{
+		"doer approved": 8, "doer rest": 2, "doer missed": 13, "doer rejected": 1, "doer open": 2, // today and tomorrow are still to come
+		"backer approved": 6, "backer missed": 18, "backer submitted": 1, "backer open": 1, // the backer already sent today's proof
+	}
+	for k, n := range want {
+		if got[k] != n {
+			t.Errorf("%s: %d, want %d (all: %v)", k, got[k], n, got)
+		}
+	}
+}
+
+// Advance is the test clock: it moves time to just past the pact's next deadline and runs the real
+// sweep, so the miss is printed by the same code that prints it in production.
+func TestAdvancePrintsTheNextMissAsADebit(t *testing.T) {
+	st := testdb.New(t)
+	ctx := context.Background()
+	s, err := SeedPassbook(ctx, st, now, "p2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := service.New(st, domain.NewFakeClock(now))
+	before, err := svc.LedgerPage(ctx, s.Doer.ID, s.Pact.ID, nil, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	adv, err := Advance(ctx, st, s.Pact.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if adv.Moved != 1 {
+		t.Fatalf("moved %d check-ins, want 1 (the doer's day today)", adv.Moved)
+	}
+	after, err := svc.LedgerPage(ctx, s.Doer.ID, s.Pact.ID, nil, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	line := after.Lines[0]
+	if line.ID == before.Lines[0].ID || line.Kind != "doer_miss" || line.Amount != -50 || after.Balance != before.Balance-50 {
+		t.Fatalf("newest line %+v, balance %d -> %d; want a new doer_miss of -50", line, before.Balance, after.Balance)
+	}
+
+	if _, err := Advance(ctx, st, uuid.New()); !errors.Is(err, ErrNothingToAdvance) {
+		t.Fatalf("a pact with no open check-in should say so, got %v", err)
 	}
 }
