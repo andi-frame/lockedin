@@ -369,3 +369,42 @@ func TestSeedReviewLeavesAProofForEachFlow(t *testing.T) {
 		t.Errorf("override pact: %s %v remaining %v", v.CheckIn.Status, v.Actions, v.OverridesRemaining)
 	}
 }
+
+// The settlement scenario: pacts whose days are all over and settled, so they sit in `settling`
+// with a payout, waiting for the backer to mark it paid and the doer to confirm.
+func TestSeedSettlementLeavesPactsWaitingForPayout(t *testing.T) {
+	st := testdb.New(t)
+	ctx := context.Background()
+	s, err := SeedSettlement(ctx, st, now, "s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Pacts) != 2 {
+		t.Fatalf("want 2 pacts, got %d", len(s.Pacts))
+	}
+	svc := service.New(st, domain.NewFakeClock(now))
+	for _, p := range s.Pacts {
+		got, err := svc.GetPact(ctx, s.Backer.ID, p.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Status != "settling" {
+			t.Fatalf("%s is %q, want settling", p.Title, got.Status)
+		}
+		payout, err := st.GetPayout(ctx, p.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// 1000 coins, two misses of 50, so 900 are owed; the pot is paid out to 0.
+		if payout.Amount != 900 || payout.MarkedPaidAt != nil || payout.ConfirmedAt != nil {
+			t.Fatalf("%s payout %+v, want 900 and unmarked", p.Title, payout)
+		}
+		page, err := svc.LedgerPage(ctx, s.Doer.ID, p.ID, nil, 50)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if page.Balance != 0 || page.Lines[0].Kind != "payout" || page.Lines[0].Amount != -900 {
+			t.Fatalf("%s ledger: balance %d, newest %+v; want the payout line and a pot of 0", p.Title, page.Balance, page.Lines[0])
+		}
+	}
+}

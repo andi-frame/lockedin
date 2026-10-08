@@ -42,7 +42,8 @@
     "upload_size_mismatch": "The uploaded size does not match. Try uploading again.",
     "upload_failed": "The upload was interrupted. Check your connection and try again.",
     "checkin_reason_required": "Write a reason of at least 10 characters.",
-    "checkin_override_limit": "This pact has no overrides left."
+    "checkin_override_limit": "This pact has no overrides left.",
+    "pact_not_doer": "Only the doer can do this."
   },
   "Common": {
     "close": "Close",
@@ -562,5 +563,34 @@
     "rest": "{who} took a rest day",
     "missed": "{who} marked the day as missed",
     "finalize": "{who} settled the final result"
+  },
+  "Settlement": {
+    "titleSettling": "Settlement",
+    "titleCompleted": "Pact completed",
+    "owedLabel": "Paid by the backer",
+    "owedBody": "The last day has passed and every check-in is final. {backer} pays {doer} outside the app; the app only keeps the record.",
+    "nothingOwed": "The pot ran out, so nothing is owed. The doer only has to close the pact.",
+    "completedBody": "This pact is complete and on record.",
+    "paidStep": "{name} marked it paid",
+    "notPaid": "{name} has not marked it paid",
+    "note": "Note: {note}",
+    "confirmedStep": "{name} confirmed receipt",
+    "notConfirmed": "{name} has not confirmed",
+    "waitingBacker": "Waiting for the backer to pay. Confirm once you have received it.",
+    "waitingDoer": "Waiting for {name} to confirm.",
+    "markPaid": "Mark as paid",
+    "markTitle": "Mark as paid?",
+    "markBody": "Record that you have paid {name}. The doer still closes the pact by confirming.",
+    "noteLabel": "Note (optional)",
+    "noteHint": "For example how it was paid.",
+    "noteCount": "{n} of {max} characters",
+    "noteTooLong": "The note is too long. {max} characters at most.",
+    "confirm": "Confirm receipt",
+    "confirmTitle": "Confirm you received it?",
+    "confirmBody": "This closes the pact and cannot be undone. Your confirmation alone is enough, even if the backer has not marked it paid.",
+    "confirmNotPaid": "The backer has not marked it paid. Only confirm if you really have received it.",
+    "cancel": "Cancel",
+    "markDone": "Recorded as paid.",
+    "confirmDone": "Pact completed."
   }
 }

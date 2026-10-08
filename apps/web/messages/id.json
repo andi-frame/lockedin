@@ -42,7 +42,8 @@
     "upload_size_mismatch": "Ukuran file yang terunggah tidak cocok. Coba unggah ulang.",
     "upload_failed": "Unggahan terputus. Periksa koneksimu lalu coba lagi.",
     "checkin_reason_required": "Tulis alasan minimal 10 karakter.",
-    "checkin_override_limit": "Jatah pembatalan di kontrak ini sudah habis."
+    "checkin_override_limit": "Jatah pembatalan di kontrak ini sudah habis.",
+    "pact_not_doer": "Hanya pelaku yang bisa melakukan ini."
   },
   "Common": {
     "close": "Tutup",
@@ -562,5 +563,34 @@
     "rest": "{who} mengambil hari jeda",
     "missed": "{who} menandai hari ini terlewat",
     "finalize": "{who} menetapkan hasil akhir"
+  },
+  "Settlement": {
+    "titleSettling": "Penyelesaian",
+    "titleCompleted": "Kontrak selesai",
+    "owedLabel": "Yang dibayar penyokong",
+    "owedBody": "Hari terakhir sudah lewat dan semua setoran sudah final. {backer} membayar {doer} di luar aplikasi; aplikasi hanya mencatat.",
+    "nothingOwed": "Pot habis, jadi tidak ada yang perlu dibayar. Pelaku tinggal menutup kontrak.",
+    "completedBody": "Kontrak ini sudah selesai dan tercatat.",
+    "paidStep": "{name} menandai sudah dibayar",
+    "notPaid": "{name} belum menandai sudah dibayar",
+    "note": "Catatan: {note}",
+    "confirmedStep": "{name} mengonfirmasi sudah menerima",
+    "notConfirmed": "{name} belum mengonfirmasi",
+    "waitingBacker": "Menunggu penyokong membayar. Konfirmasi begitu uangnya kamu terima.",
+    "waitingDoer": "Menunggu {name} mengonfirmasi.",
+    "markPaid": "Tandai sudah dibayar",
+    "markTitle": "Tandai sudah dibayar?",
+    "markBody": "Catat bahwa kamu sudah membayar {name}. Pelaku tetap yang menutup kontrak dengan mengonfirmasi.",
+    "noteLabel": "Catatan (opsional)",
+    "noteHint": "Misalnya cara membayarnya.",
+    "noteCount": "{n} dari {max} karakter",
+    "noteTooLong": "Catatannya terlalu panjang. Maksimal {max} karakter.",
+    "confirm": "Konfirmasi diterima",
+    "confirmTitle": "Konfirmasi sudah menerima?",
+    "confirmBody": "Ini menutup kontrak dan tidak bisa dibatalkan. Konfirmasimu saja sudah cukup, walau penyokong belum menandai sudah dibayar.",
+    "confirmNotPaid": "Penyokong belum menandai sudah dibayar. Konfirmasi hanya kalau uangnya memang sudah kamu terima.",
+    "cancel": "Batal",
+    "markDone": "Dicatat: sudah dibayar.",
+    "confirmDone": "Kontrak selesai."
   }
 }

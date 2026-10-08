@@ -30,7 +30,7 @@ log.skip("the API allows 10 auth requests a minute per IP; wait a minute between
 // the real service rules (tepatictl seed --scenario today), with new users on every run. One doer
 // per spec and per Playwright project, because a spec changes the data it works on (a rest day, a
 // submitted proof) and the next one must find the day as the seed left it.
-async function seed(scenario: "today" | "passbook" | "review", project: string): Promise<{ email: string; password: string; backer: string }> {
+async function seed(scenario: "today" | "passbook" | "review" | "settlement", project: string): Promise<{ email: string; password: string; backer: string }> {
   // The passbook scenario walks a fake clock over past days of an active pact, and the running
   // worker sweeps on the real clock every minute, so once in a while it settles a day the seed was
   // about to act on and the seed stops with "not possible in the current state". Every attempt
@@ -51,8 +51,9 @@ ${last}`);
 }
 // passbook.spec.ts gets the passbook scenario (24 days of printed lines) and moves its pact's clock
 // once, so it too has one pact per project.
+// settlement.spec.ts gets two pacts that wait for their payout (settlement scenario).
 // review.spec.ts gets a backer with three proofs to review (and the doer, for the dispute).
-const [todayDesktop, todayMobile, proofDesktop, proofMobile, bookDesktop, bookMobile, reviewDesktop, reviewMobile] = [
+const [todayDesktop, todayMobile, proofDesktop, proofMobile, bookDesktop, bookMobile, reviewDesktop, reviewMobile, settleDesktop, settleMobile] = [
   await seed("today", "today/desktop"),
   await seed("today", "today/mobile"),
   await seed("today", "proof/desktop"),
@@ -61,6 +62,8 @@ const [todayDesktop, todayMobile, proofDesktop, proofMobile, bookDesktop, bookMo
   await seed("passbook", "passbook/mobile"),
   await seed("review", "review/desktop"),
   await seed("review", "review/mobile"),
+  await seed("settlement", "settlement/desktop"),
+  await seed("settlement", "settlement/mobile"),
 ];
 
 await run(["bunx", "playwright", "test", ...process.argv.slice(2)], {
@@ -76,6 +79,10 @@ await run(["bunx", "playwright", "test", ...process.argv.slice(2)], {
     E2E_REVIEW_DOER_DESKTOP: reviewDesktop.email,
     E2E_REVIEW_BACKER_MOBILE: reviewMobile.backer,
     E2E_REVIEW_DOER_MOBILE: reviewMobile.email,
+    E2E_SETTLE_BACKER_DESKTOP: settleDesktop.backer,
+    E2E_SETTLE_DOER_DESKTOP: settleDesktop.email,
+    E2E_SETTLE_BACKER_MOBILE: settleMobile.backer,
+    E2E_SETTLE_DOER_MOBILE: settleMobile.email,
     E2E_TODAY_PASSWORD: todayDesktop.password,
   },
 });
