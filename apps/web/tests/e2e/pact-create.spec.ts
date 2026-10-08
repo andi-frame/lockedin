@@ -29,7 +29,7 @@ test("A proposes, B joins from the invite link and signs, an edit clears both si
   isMobile,
 }) => {
   test.skip(isMobile, "desktop project only (auth rate limit)");
-  test.setTimeout(90_000); // two people, four screens of wizard, two sign-offs
+  test.setTimeout(Math.max(90_000, Number(process.env.E2E_TIMEOUT_MS ?? 0))); // two people, four screens of wizard, two sign-offs
   const A = await person(browser, baseURL);
   const B = await person(browser, baseURL);
   const a = A.page;

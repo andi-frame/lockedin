@@ -13,6 +13,9 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   reporter: [["list"]],
   outputDir: "./test-results",
+  // A slower stack (native mode with Redis behind WSL, a cold dev server) can set these higher.
+  timeout: Number(process.env.E2E_TIMEOUT_MS ?? 30_000),
+  expect: { timeout: Number(process.env.E2E_EXPECT_TIMEOUT_MS ?? 5_000) },
   use: {
     baseURL,
     // `bun run deploy:up` on a laptop serves https://localhost with Caddy's own CA, which no browser trusts.

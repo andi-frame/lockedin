@@ -77,7 +77,7 @@ test("the coin book shows the saldo, pages in by cursor, and the calendar marks 
 
 test("a missed day prints a new debit line and the saldo rolls to the new value", async ({ page, isMobile }) => {
   test.skip(isMobile, "the desktop project covers the print motion; mobile covers reduced motion below");
-  test.setTimeout(150_000);
+  test.setTimeout(Math.max(150_000, Number(process.env.E2E_TIMEOUT_MS ?? 0)));
   // Fake timers from the start, so the 30-second refresh can be jumped to instead of waited for.
   await page.clock.install();
   const pactId = await openBook(page, isMobile);
@@ -103,7 +103,7 @@ test("a missed day prints a new debit line and the saldo rolls to the new value"
 
 test("with reduced motion the new line is there at once", async ({ page, isMobile }) => {
   test.skip(!isMobile, "one advance per project: desktop spends its pact on the test above");
-  test.setTimeout(150_000);
+  test.setTimeout(Math.max(150_000, Number(process.env.E2E_TIMEOUT_MS ?? 0)));
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.clock.install();
   const pactId = await openBook(page, isMobile);

@@ -6,6 +6,7 @@ export const ROOT = resolve(process.env.TEPATI_ROOT ?? join(import.meta.dir, "..
 export const paths = {
   root: ROOT,
   rootEnv: join(ROOT, ".env"),
+  nativeEnv: join(ROOT, ".env.native"),
   envDir: join(ROOT, "deploy", "env"),
   envTemplate: join(ROOT, "deploy", "env", ".env.example"),
   devEnvTemplate: join(ROOT, "deploy", "env", ".env.dev.example"),

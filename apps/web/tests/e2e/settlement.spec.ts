@@ -50,7 +50,7 @@ async function openDialog(page: Page, button: string) {
 }
 
 test("the backer marks it paid with a note, then the doer confirms and the pact is complete", async ({ browser, isMobile }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(Math.max(120_000, Number(process.env.E2E_TIMEOUT_MS ?? 0)));
   const e = emails(isMobile);
   const backer = await newPage(browser, isMobile, e.backer);
   const url = await openPact(backer, "Settlement: paid first");
@@ -97,7 +97,7 @@ test("the backer marks it paid with a note, then the doer confirms and the pact 
 });
 
 test("the doer's confirmation alone completes the pact, after a warning that nothing was marked paid", async ({ browser, isMobile }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(Math.max(120_000, Number(process.env.E2E_TIMEOUT_MS ?? 0)));
   const doer = await newPage(browser, isMobile, emails(isMobile).doer);
   await openPact(doer, "Settlement: doer only");
   await expect(panel(doer).getByText("Menunggu penyokong membayar.", { exact: false })).toBeVisible();

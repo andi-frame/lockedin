@@ -98,3 +98,30 @@ export async function readEnvFile(path: string): Promise<EnvMap> {
   const f = Bun.file(path);
   return (await f.exists()) ? parseEnv(await f.text()) : new Map();
 }
+
+/**
+ * Native mode (no Docker): `.env.native` overrides the hosts and ports of `.env`, and files go to the
+ * fs driver because Garage has no Windows build (ADR-0008). Returns a new map.
+ */
+export function layerNativeEnv(base: EnvMap, native: EnvMap): EnvMap {
+  const out: EnvMap = new Map(base);
+  for (const [k, v] of native) out.set(k, v);
+  out.set("STORAGE_DRIVER", "fs");
+  return out;
+}
+
+/**
+ * The root `.env` as the scripts should see it: with `TEPATI_NATIVE=1` it is layered with
+ * `.env.native`, so `db:migrate`, `ctl` and the e2e seeds talk to the native database and not to the
+ * Docker one.
+ */
+export async function readRootEnv(rootEnv: string, nativeEnv: string, native = process.env.TEPATI_NATIVE === "1"): Promise<EnvMap> {
+  const base = await readEnvFile(rootEnv);
+  return native ? layerNativeEnv(base, await readEnvFile(nativeEnv)) : base;
+}
+
+/** Which DATABASE_URL a script uses. In native mode the layered files win: Bun puts the Docker URL from `.env` into process.env. */
+export function pickDatabaseUrl(processEnv: Record<string, string | undefined>, files: EnvMap, native: boolean): string | undefined {
+  const fromFiles = files.get("DATABASE_URL");
+  return native ? fromFiles || undefined : processEnv.DATABASE_URL || fromFiles || undefined;
+}

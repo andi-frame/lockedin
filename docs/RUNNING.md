@@ -19,7 +19,7 @@ There are three run modes, and every one is driven by **Bun scripts in the root 
 | ffmpeg + libvips CLI (`vips`) | ffmpeg ≥ 6, vips ≥ 8.15 | hybrid and native worker (media). On Windows: `winget install Gyan.FFmpeg` and `winget install libvips.libvips` (then `source scripts/dev-env.sh` in a shell opened before the install, see `docs/HANDOVER.md §3`). winget adds their `bin` folders to the *user* PATH, which only new terminals see. Both also provide `ffprobe` and `vipsheader`, which the worker and the media tests call. |
 | air (`go install github.com/air-verse/air@latest`) | latest | Go hot reload in hybrid/native |
 | goose, sqlc, oapi-codegen | pinned in `apps/server/tools.go` and run via `go run` | codegen and migrations |
-| PostgreSQL 18, Redis 8 | native mode only | Windows: Postgres installer, and Redis via **Memurai** or WSL. Garage has no Windows build, so native mode uses `STORAGE_DRIVER=fs`. |
+| PostgreSQL 18, Redis 7 or newer | native mode only | Windows: Postgres installer, and Redis via **Memurai** or WSL (Redis 6 is refused: the login limiter needs `EXPIRE ... NX`, from 7.0). Garage has no Windows build, so native mode uses `STORAGE_DRIVER=fs`. See section 7. |
 
 ## 2. First-time setup
 
@@ -113,3 +113,14 @@ If `go build` fails with `compile: version "go1.26.0" does not match go tool ver
 - Zero-downtime deploys: migrations must be backward compatible (expand, deploy, contract). Scale api and web to 2 or more, then update the images one service at a time; Caddy re-resolves the copies every 5 seconds.
 - Run the e2e suite against a deploy: `TEPATI_CTL_PROJECT=staging E2E_BASE_URL=https://localhost E2E_API_URL=https://localhost bun run test:e2e`. The seeds run inside that deploy's api container. Put `AUTH_RATE_LIMIT_PER_MIN=200` and `RATE_LIMIT_PER_MIN=3000` in its env file for the run (staging only; never in production).
 - `bun run dev:docker`, `deploy:up` and `deploy:scale` run with `bun --no-env-file`: Bun would otherwise load the root `.env` into the environment, and compose gives the environment priority over `--env-file`, so hybrid values like `API_PORT` would leak into the containers' definitions. If port 8080 is busy, set `API_HOST_PORT` in `deploy/env/.env.dev`.
+
+## 7. Native mode (no Docker)
+
+For a machine where Docker is not an option. Postgres and Redis run on the host, files go to the `fs` driver (`FS_STORAGE_DIR`, under `apps/server/.data/blobs`), and mail goes to whatever `SMTP_URL` says (no Mailpit unless you run one).
+
+1. Install PostgreSQL (18 recommended) and create an empty database and a login for it. Install Redis 7 or newer: **Memurai** on Windows, or Redis 7/8 in WSL (it listens on `localhost`, which Windows reaches; expect each Redis round trip to cost a few tens of milliseconds, so the app feels slower than with Memurai or Docker). ffmpeg and libvips as in section 1.
+2. Copy `deploy/env/.env.native.example` to `.env.native` in the repo root (gitignored) and set `DATABASE_URL` and `REDIS_URL`; add ports only if something else holds the defaults. It is layered over `.env`, and `STORAGE_DRIVER` is always `fs`.
+3. `bun run dev:native` checks everything first and lists **every** problem at once: a real Postgres login (a wrong password or a missing database says so, with the `createdb` command), Redis version, ffmpeg, ffprobe, vips, vipsheader. Then it applies the pending migrations to the native database and starts web, api and worker. Source `scripts/dev-env.sh` first in a shell opened before the ffmpeg and vips install.
+4. Next.js allows one dev server per project folder, so stop `dev:hybrid` or `dev:docker` first (or run native from another checkout). Docker containers may stay up; use other ports in `.env.native` if they hold the defaults.
+5. `TEPATI_NATIVE=1` makes `bun run db:migrate`, `bun run ctl` and the e2e seeds use `.env.native` (and its database) instead of the Docker one: `TEPATI_NATIVE=1 bun run ctl -- seed --scenario today`. For the e2e on a slow stack: `TEPATI_NATIVE=1 E2E_BASE_URL=http://localhost:3010 E2E_API_URL=http://localhost:18090 E2E_TIMEOUT_MS=120000 E2E_EXPECT_TIMEOUT_MS=30000 bun run test:e2e`.
+6. A throwaway Postgres for a check, without touching an installed server (Windows, PowerShell or Git Bash): `initdb -D .data/pg-native -U tepati --auth=trust`, `pg_ctl -D .data/pg-native -o "-p 5440" -l .data/pg-native.log start`, then `psql -h localhost -p 5440 -U tepati -d postgres -c "create database tepati"` and `DATABASE_URL=postgres://tepati@localhost:5440/tepati?sslmode=disable` in `.env.native`. Stop it with `pg_ctl -D .data/pg-native stop`. `.data/` is gitignored.
