@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-08, after task 6.5 (the review queue and the check-in detail; the backend is complete, Phase 5 is done and Phase 6 is in progress). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-08, after task 6.6 (the settlement and payout screens; the backend is complete, Phase 5 is done and Phase 6 is in progress). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -12,10 +12,10 @@ Last updated: 2026-10-08, after task 6.5 (the review queue and the check-in deta
 | 3 Worker | done | 3.1 asynq worker, schedule, outbox relay, reminders, `tepatictl seed`/`pact show`, air files. 3.2 notifications and email (Mailpit) |
 | 4 Uploads and media | done | 4.1 BlobStore drivers (s3 and fs, Garage enforces the signed length). 4.2 upload endpoints, `media:process`, `uploads:gc` |
 | 5 Web foundation | done | 5.1 Next.js app on Bun (PR #3). 5.2 design tokens and primitives (PR #4). 5.3 auth pages, app shell, auth guard and the Playwright e2e (PR #5) |
-| **6 Web features** | **in progress** | 6.1 new pact wizard and invite/accept flow (PR #6). 6.2 Today screen (PR #7). 6.3 proof editor and submission (PR #8). 6.4 pact page with the coin book and calendar (PR #9). 6.5 review queue and check-in detail: done on `p6.5-review-queue` (not pushed or merged yet). Next: 6.6 settlement and payout screens |
+| **6 Web features** | **in progress** | 6.1 new pact wizard and invite/accept flow (PR #6). 6.2 Today screen (PR #7). 6.3 proof editor and submission (PR #8). 6.4 pact page with the coin book and calendar (PR #9). 6.5 review queue and check-in detail (PR #10). 6.6 settlement and payout screens: done on `p6.6-settlement` (not pushed or merged yet). Next: 6.7 notifications inbox and settings |
 | 6–9 | not started | Web features, Docker, quality gates, staging |
 
-The first unchecked task in `docs/PLAN.md` is **6.6**.
+The first unchecked task in `docs/PLAN.md` is **6.7**.
 
 ## 2. Branch and merge state
 
@@ -31,7 +31,7 @@ e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-han
 - 5.3 was merged as PR #5 (merge commit `373f3aa`, 2026-10-08). The branch `p5.3-auth-shell` still exists on `origin`, like the other two.
 - 6.1 was merged as PR #6 (merge commit `ddff0a3`, 2026-10-08). The branch `p6.1-pact-wizard` still exists on `origin`.
 - 6.2 was merged as PR #7 (merge commit `88d0da4`, 2026-10-08). The branch `p6.2-today-screen` still exists on `origin`.
-- 6.3 was merged as PR #8 (`a54f2d7`) and 6.4 as PR #9 (`d4e89b2`). 6.5 lives on `p6.5-review-queue` (`3cd9557..671a900`, plus a docs commit), cut from `main` after that merge. It is not pushed or merged yet. Cut 6.6 from it if it is still unmerged, otherwise from `main`.
+- 6.3 was merged as PR #8 (`a54f2d7`), 6.4 as PR #9 (`d4e89b2`) and 6.5 as PR #10 (`93d095a`). 6.6 lives on `p6.6-settlement` (`07ab78b..224a79b`, plus a docs commit), cut from `main` after that merge. It is not pushed or merged yet. Cut 6.7 from it if it is still unmerged, otherwise from `main`.
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -229,6 +229,12 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - **Styling:** `.proof-prose` in `globals.css` now gives the proof body its typography in the editor and in the read-only view (it had none before).
 - **Seed:** `tepatictl seed --scenario review` (new users `review-<tag>-*@tepati.test`): a backer who does not commit, three pacts "Review: approve", "Review: dispute" (submitted) and "Review: override" (auto-approved, 3 overrides left). `bun run test:e2e` seeds one pair per project (`E2E_REVIEW_BACKER_*`, `E2E_REVIEW_DOER_*`) and retries a seed up to three times (the passbook seed can race the worker).
 
+**What 6.6 added (settlement and payout):**
+- **Panel:** `SettlementPanel` (`src/components/pact/settlement-panel.tsx`) is drawn by `RunningPact` above the coin book whenever the pact has a payout (`settling` or `completed`): the amount the worker fixed (with the Rupiah equivalent), who marked it paid with the note and when, and who confirmed and when. For a pot that ran out it says nothing is owed.
+- **Actions** (`payout-actions.tsx`, client): `MarkPaidButton` (backer, once, dialog with an optional note of at most 500 characters) and `ConfirmReceiptButton` (doer, dialog that says it cannot be undone and warns when the backer has not marked it paid; the doer's confirmation alone completes the pact). One idempotency key per payload; the server's refusal shows in the dialog; success refreshes the page.
+- **Pure rules:** `src/lib/pact/settlement.ts` (`settlementState`: phase, amount, who can do what; `noteState`), table-tested.
+- **Seed:** `tepatictl seed --scenario settlement` (new users `settlement-<tag>-*@tepati.test`): two pacts, "Settlement: paid first" and "Settlement: doer only", five days that ended five days ago, 900 coins owed, settled by the real `ClosePacts`. `bun run test:e2e` seeds one pair per project (`E2E_SETTLE_*`).
+
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
 - Auth is cookie based with a CSRF header (`X-CSRF-Token`, value from the `tepati_csrf` cookie) on unsafe methods, and mutating calls take an `Idempotency-Key`. Details in `docs/adr/0010-api-conventions.md`.
@@ -236,4 +242,4 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - Email links point at `/pacts/<id>`, `/review` and `/invite/<token>`; these routes must exist.
 - The server does not check `starts_on` against the date: a pact proposed for tomorrow and signed after tomorrow starts with check-ins that are already overdue. The wizard only prevents choosing a start before tomorrow. Needs a rule in SPEC (refuse to schedule once `starts_on` has passed?) and a server check; not decided.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p6.6-settlement`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 6.7 in the same session as 6.6 unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p6.7-notifications`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 7.1 in the same session as 6.7 unless asked.
