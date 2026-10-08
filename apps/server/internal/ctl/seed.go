@@ -117,8 +117,12 @@ var todayStates = []struct {
 	doerSubmits   bool
 	backerSubmits bool
 	approve       bool
+	doerEvidence  domain.Evidence // the doer's proof rules; zero means anything is enough
 }{
 	{title: "Today: open", backerCommits: true, cutoff: "23:59", grace: 30},
+	// Open like the first, but with evidence rules and a later deadline (so it sorts after it): the
+	// proof editor's e2e needs a minimum of words and a ready attachment before it may submit.
+	{title: "Today: rules", backerCommits: true, cutoff: "23:59", grace: 60, doerEvidence: domain.Evidence{MinAttachments: 1, MinWords: 10}},
 	{title: "Today: submitted", backerCommits: true, cutoff: "23:59", grace: 30, doerSubmits: true, backerSubmits: true},
 	{title: "Today: approved", backerCommits: true, cutoff: "23:59", grace: 30, doerSubmits: true, approve: true},
 	// A cutoff at midnight with no grace has always passed, so the sweep below turns today's
@@ -128,7 +132,7 @@ var todayStates = []struct {
 
 const todayProof = `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Selesai latihan soal hari ini."}]}]}`
 
-// SeedToday gives one doer a Today screen with every state at once: an open check-in, a submitted
+// SeedToday gives one doer a Today screen with every state at once: an open check-in (and a second with evidence rules), a submitted
 // one (with the backer's own proof waiting for the doer to review), an approved one and a missed
 // one, each in its own active pact. Users are new on every run (named after tag) so the 10-pact
 // limit is never reached and a test can run it as often as it likes. Everything goes through the
@@ -157,6 +161,9 @@ func SeedToday(ctx context.Context, st *store.Store, now time.Time, tag string) 
 		terms.CutoffLocalTime, terms.GraceMinutes, terms.BackerCommits = sc.cutoff, sc.grace, sc.backerCommits
 		for id, m := range terms.Members {
 			m.Evidence = domain.Evidence{}
+			if m.Role == domain.RoleDoer {
+				m.Evidence = sc.doerEvidence
+			}
 			if m.Role == domain.RoleBacker && !sc.backerCommits {
 				m.Schedule = nil
 			}
