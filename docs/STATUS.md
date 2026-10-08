@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-08, after task 6.2 (the Today screen; the backend is complete, Phase 5 is done and Phase 6 is in progress). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-08, after task 6.3 (the proof editor and submission; the backend is complete, Phase 5 is done and Phase 6 is in progress). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -12,10 +12,10 @@ Last updated: 2026-10-08, after task 6.2 (the Today screen; the backend is compl
 | 3 Worker | done | 3.1 asynq worker, schedule, outbox relay, reminders, `tepatictl seed`/`pact show`, air files. 3.2 notifications and email (Mailpit) |
 | 4 Uploads and media | done | 4.1 BlobStore drivers (s3 and fs, Garage enforces the signed length). 4.2 upload endpoints, `media:process`, `uploads:gc` |
 | 5 Web foundation | done | 5.1 Next.js app on Bun (PR #3). 5.2 design tokens and primitives (PR #4). 5.3 auth pages, app shell, auth guard and the Playwright e2e (PR #5) |
-| **6 Web features** | **in progress** | 6.1 new pact wizard and invite/accept flow (PR #6). 6.2 Today screen: done on `p6.2-today-screen` (not pushed or merged yet). Next: 6.3 proof editor |
+| **6 Web features** | **in progress** | 6.1 new pact wizard and invite/accept flow (PR #6). 6.2 Today screen (PR #7). 6.3 proof editor and submission: done on `p6.3-proof-editor` (not pushed or merged yet). Next: 6.4 pact page with passbook and calendar |
 | 6–9 | not started | Web features, Docker, quality gates, staging |
 
-The first unchecked task in `docs/PLAN.md` is **6.3**.
+The first unchecked task in `docs/PLAN.md` is **6.4**.
 
 ## 2. Branch and merge state
 
@@ -30,7 +30,8 @@ e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-han
 - 5.2 was merged as PR #4 (merge commit `e189035`, 2026-10-08). The branch `p5.2-tokens-primitives` still exists on `origin`, like `p5.1-nextjs-app` (the owner has not asked to delete them).
 - 5.3 was merged as PR #5 (merge commit `373f3aa`, 2026-10-08). The branch `p5.3-auth-shell` still exists on `origin`, like the other two.
 - 6.1 was merged as PR #6 (merge commit `ddff0a3`, 2026-10-08). The branch `p6.1-pact-wizard` still exists on `origin`.
-- 6.2 lives on `p6.2-today-screen` (six code commits, `01646bd..de149b3`, plus a docs commit), cut from `main` after the 6.1 merge. It is not pushed or merged yet. Cut 6.3 from it if it is still unmerged, otherwise from `main`.
+- 6.2 was merged as PR #7 (merge commit `88d0da4`, 2026-10-08). The branch `p6.2-today-screen` still exists on `origin`.
+- 6.3 lives on `p6.3-proof-editor` (five code commits, `d7467a7..344d270`, plus a docs commit), cut from `main` after the 6.2 merge. It is not pushed or merged yet. Cut 6.4 from it if it is still unmerged, otherwise from `main`.
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -206,6 +207,14 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - **Test data:** `tepatictl seed --scenario today` (`bun run db:seed -- today`) creates new users and four active pacts with today's check-in open, submitted, approved and missed (the backer's own proof waits for the doer to review). `bun run test:e2e` seeds two doers, one per project. See `docs/PLAN.md` 6.2 for why this and not a clock endpoint.
 - **Config:** `AUTH_RATE_LIMIT_PER_MIN` (default 10, at most 10 in production). Put `AUTH_RATE_LIMIT_PER_MIN=200` in the local `.env` to run the whole e2e suite at once; without it a full run needs a minute's wait and the two Today specs can push it past 10.
 
+**What 6.3 added (writing and sending proof):**
+- **Route:** `/pacts/[id]/days/[date]` (`src/app/(app)/pacts/[id]/days/[date]/page.tsx`) finds the signed-in person's check-in for that date (`listPactCheckIns` with `from` and `to`), loads `getCheckIn`, and shows the editor while `my_actions` has `submit` or `edit_proof`, otherwise the status and a way back. 6.5 builds the read-only detail on the same route. Today links to it ("Kirim bukti", and "Ubah bukti" while a submitted proof can still be changed).
+- **Pure rules** in `src/lib/proof` (all table-tested): `doc.ts` (`analyzeDoc`: a mirror of the server's `ParseProofDoc`, so the word count that gates the button is the server's own; the allow-list; `normalizeLink`), `extensions.ts` (`proofExtensions()`: StarterKit with underline and trailing node off, headings 2 and 3, http(s) links, task lists, CharacterCount; a test checks the schema against the allow-list), `rules.ts` (`checkEvidence`, mirror of `Evidence.Check`), `files.ts` (`checkFile`, `declaredMime`, `roomLeft`: SPEC §8 limits), `net.ts` (`putHeaders`, `pollDelay`, `targetSize`), `tray.ts` (the attachment state machine: preparing, uploading, processing, ready, rejected, failed).
+- **Browser code:** `compress.ts` (canvas, WebP), `upload.ts` (`uploadAttachment`: `createUpload`, XHR PUT with progress and exactly the returned headers minus Content-Length, `completeUpload`, poll `getAttachment`), `components/proof/use-attachments.ts` (one abortable job per file, retry, remove).
+- **Components** (`src/components/proof`): `ProofEditor` (toolbar that wraps onto rows on a phone, link form, files pasted or dropped on it go to the tray), `AttachmentTray` (pick, camera, drop, per-file stage, rejection reason, retry), `ProofForm` (the commitment, the countdown, word and file counters against the rules, why the button is off, one idempotency key per payload).
+- **Seed:** `tepatictl seed --scenario today` now has five pacts; "Today: rules" needs 10 words and one ready attachment. `bun run test:e2e` seeds one doer per spec and per project (`E2E_TODAY_EMAIL_*`, `E2E_PROOF_EMAIL_*`, `E2E_TODAY_PASSWORD`). The fixtures `tests/e2e/fixtures/photo.png` and `clip.mp4` are tiny files made with ffmpeg.
+- **Needs running:** the media worker, ffmpeg and libvips (STATUS §6), because "Siap" only appears when the server has processed the file.
+
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
 - Auth is cookie based with a CSRF header (`X-CSRF-Token`, value from the `tepati_csrf` cookie) on unsafe methods, and mutating calls take an `Idempotency-Key`. Details in `docs/adr/0010-api-conventions.md`.
@@ -213,4 +222,4 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - Email links point at `/pacts/<id>`, `/review` and `/invite/<token>`; these routes must exist.
 - The server does not check `starts_on` against the date: a pact proposed for tomorrow and signed after tomorrow starts with check-ins that are already overdue. The wizard only prevents choosing a start before tomorrow. Needs a rule in SPEC (refuse to schedule once `starts_on` has passed?) and a server check; not decided.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p6.3-proof-editor`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 6.4 in the same session as 6.3 unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p6.4-pact-passbook`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 6.5 in the same session as 6.4 unless asked.
