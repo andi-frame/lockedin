@@ -1,0 +1,113 @@
+# CI for Tepati (PLAN 8.1). Three jobs, from fast to slow:
+#   check        lint, generated code is committed, unit tests (Go and web, media golden tests included)
+#   integration  Go integration tests against the real dev infra (Postgres, Redis, Garage in Docker)
+#   e2e          the built images behind Caddy on https://localhost, then the Playwright suite
+# The e2e job runs the same commands as docs/RUNNING.md section 6, so a failure there reproduces on a
+# laptop with `bun run deploy:env-local`, `deploy:build`, `deploy:up` and `test:e2e`.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_VERSION: "1.4.2"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/server/go.mod
+          cache-dependency-path: |
+            apps/server/go.sum
+            apps/server/tools/go.sum
+      - run: bun install --frozen-lockfile
+      # The media golden tests skip themselves without these (docs/RUNNING.md section 1).
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg libvips-tools
+      - run: bun run lint
+      # Regenerating sqlc, the Go server and the web types must not change a tracked file.
+      - run: bun run codegen -- --check
+      - run: bun run test
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/server/go.mod
+          cache-dependency-path: |
+            apps/server/go.sum
+            apps/server/tools/go.sum
+      - run: bun install --frozen-lockfile
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg libvips-tools
+      # `setup` writes .env and deploy/env/.env.dev with fresh secrets; `infra:up` starts Postgres,
+      # Redis, Garage and Mailpit and bootstraps Garage (layout, key, buckets, CORS).
+      - run: bun run setup
+      - run: bun run infra:up
+      - run: bun run test:integration
+      - name: Infra logs
+        if: failure()
+        run: docker compose -f deploy/compose.yaml --env-file .env --profile infra logs --no-color --tail 200
+      - if: always()
+        run: bun run infra:down
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # The stack from `deploy:up`, seeded through its api container (scripts/ctl.ts).
+      TEPATI_CTL_PROJECT: staging
+      E2E_BASE_URL: https://localhost
+      E2E_API_URL: https://localhost
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - name: Playwright browser
+        working-directory: apps/web
+        run: bunx playwright install --with-deps chromium
+      - run: bun run deploy:env-local
+      - run: bun run deploy:build -- --env staging
+      - run: bun run deploy:up -- --env staging
+      - run: bun run test:e2e
+      - name: Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: apps/web/test-results
+          retention-days: 7
+      - name: Stack logs
+        if: failure()
+        run: |
+          export TEPATI_ENV=staging
+          docker compose -p tepati-staging -f deploy/compose.yaml -f deploy/compose.prod.yaml --env-file deploy/env/.env.staging \
+            --profile infra --profile app --profile edge --profile mail-sandbox logs --no-color --tail 300
+      - name: Stop the stack
+        if: always()
+        run: |
+          export TEPATI_ENV=staging
+          docker compose -p tepati-staging -f deploy/compose.yaml -f deploy/compose.prod.yaml --env-file deploy/env/.env.staging \
+            --profile infra --profile app --profile edge --profile mail-sandbox down --volumes
