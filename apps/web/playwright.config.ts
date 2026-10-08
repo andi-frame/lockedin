@@ -4,6 +4,8 @@ import { defineConfig, devices } from "@playwright/test";
 // `bun run dev:hybrid`, then run `bun run test:e2e` from the repo root. The root script checks the
 // stack is up. The API allows 10 auth requests a minute per IP (ARCHITECTURE §3), so the specs stay
 // well under that and run one at a time.
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
+
 export default defineConfig({
   testDir: "./tests/e2e",
   workers: 1,
@@ -12,7 +14,9 @@ export default defineConfig({
   reporter: [["list"]],
   outputDir: "./test-results",
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",
+    baseURL,
+    // `bun run deploy:up` on a laptop serves https://localhost with Caddy's own CA, which no browser trusts.
+    ignoreHTTPSErrors: baseURL.startsWith("https://localhost"),
     trace: "retain-on-failure",
   },
   projects: [

@@ -4,6 +4,10 @@
 # Mount rules (docs/RUNNING.md §4): data lives only in named volumes, config files
 # are mounted read-only, and ports bind to 127.0.0.1 so dev infra is not exposed on
 # the LAN. compose.prod.yaml removes host port bindings entirely.
+#
+# Profiles: infra (postgres, redis, garage, mailpit), app (migrate, api, worker, web),
+# edge (caddy), tools (asynqmon), backup (nightly pg_dump). TEPATI_ENV (dev, staging or
+# production) picks the env file and the image tag; the Bun scripts set it.
 
 name: tepati
 
@@ -79,8 +83,125 @@ services:
       timeout: 3s
       retries: 20
 
+  # ---- app ---------------------------------------------------------------------------------
+  # The images are built by `bun run deploy:build`; compose.dev.yaml swaps them for source
+  # mounts. Only the Go services read the env file: the web app gets just what it needs.
+
+  migrate:
+    image: tepati-server:${TEPATI_ENV:-dev}
+    profiles: [app]
+    restart: "no"
+    env_file: ["env/.env.${TEPATI_ENV:-dev}"]
+    # goose reads the URL from the environment, so the password never shows in `ps`.
+    entrypoint: ["sh", "-c", 'exec goose -dir /app/migrations postgres "$$DATABASE_URL" up']
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  api:
+    image: tepati-server:${TEPATI_ENV:-dev}
+    profiles: [app]
+    restart: unless-stopped
+    env_file: ["env/.env.${TEPATI_ENV:-dev}"]
+    command: ["api"]
+    tmpfs: [/tmp]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+      garage: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "tepatictl", "probe", "http://127.0.0.1:${API_PORT:-8080}/readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  worker:
+    image: tepati-server:${TEPATI_ENV:-dev}
+    profiles: [app]
+    restart: unless-stopped
+    env_file: ["env/.env.${TEPATI_ENV:-dev}"]
+    command: ["worker"]
+    # The media pipeline streams staging to media through /tmp and cleans up after itself.
+    tmpfs: ["/tmp:size=1g"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+      garage: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "tepatictl", "probe", "http://127.0.0.1:${WORKER_METRICS_PORT:-9091}/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  web:
+    image: tepati-web:${TEPATI_ENV:-dev}
+    profiles: [app]
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:${API_PORT:-8080}
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3000/login').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # ---- edge --------------------------------------------------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    profiles: [edge]
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in the env file}
+      ACME_EMAIL: ${ACME_EMAIL:-nobody@localhost}
+      API_PORT: ${API_PORT:-8080}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api: {condition: service_healthy}
+      web: {condition: service_healthy}
+      garage: {condition: service_healthy}
+
+  # ---- tools -------------------------------------------------------------------------------
+  # The queue dashboard has no login of its own, so it listens on the loopback only. On a server,
+  # reach it through an SSH tunnel (docs/RUNNING.md §6).
+  asynqmon:
+    image: hibiken/asynqmon:latest
+    profiles: [tools]
+    restart: unless-stopped
+    command: ["--redis-url=redis://redis:6379/0"]
+    ports:
+      - "127.0.0.1:${ASYNQMON_PORT:-8081}:8080"
+    depends_on:
+      redis: {condition: service_healthy}
+
+  # ---- backup ------------------------------------------------------------------------------
+  # A nightly pg_dump into the Garage bucket (deploy/backup/backup.sh). `BACKUP_ONCE=1` runs it once.
+  backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    image: tepati-backup:${TEPATI_ENV:-dev}
+    profiles: [backup]
+    restart: unless-stopped
+    env_file: ["env/.env.${TEPATI_ENV:-dev}"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      garage: {condition: service_healthy}
+
 volumes:
   pgdata:
   redisdata:
   garage-meta:
   garage-data:
+  caddy-data:
+  caddy-config:
