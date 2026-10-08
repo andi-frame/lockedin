@@ -30,7 +30,7 @@ test("shows every state of today's check-in, each pact with its own deadline and
   await expect(page.getByText("Batas terdekat: Today: open")).toBeVisible();
   const band = page.getByRole("main").locator("header").first();
   await expect(band.getByText("lagi", { exact: true })).toBeVisible();
-  if (isMobile) await expect(band.getByRole("img", { name: /Notifikasi/ })).toBeVisible();
+  if (isMobile) await expect(band.getByRole("link", { name: /Notifikasi/ })).toHaveAttribute("href", "/notifications");
 
   // Sections follow the nearest deadline: the missed day's pact first, then the open ones.
   const titles = await page.locator("h2 a").allTextContents();

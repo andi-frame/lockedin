@@ -174,7 +174,11 @@
     "name": "Nama",
     "email": "Email",
     "timezone": "Zona waktu",
-    "appearance": "Tampilan"
+    "appearance": "Tampilan",
+    "notifications": "Notifikasi",
+    "notificationsBody": "Pengingat dan kabar kontrak muncul di kotak masuk notifikasi. Sebagian juga dikirim ke emailmu. Pilihan untuk mematikannya belum ada.",
+    "notificationsOpen": "Buka notifikasi",
+    "readOnly": "Nama, zona waktu, dan bahasa belum bisa diubah dari aplikasi."
   },
   "Boundary": {
     "title": "Halaman ini gagal dimuat",
@@ -592,5 +596,38 @@
     "cancel": "Batal",
     "markDone": "Dicatat: sudah dibayar.",
     "confirmDone": "Kontrak selesai."
+  },
+  "Notifications": {
+    "title": "Notifikasi",
+    "list": "Daftar notifikasi",
+    "empty": "Belum ada notifikasi. Kabar soal kontrakmu akan muncul di sini.",
+    "unread": "Baru",
+    "pactFallback": "Kontrak",
+    "older": "Lebih lama",
+    "newest": "Yang terbaru",
+    "kinds": {
+      "member_joined": "Pasanganmu bergabung ke kontrak ini.",
+      "terms_changed": "Pasanganmu mengubah syarat kontrak. Periksa dulu sebelum menyetujui.",
+      "terms_signed": "Pasanganmu sudah menandatangani syarat kontrak.",
+      "pact_scheduled": "Kontrak sudah dijadwalkan dan akan mulai pada harinya.",
+      "pact_settled": "Kontrak selesai dihitung. Cek hasil akhirnya.",
+      "proof_submitted": "Ada bukti baru yang menunggu tinjauanmu.",
+      "proof_edited": "Bukti yang menunggu tinjauanmu diperbarui.",
+      "proof_approved": "Buktimu disetujui.",
+      "proof_rejected": "Buktimu ditolak. Baca alasannya, lalu kirim ulang atau ajukan keberatan.",
+      "proof_auto_approved": "Buktimu disetujui otomatis karena tinjauan tidak selesai tepat waktu.",
+      "proof_overridden": "Penyokong membatalkan persetujuan otomatis buktimu. Baca alasannya.",
+      "rejection_final": "Penolakan buktimu sudah final. Batas kirim ulang dan keberatan sudah lewat.",
+      "rest_declared": "Pasanganmu mengambil hari jeda.",
+      "day_missed": "Satu hari terlewat tanpa bukti.",
+      "dispute_opened": "Pasanganmu mengajukan keberatan atas penolakan. Putuskan terima atau tolak.",
+      "dispute_upheld": "Keberatan diterima, bukti disetujui.",
+      "dispute_dismissed": "Keberatan ditolak, penolakan jadi final.",
+      "reminder_cutoff_3h": "Tiga jam lagi batas kirim buktimu.",
+      "reminder_cutoff_30m": "Tinggal 30 menit sampai batas kirim buktimu.",
+      "review_deadline_soon": "Batas tinjauan tinggal sebentar lagi. Putuskan sebelum disetujui otomatis.",
+      "payout_marked_paid": "Pasanganmu menandai sudah membayar. Konfirmasi kalau uangnya sudah kamu terima.",
+      "payout_confirmed": "Penerimaan dikonfirmasi. Kontrak selesai."
+    }
   }
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LogoutButton } from "@/components/shell/logout-button";
@@ -33,6 +34,19 @@ export default async function SettingsPage() {
             </div>
           ))}
         </dl>
+        <p className="mt-3 text-sm text-muted">{t("readOnly")}</p>
+      </section>
+
+      <section aria-labelledby="notifications" className="mt-8 max-w-xl">
+        <h2 id="notifications" className="text-lg font-semibold tracking-tight">
+          {t("notifications")}
+        </h2>
+        <p className="mt-2 max-w-prose text-[15px]">{t("notificationsBody")}</p>
+        <p className="mt-3">
+          <Link href="/notifications" className="text-[15px] font-medium text-teal-text underline-offset-4 hover:underline">
+            {t("notificationsOpen")}
+          </Link>
+        </p>
       </section>
 
       <section aria-labelledby="appearance" className="mt-8 max-w-xl">

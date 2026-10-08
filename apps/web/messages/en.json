@@ -174,7 +174,11 @@
     "name": "Name",
     "email": "Email",
     "timezone": "Time zone",
-    "appearance": "Appearance"
+    "appearance": "Appearance",
+    "notifications": "Notifications",
+    "notificationsBody": "Reminders and news about your pacts show up in the notification inbox. Some are also emailed to you. There is no way to turn them off yet.",
+    "notificationsOpen": "Open notifications",
+    "readOnly": "Your name, time zone and language cannot be changed from the app yet."
   },
   "Boundary": {
     "title": "This page failed to load",
@@ -592,5 +596,38 @@
     "cancel": "Cancel",
     "markDone": "Recorded as paid.",
     "confirmDone": "Pact completed."
+  },
+  "Notifications": {
+    "title": "Notifications",
+    "list": "Notification list",
+    "empty": "No notifications yet. News about your pacts will show up here.",
+    "unread": "New",
+    "pactFallback": "Pact",
+    "older": "Older",
+    "newest": "Newest",
+    "kinds": {
+      "member_joined": "Your partner joined this pact.",
+      "terms_changed": "Your partner changed the pact terms. Look them over before you agree.",
+      "terms_signed": "Your partner signed the pact terms.",
+      "pact_scheduled": "The pact is scheduled and starts on its day.",
+      "pact_settled": "The pact has been settled. Check the final result.",
+      "proof_submitted": "There is new proof waiting for your review.",
+      "proof_edited": "The proof waiting for your review was updated.",
+      "proof_approved": "Your proof was approved.",
+      "proof_rejected": "Your proof was rejected. Read the reason, then send it again or object.",
+      "proof_auto_approved": "Your proof was approved automatically because the review did not finish in time.",
+      "proof_overridden": "The backer reversed the automatic approval of your proof. Read the reason.",
+      "rejection_final": "The rejection of your proof is final. The windows to resubmit and object have passed.",
+      "rest_declared": "Your partner took a rest day.",
+      "day_missed": "A day passed without proof.",
+      "dispute_opened": "Your partner objected to a rejection. Decide whether to uphold or dismiss.",
+      "dispute_upheld": "The objection was upheld, so the proof is approved.",
+      "dispute_dismissed": "The objection was dismissed, so the rejection is final.",
+      "reminder_cutoff_3h": "Three hours left to send your proof.",
+      "reminder_cutoff_30m": "30 minutes left to send your proof.",
+      "review_deadline_soon": "The review deadline is close. Decide before it is approved automatically.",
+      "payout_marked_paid": "Your partner marked it as paid. Confirm once you have received it.",
+      "payout_confirmed": "Receipt confirmed. The pact is complete."
+    }
   }
 }
