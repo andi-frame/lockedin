@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { analyzeDoc, allowedMarks, allowedNodes, type ProofDoc } from "./doc";
+import { analyzeDoc, allowedMarks, allowedNodes, normalizeLink, type ProofDoc } from "./doc";
 
 const p = (...content: ProofDoc[]): ProofDoc => ({ type: "paragraph", content });
 const t = (text: string, marks?: ProofDoc["marks"]): ProofDoc => ({ type: "text", text, ...(marks ? { marks } : {}) });
@@ -79,6 +79,20 @@ describe("analyzeDoc", () => {
   test("a document over 200 KB is refused", () => {
     expect(analyzeDoc(doc(p(t("x".repeat(201 * 1024)))))).toMatchObject({ ok: false });
   });
+});
+
+describe("normalizeLink", () => {
+  test.each([
+    ["https://example.com/a", "https://example.com/a"],
+    ["http://example.com", "http://example.com/"],
+    ["  example.com/belajar  ", "https://example.com/belajar"],
+    ["www.kampus.ac.id", "https://www.kampus.ac.id/"],
+  ])("%s becomes %s", (raw, want) => expect(normalizeLink(raw)).toBe(want));
+
+  test.each(["", "   ", "javascript:alert(1)", "data:text/html,x", "ftp://example.com", "https://", "not a url", "mailto:a@b.c"])(
+    "%j is refused",
+    (raw) => expect(normalizeLink(raw)).toBeNull(),
+  );
 });
 
 test("the allow-list is the server's (SPEC §8)", () => {

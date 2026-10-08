@@ -42,4 +42,16 @@ export function checkFile(file: { name: string; type: string; size: number }): F
   return { ok: true, kind };
 }
 
+const mimeByExtension: Record<string, string> = {
+  jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", heic: "image/heic", heif: "image/heif",
+  avif: "image/avif", gif: "image/gif", mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm", pdf: "application/pdf",
+};
+
+/** The type to declare to the API: the browser's, or one worked out from the extension when it is empty. */
+export function declaredMime(file: { name: string; type: string }): string {
+  if (file.type) return file.type;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return mimeByExtension[ext] ?? "application/octet-stream";
+}
+
 export const roomLeft = (current: number) => Math.max(0, MAX_ATTACHMENTS - current);

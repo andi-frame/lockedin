@@ -71,3 +71,21 @@ export function analyzeDoc(root: ProofDoc): DocAnalysis {
   const words = trimmed === "" ? 0 : trimmed.split(/\s+/).length;
   return { ok: true, text: trimmed, words, attachmentIds: ids };
 }
+
+/**
+ * What a person typed into the link box, as an http(s) URL the server will accept, or null.
+ * A bare address gets https://; every other scheme (javascript:, data:, mailto:) is refused.
+ */
+export function normalizeLink(raw: string): string | null {
+  const s = raw.trim();
+  if (!s || /\s/.test(s)) return null;
+  const hasHttp = /^https?:\/\//i.test(s);
+  // "name:" that is not "host:8080" is some other scheme (javascript:, data:, mailto:, ftp:).
+  if (!hasHttp && /^[a-z][a-z0-9+.-]*:(?!\d)/i.test(s)) return null;
+  try {
+    const u = new URL(hasHttp ? s : `https://${s}`);
+    return (u.protocol === "http:" || u.protocol === "https:") && u.host !== "" && u.hostname.includes(".") ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}

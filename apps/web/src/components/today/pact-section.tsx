@@ -109,23 +109,29 @@ function CheckInRow({
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            {/* Sending proof is task 6.3; until its editor exists the button says so instead of leading nowhere. */}
-            <Button disabled aria-describedby={`soon-${ci.id}`}>
-              {t("submit")}
+            <Button asChild>
+              <Link href={`/pacts/${pact.id}/days/${ci.local_date}`}>{t("submit")}</Link>
             </Button>
             {left > 0 && beforeCutoff ? <RestButton checkInId={ci.id} left={left} /> : null}
           </div>
-          <p id={`soon-${ci.id}`} className="text-sm text-muted">
-            {t("submitSoon")}
-          </p>
         </>
       ) : null}
 
       {ci.status === "submitted" ? (
-        <p className="max-w-prose text-[15px] text-muted">
-          {t("waitingReview", { partner, until: ci.review_deadline ? dateTime(ci.review_deadline) : "" })}
-          {c.word_count ? <span className="font-mono tabular-nums"> {t("words", { n: c.word_count })}</span> : null}
-        </p>
+        <>
+          <p className="max-w-prose text-[15px] text-muted">
+            {t("waitingReview", { partner, until: ci.review_deadline ? dateTime(ci.review_deadline) : "" })}
+            {c.word_count ? <span className="font-mono tabular-nums"> {t("words", { n: c.word_count })}</span> : null}
+          </p>
+          {/* A proof can be changed until the submit deadline (SPEC §5, late edits). */}
+          {Date.parse(ci.submit_deadline) > Date.parse(serverNow) ? (
+            <div>
+              <Button variant="secondary" size="sm" asChild>
+                <Link href={`/pacts/${pact.id}/days/${ci.local_date}`}>{t("editProof")}</Link>
+              </Button>
+            </div>
+          ) : null}
+        </>
       ) : null}
       {ci.status === "approved" ? <p className="text-[15px] text-muted">{t("approvedBy", { partner })}</p> : null}
       {ci.status === "auto_approved" ? <p className="text-[15px] text-muted">{t("autoApproved")}</p> : null}

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { MAX_ATTACHMENTS, checkFile, roomLeft } from "./files";
+import { MAX_ATTACHMENTS, checkFile, declaredMime, roomLeft } from "./files";
 
 const MB = 1024 * 1024;
 const f = (name: string, type: string, size: number) => ({ name, type, size });
@@ -19,7 +19,7 @@ describe("checkFile", () => {
     ["klip.webm", "video/webm", "video"],
     ["catatan.pdf", "application/pdf", "file"],
   ])("%s (%s) is a %s", (name, type, kind) => {
-    expect(checkFile(f(name, type, MB))).toEqual({ ok: true, kind });
+    expect(checkFile(f(name, type, MB))).toEqual({ ok: true, kind: kind as "image" | "video" | "file" });
   });
 
   test("a missing type falls back to the extension, as some phones report HEIC with no type", () => {
@@ -50,6 +50,17 @@ describe("checkFile", () => {
 
   test("a file exactly at the limit passes", () => {
     expect(checkFile(f("a.pdf", "application/pdf", 20 * MB))).toEqual({ ok: true, kind: "file" });
+  });
+});
+
+describe("declaredMime", () => {
+  test("is the browser's type when it has one", () => {
+    expect(declaredMime(f("a.png", "image/png", 1))).toBe("image/png");
+  });
+  test("is inferred from the extension when the type is empty", () => {
+    expect(declaredMime(f("IMG_1.HEIC", "", 1))).toBe("image/heic");
+    expect(declaredMime(f("clip.MOV", "", 1))).toBe("video/quicktime");
+    expect(declaredMime(f("a.pdf", "", 1))).toBe("application/pdf");
   });
 });
 

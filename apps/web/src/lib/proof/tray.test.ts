@@ -18,7 +18,7 @@ describe("trayReducer", () => {
     s = trayReducer(s, { type: "progress", localId: "a", progress: 0.4 });
     expect(s[0]).toMatchObject({ state: "working", step: "uploading", progress: 0.4 });
     s = trayReducer(s, { type: "progress", localId: "a", progress: 7 });
-    expect(s[0]?.progress).toBe(1);
+    expect(s[0]).toMatchObject({ progress: 1 });
   });
 
   test("after the PUT the file waits for the server to process it", () => {
