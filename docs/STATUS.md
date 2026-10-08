@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-08, after task 6.1 (new pact wizard and invite/accept flow; the backend is complete, Phase 5 is done and Phase 6 has started). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-08, after task 6.2 (the Today screen; the backend is complete, Phase 5 is done and Phase 6 is in progress). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -12,10 +12,10 @@ Last updated: 2026-10-08, after task 6.1 (new pact wizard and invite/accept flow
 | 3 Worker | done | 3.1 asynq worker, schedule, outbox relay, reminders, `tepatictl seed`/`pact show`, air files. 3.2 notifications and email (Mailpit) |
 | 4 Uploads and media | done | 4.1 BlobStore drivers (s3 and fs, Garage enforces the signed length). 4.2 upload endpoints, `media:process`, `uploads:gc` |
 | 5 Web foundation | done | 5.1 Next.js app on Bun (PR #3). 5.2 design tokens and primitives (PR #4). 5.3 auth pages, app shell, auth guard and the Playwright e2e (PR #5) |
-| **6 Web features** | **in progress** | 6.1 new pact wizard and invite/accept flow: done on `p6.1-pact-wizard` (not pushed or merged yet). Next: 6.2 Today screen |
+| **6 Web features** | **in progress** | 6.1 new pact wizard and invite/accept flow (PR #6). 6.2 Today screen: done on `p6.2-today-screen` (not pushed or merged yet). Next: 6.3 proof editor |
 | 6–9 | not started | Web features, Docker, quality gates, staging |
 
-The first unchecked task in `docs/PLAN.md` is **6.2**.
+The first unchecked task in `docs/PLAN.md` is **6.3**.
 
 ## 2. Branch and merge state
 
@@ -29,7 +29,8 @@ e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-han
 - 5.1 was merged into `main` as PR #3 (merge commit `f715daf`, 2026-10-08). The branch `p5.1-nextjs-app` still exists on `origin` (the owner has not asked to delete it).
 - 5.2 was merged as PR #4 (merge commit `e189035`, 2026-10-08). The branch `p5.2-tokens-primitives` still exists on `origin`, like `p5.1-nextjs-app` (the owner has not asked to delete them).
 - 5.3 was merged as PR #5 (merge commit `373f3aa`, 2026-10-08). The branch `p5.3-auth-shell` still exists on `origin`, like the other two.
-- 6.1 lives on `p6.1-pact-wizard` (three code commits, `632b9cd..2a94628`, plus a docs commit), cut from `main` after the 5.3 merge. It is not pushed or merged yet. Cut 6.2 from it if it is still unmerged, otherwise from `main`.
+- 6.1 was merged as PR #6 (merge commit `ddff0a3`, 2026-10-08). The branch `p6.1-pact-wizard` still exists on `origin`.
+- 6.2 lives on `p6.2-today-screen` (six code commits, `01646bd..de149b3`, plus a docs commit), cut from `main` after the 6.1 merge. It is not pushed or merged yet. Cut 6.3 from it if it is still unmerged, otherwise from `main`.
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -157,7 +158,8 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - Uploads have no per-user rate limit beyond the global 30/min on `POST /uploads`, and no resumable upload; a dropped connection means starting that file again.
 - The worker has `/metrics` and `/healthz` only, no `/readyz`. Fine for now; add one with the compose healthchecks (7.1).
 - `tepati_settlement_transitions_total` is by job type, see §5.
-- No test-clock endpoint yet (`CLOCK_OVERRIDE`); the e2e work (5.3/6.x) needs it. The API and worker use `domain.SystemClock`.
+- No test-clock endpoint (`CLOCK_OVERRIDE` is config only). The e2e gets time-dependent states from `tepatictl seed --scenario today` instead (decided with the owner for 6.2); a spec that needs to *move* time during the test (6.4: miss a day and watch the line appear) needs another seed scenario or a clock endpoint, not decided.
+- `getToday` returns `review_queue_count` without rows, and `TodayCheckIn` has no commitment or rest-day count, so the Today page also calls `getReviewQueue` and `getPact` per active pact. Folding that into `getToday` would be a contract change.
 - context7 MCP was never authenticated in these sessions; asynq, Prometheus and aws-sdk-go-v2 APIs were checked by reading module source under `~/go/pkg/mod`. For Phase 5 (Next.js 16, Tailwind v4, next-intl, Tiptap 3) read the official docs, or authenticate context7, before relying on memory of those APIs.
 
 ## 7. Brief for Phase 5 (web foundation) and the start of Phase 6
@@ -198,12 +200,17 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - **e2e:** `pact-create.spec.ts` (desktop only; two contexts; registers two users). With the other specs a full `bun run test:e2e` costs 9 of the 10 auth requests a minute.
 - **Local only:** if port 8080 is busy, set `API_PORT` and `API_INTERNAL_URL` in `.env` (gitignored) and run the e2e with `E2E_API_URL`.
 
+**What 6.2 added (the Today screen):**
+- **Page:** `/today` (`src/app/(app)/today/page.tsx`, with a `loading.tsx` skeleton) calls `getToday`, `getReviewQueue` (5 rows), the unread count, and `getPact` for each active pact. Pure rules are in `src/lib/today.ts` (`ledgerEntry`, `restLeft`, `groupToday`, `nextDeadline`, `dayLabel`) and `clockIn` in `src/lib/pact/dates.ts`, all table-tested.
+- **Components** (`src/components/today`): `DeadlineBand` (cover teal with guilloche, the date in highlighter yellow, the countdown to the soonest open check-in, the bell on a phone), `PactSection` (one section per pact, nearest deadline first: commitment, status chip, countdown, cutoff and grace, rest day; sending proof is a disabled button until 6.3), `RestButton` (confirm dialog, `declareRest`), `ReviewRows` (links to `/review`), `MiniPassbook` (last three ledger lines, signed amounts with the D/K mark, saldo with the Rupiah line). Desktop shows sections and review rows on the left and passbooks on the right; a phone stacks them in that order.
+- **Test data:** `tepatictl seed --scenario today` (`bun run db:seed -- today`) creates new users and four active pacts with today's check-in open, submitted, approved and missed (the backer's own proof waits for the doer to review). `bun run test:e2e` seeds two doers, one per project. See `docs/PLAN.md` 6.2 for why this and not a clock endpoint.
+- **Config:** `AUTH_RATE_LIMIT_PER_MIN` (default 10, at most 10 in production). Put `AUTH_RATE_LIMIT_PER_MIN=200` in the local `.env` to run the whole e2e suite at once; without it a full run needs a minute's wait and the two Today specs can push it past 10.
+
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
 - Auth is cookie based with a CSRF header (`X-CSRF-Token`, value from the `tepati_csrf` cookie) on unsafe methods, and mutating calls take an `Idempotency-Key`. Details in `docs/adr/0010-api-conventions.md`.
 - Upload client flow: `POST /uploads` -> `PUT` the file to `put_url` with exactly the returned `headers` (the browser adds `Content-Length`) -> `POST /uploads/{id}/complete` -> poll `GET /attachments/{id}` (1 s backing off to 5 s) until `ready` or `rejected`. With the fs storage driver `put_url` points at the API (`/api/v1/blob/...`), with Garage at port 3900; CORS in dev already allows `Content-Type`.
 - Email links point at `/pacts/<id>`, `/review` and `/invite/<token>`; these routes must exist.
 - The server does not check `starts_on` against the date: a pact proposed for tomorrow and signed after tomorrow starts with check-ins that are already overdue. The wizard only prevents choosing a start before tomorrow. Needs a rule in SPEC (refuse to schedule once `starts_on` has passed?) and a server check; not decided.
-- A test-clock endpoint (`CLOCK_OVERRIDE`) does not exist yet; the Phase 6 e2e tests (`today.spec.ts` needs open, submitted, approved and missed) will need one or a different way to move time.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p6.2-today-screen`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 6.3 in the same session as 6.2 unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p6.3-proof-editor`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 6.4 in the same session as 6.3 unless asked.

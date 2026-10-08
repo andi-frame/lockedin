@@ -1,12 +1,12 @@
 # Handover: working in this repo as any agent
 
-Written 2026-10-08, after task 6.1, by the agent that built Phases 2 to 5 (Claude Code, Sonnet 5.5). It is for the **next agent, whatever it is** (Codex, Antigravity, another Claude model, a human). Nothing here depends on Claude-specific tools. `AGENTS.md` holds the rules, `docs/STATUS.md` holds the project state and decisions, and this file holds *how to actually get things done on this machine without repeating my mistakes*.
+Written 2026-10-08, after task 6.2, by the agent that built Phases 2 to 5 (Claude Code, Sonnet 5.5). It is for the **next agent, whatever it is** (Codex, Antigravity, another Claude model, a human). Nothing here depends on Claude-specific tools. `AGENTS.md` holds the rules, `docs/STATUS.md` holds the project state and decisions, and this file holds *how to actually get things done on this machine without repeating my mistakes*.
 
 ## 0. In one minute
 
 - **Tepati** is a study-pact app (two peers, a coin IOU ledger, daily proof). Folder name is `lockedin`; product name is Tepati.
-- **Done:** Phases 0 to 4 (the whole backend), **5.1** (the `apps/web` scaffold, PR #3), **5.2** (design tokens, dark desk-lamp theme, UI primitives, `/dev/kitchen-sink`, PR #4) **5.3** (auth guard `src/proxy.ts`, `/login`, `/register`, the signed-in shell, `auth.spec.ts`, PR #5) and **6.1** (the pact wizard, the agreement page and the invite flow). 6.1 is on branch `p6.1-pact-wizard`, committed, **not pushed or merged**.
-- **Next task:** `docs/PLAN.md` **6.2 Today screen**. Branch `p6.2-today-screen`, cut from `p6.1-pact-wizard` while that is unmerged (otherwise from `main`). Playbook in §9.
+- **Done:** Phases 0 to 4 (the whole backend), **5.1** (the `apps/web` scaffold, PR #3), **5.2** (design tokens, dark desk-lamp theme, UI primitives, `/dev/kitchen-sink`, PR #4) **5.3** (auth guard `src/proxy.ts`, `/login`, `/register`, the signed-in shell, `auth.spec.ts`, PR #5) and **6.1** (the pact wizard, the agreement page and the invite flow, PR #6) and **6.2** (the Today screen). 6.2 is on branch `p6.2-today-screen`, committed, **not pushed or merged**.
+- **Next task:** `docs/PLAN.md` **6.3 Proof editor and submission**. Branch `p6.3-proof-editor`, cut from `p6.2-today-screen` while that is unmerged (otherwise from `main`). Playbook in §9.
 - **Phases 2 to 4 are merged into `main`** (pull request #1, https://github.com/andi-frame/lockedin/pull/1, merge commit `054e61a`, 2026-10-08, not squashed). `origin` is `https://github.com/andi-frame/lockedin.git`. The seven task branches (`p2.1-openapi` ... `p4.2-uploads`) were deleted on 2026-10-08 at the owner's request; their commits are in `main`. Do not delete branches unasked. The owner asked for the push and the merge explicitly each time: push, open PRs and merge only when they ask, and never force-push.
 - **First three commands in a new Git Bash terminal:**
 
@@ -127,7 +127,8 @@ All merged into `main` through PR #1; the original task branches are kept on `or
 | 5.1 Web scaffold | `p5.1-nextjs-app` (merged, PR #3) | `21e40b4`..`b671f19` | `apps/web`: build, typecheck, eslint, 20 unit tests. Live: proxy to the API, CSRF 403 without and 204 with the header |
 | 5.2 Tokens and primitives | `p5.2-tokens-primitives` (merged, PR #4) | `05047de`..`6008608` | OKLCH tokens in two themes with a WCAG test, owned primitives, `Amount`/`Countdown`/`StatusChip`/`MemberLine`, `/dev/kitchen-sink`. 154 web unit tests; screenshots at 390 and 1440, light and dark, looked at |
 | 5.3 Auth and shell | `p5.3-auth-shell` (merged, PR #5) | `a9f3db3`..`884e87d` | `proxy.ts` guard with table-tested rules, login and register, rail and tab bar shell, Playwright `auth.spec.ts` (6 passed, 2 skipped on purpose). 243 web unit tests; screenshots at 390 and 1440, light and dark, looked at |
-| 6.1 Pact wizard | `p6.1-pact-wizard` | `632b9cd`..`2a94628` | `src/lib/pact` (dates, draft, terms summary, signing; 98 new unit tests), `Wizard`, `/pacts`, `/pacts/[id]`, `/invite/[token]`, `pact-create.spec.ts` (two contexts, ends `scheduled`). Screenshots at 390 and 1440, light and dark, looked at |
+| 6.1 Pact wizard | `p6.1-pact-wizard` (merged, PR #6) | `632b9cd`..`2a94628` | `src/lib/pact` (dates, draft, terms summary, signing; 98 new unit tests), `Wizard`, `/pacts`, `/pacts/[id]`, `/invite/[token]`, `pact-create.spec.ts` (two contexts, ends `scheduled`). Screenshots at 390 and 1440, light and dark, looked at |
+| 6.2 Today screen | `p6.2-today-screen` | `01646bd`..`de149b3` | `AUTH_RATE_LIMIT_PER_MIN`, `tepatictl seed --scenario today` (integration-tested), `/today` (band, sections, rest day, review rows, mini passbook), `today.spec.ts` on both projects. 359 web unit tests; screenshots at 390 and 1440, light and dark, looked at |
 
 Phases 0 and 1 (repository foundation, schema, domain rules, services) are on `main`.
 
@@ -145,16 +146,16 @@ Phases 0 and 1 (repository foundation, schema, domain rules, services) are on `m
 
 If your tool wants its own instruction file (`GEMINI.md`, `.codex/...`), make it a short pointer to `AGENTS.md` and this file. Do not copy rules into several places; they drift.
 
-## 9. Playbook for the next task: 6.2 Today screen
+## 9. Playbook for the next task: 6.3 Proof editor and submission
 
-1. `git checkout p6.1-pact-wizard && git checkout -b p6.2-today-screen` (or from `main` once 6.1 is merged). `source scripts/dev-env.sh`, `bun install`, `bun run infra:up`, `bun run db:migrate`, `bun run dev:hybrid`. If port 8080 is taken on this machine, put `API_PORT=18080` and `API_INTERNAL_URL=http://localhost:18080` in `.env` (gitignored) and run the e2e with `E2E_API_URL=http://localhost:18080`.
-2. Read `docs/SPEC.md §5` to `§7` (check-in states, deadlines, rest days) and the `getToday` endpoint and `Today` / `TodayCheckIn` schemas in `api/openapi.yaml`. `server_time` is there so the client can correct its clock before drawing countdowns (`Countdown` takes `serverNow`).
-3. UI work: load the *impeccable* skill (extend-an-existing-surface path), read `~/.claude/skills/impeccable/reference/craft-floor.md` right before editing, and re-read the direction contract: the first viewport is defined there (cover-teal header band with the countdown in fixed cells, the "Hari ini" panel, "Perlu ditinjau" rows, a mini passbook). Highlighter yellow is for today only. `/today` is still a placeholder page in `src/app/(app)/today/page.tsx`; the bell and the phone header band belong to this task (5.3 left them open).
-4. Reuse: `Countdown`, `StatusChip`, `Amount`, `MemberLine`, `PactStatusBadge`, and `src/lib/pact` (`dates.ts` for zone-aware dates). Add every message to `messages/id.json` and `en.json` (full-path keys, no dots inside a key) and every API code the screen can hit to `Errors`.
-5. e2e: `today.spec.ts` needs the states open, submitted, approved and missed, which needs a way to move time. There is still no test clock (`CLOCK_OVERRIDE` is config only, STATUS §6). Decide and tell the owner (§10): a test-only endpoint guarded by `APP_ENV`, a seed command that backdates check-ins, or direct SQL in the spec. A pact must start tomorrow or later, so a fresh pact has no check-in dated today; `tepatictl seed` and `bun run db:seed` can make one that is already active. Remember the auth rate limit (9 of 10 a minute are already used by a full `bun run test:e2e`).
-6. Verify per PLAN, screenshots at 390 and 1440 in light and dark (look at them), `impeccable detect --json` once on the changed files, `bun run lint && bun run test`, `bun run test:e2e`. Tick 6.2 in PLAN with range, Result and Deviations, update `docs/STATUS.md`, and stop. Next is 6.3 (proof editor).
+1. `git checkout p6.2-today-screen && git checkout -b p6.3-proof-editor` (or from `main` once 6.2 is merged). `source scripts/dev-env.sh`, `bun install`, `bun run infra:up`, `bun run db:migrate`, `bun run dev:hybrid`. If port 8080 is taken on this machine, put `API_PORT=18080` and `API_INTERNAL_URL=http://localhost:18080` in `.env` (gitignored), add `AUTH_RATE_LIMIT_PER_MIN=200` there so the whole e2e suite can run at once, and run the e2e with `E2E_API_URL=http://localhost:18080`.
+2. This task is not marked 🔒, but it feeds evidence rules, so read `docs/SPEC.md §5` (late edits, evidence rules) and `§8` (proof document allow-list, attachments, limits), `internal/domain/proofdoc.go` (the server's allow-list is the authority) and the endpoints `submitProof`, `createUploadIntent`, `completeUpload` and `getAttachment` in `api/openapi.yaml`. The upload client flow is in `docs/STATUS.md` ("Useful for the web work"): `POST /uploads`, `PUT` to `put_url` with exactly the returned headers, `POST /uploads/{id}/complete`, poll `GET /attachments/{id}` until `ready` or `rejected`.
+3. Context7 for Tiptap 3 (it needs authenticating first, STATUS §6). Allowed nodes only; a toolbar that fits 390 px; `CharacterCount` and a word count against `min_words`; the attachment tray with camera capture, drag-drop and paste; compress images in the browser first; per-file progress, processing and rejected-with-reason.
+4. UI work: load the *impeccable* skill (extend-an-existing-surface path), read `~/.claude/skills/impeccable/reference/craft-floor.md` right before editing, re-read the direction contract. Route: the Today screen's disabled "Kirim bukti" button (`src/components/today/pact-section.tsx`) is waiting for this task; give it a real target such as `/pacts/[id]/days/[date]` (6.5 builds the read-only detail on the same route, so keep the editor a component) and update `today.spec.ts`, which currently asserts the button is disabled.
+5. e2e: `proof.spec.ts` uploads a fixture image and a video and submits; a 250 MB fake file must be rejected on the client; a renamed file must be rejected by the server with a visible reason. Use `bun run db:seed -- today` or the e2e seeding for an open check-in (the seed's evidence rules are all zero; to exercise `min_words` and `min_attachments` seed or create a pact with rules). ffmpeg and libvips must be installed for the media worker (STATUS §6).
+6. Verify per PLAN, screenshots at 390 and 1440 in light and dark (look at them), `impeccable detect --json` once on the changed files, `bun run lint && bun run test`, `bun run test:e2e`. Tick 6.3 in PLAN with range, Result and Deviations, update `docs/STATUS.md`, and stop. Next is 6.4 (pact page: passbook and calendar).
 
-Things the web app must still provide because the backend points at them: `/review` and the upload client flow in `docs/STATUS.md §7`.
+Things the web app must still provide because the backend points at them: `/review` and the check-in detail route.
 
 ## 10. Questions that are the owner's to answer (do not decide silently)
 
@@ -163,7 +164,7 @@ Things the web app must still provide because the backend points at them: `/revi
 - A real SMTP provider and TLS settings for staging and production.
 - HEIC/AVIF handling: the sniffer accepts them, but decoding depends on the libvips build and was not tested with a real HEIC file.
 - A "resend invite" endpoint (the invite email is the only place the plaintext token is mailed; see `docs/STATUS.md §6`).
-- A test-clock mechanism for e2e tests (needed from 6.2), and whether the auth rate limit (10 a minute per IP) should be configurable for e2e.
+- 6.4's `Playwright scenario: miss a day via the test clock` needs time to move *during* a test. 6.2 used a seed scenario (`tepatictl seed --scenario today`) instead of a clock endpoint; whether 6.4 does the same (a scenario that already has the passbook lines, or one the spec advances with a CLI call) or gets a guarded endpoint is for the owner.
 
 ## 11. Before you stop a session
 
