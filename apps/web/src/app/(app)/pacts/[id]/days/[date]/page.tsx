@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CheckInDetailView } from "@/components/checkin/detail-view";
 import { ProofForm } from "@/components/proof/proof-form";
-import { StatusChip } from "@/components/status-chip";
-import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api/errors";
 import { serverApi } from "@/lib/api/server";
 import { unwrap } from "@/lib/api/unwrap";
@@ -20,11 +18,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const missing = (err: unknown) => err instanceof ApiError && (err.status === 404 || err.status === 400);
 
-// The doer's page for one day. While the check-in can still take a proof (`submit`, or
-// `edit_proof` after sending) it holds the editor; otherwise it says where the day stands. The
-// read-only proof with its history and the reviewer's actions are task 6.5, on this same route.
-export default async function DayPage({ params }: { params: Promise<{ id: string; date: string }> }) {
-  const { id, date } = await params;
+// One day of a pact. A day has a check-in per member, so `?of=<user id>` picks whose (it defaults to
+// the viewer's own). While the viewer's own check-in can still take a proof (`submit`, or
+// `edit_proof` after sending) the page holds the editor; in every other case it is the read-only
+// detail: the proof, its history, every decision, and the actions the server offers.
+export default async function DayPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string; date: string }>;
+  searchParams: Promise<{ of?: string; edit?: string }>;
+}) {
+  const [{ id, date }, { of, edit }] = await Promise.all([params, searchParams]);
   if (!isDate(date)) notFound();
   const [t, user, api] = await Promise.all([getTranslations("Proof"), getCurrentUser(), serverApi()]);
   if (!user) return null;
@@ -36,26 +41,40 @@ export default async function DayPage({ params }: { params: Promise<{ id: string
     if (missing(err)) notFound();
     throw err;
   });
-  const mine = list.items.find((c) => c.member_id === user.id);
-  if (!mine) notFound(); // nothing is scheduled for this person that day (a non-member got 404 above)
+  const targetId = of && pact.members.some((m) => m.user_id === of) ? of : user.id;
+  const target = list.items.find((c) => c.member_id === targetId);
+  if (!target) notFound(); // nothing is scheduled for that person that day (a non-member got 404 above)
+  const otherCheckIn = list.items.find((c) => c.member_id !== targetId);
+  const otherMember = pact.members.find((m) => m.user_id === otherCheckIn?.member_id);
 
-  const detail = await unwrap(api.GET("/check-ins/{checkInId}", { params: { path: { checkInId: mine.id } } }));
-  const canEdit = detail.my_actions.includes("submit") || detail.my_actions.includes("edit_proof");
+  const detail = await unwrap(api.GET("/check-ins/{checkInId}", { params: { path: { checkInId: target.id } } }));
+  const canEdit = targetId === user.id && (detail.my_actions.includes("submit") || detail.my_actions.includes("edit_proof"));
+  // A rejected day can still be sent again before the deadline, and it can be disputed. When both
+  // are possible the detail (with the dispute button) comes first, and the editor is one link away.
+  const decides = detail.my_actions.some((a) => a === "dispute" || a === "approve" || a === "reject" || a === "override" || a === "resolve_dispute");
+  const showEditor = canEdit && (!decides || edit === "1");
   const editing = detail.my_actions.includes("edit_proof");
   const terms = pact.terms.members[user.id];
 
-  if (!canEdit || !terms) {
+  if (!showEditor || !terms) {
     return (
-      <section className="max-w-xl">
-        <h1 className="text-3xl font-semibold tracking-tight">{t("pageTitle")}</h1>
-        <div className="mt-4">
-          <StatusChip status={detail.check_in.status} />
-        </div>
-        <p className="mb-6 mt-3 text-[15px] text-muted">{t("closed")}</p>
-        <Button asChild>
-          <Link href="/today">{t("backToToday")}</Link>
-        </Button>
-      </section>
+      <CheckInDetailView
+        detail={detail}
+        pactId={pact.id}
+        timeZone={pact.timezone}
+        me={user.id}
+        other={
+          otherMember
+            ? {
+                name: otherMember.display_name,
+                href: `/pacts/${pact.id}/days/${date}${targetId === user.id ? `?of=${otherMember.user_id}` : ""}`,
+                isMe: otherMember.user_id === user.id,
+              }
+            : null
+        }
+        serverNow={new Date().toISOString()}
+        resendHref={canEdit ? `/pacts/${pact.id}/days/${date}?edit=1` : undefined}
+      />
     );
   }
 

@@ -314,3 +314,58 @@ func TestAdvanceLeavesOtherPactsAlone(t *testing.T) {
 		t.Fatalf("advance b: %+v, %v", adv, err)
 	}
 }
+
+// The review scenario: one backer with three submitted proofs, each waiting at a different point
+// of the review flow, so the review spec can approve one, reject and dispute another, and override
+// an auto-approval.
+func TestSeedReviewLeavesAProofForEachFlow(t *testing.T) {
+	st := testdb.New(t)
+	ctx := context.Background()
+	s, err := SeedReview(ctx, st, now, "r1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Pacts) != 3 {
+		t.Fatalf("want 3 pacts, got %d", len(s.Pacts))
+	}
+	svc := service.New(st, domain.NewFakeClock(now))
+
+	queue, _, err := svc.ReviewQueue(ctx, s.Backer.ID, nil, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(queue) != 2 {
+		t.Fatalf("the backer has %d proofs to review, want 2 (the auto-approved one is no longer in the queue)", len(queue))
+	}
+
+	got := map[string]service.CheckInView{}
+	view, err := svc.Today(ctx, s.Doer.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range view.CheckIns {
+		v, err := svc.GetCheckInView(ctx, s.Backer.ID, c.CheckIn.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got[c.PactTitle] = v
+	}
+	has := func(v service.CheckInView, a string) bool {
+		for _, x := range v.Actions {
+			if string(x) == a {
+				return true
+			}
+		}
+		return false
+	}
+	if v := got["Review: approve"]; v.CheckIn.Status != "submitted" || !has(v, "approve") || !has(v, "reject") {
+		t.Errorf("approve pact: %s %v", v.CheckIn.Status, v.Actions)
+	}
+	if v := got["Review: dispute"]; v.CheckIn.Status != "submitted" || !has(v, "reject") {
+		t.Errorf("dispute pact: %s %v", v.CheckIn.Status, v.Actions)
+	}
+	v := got["Review: override"]
+	if v.CheckIn.Status != "auto_approved" || !has(v, "override") || v.OverridesRemaining == nil || *v.OverridesRemaining != 3 {
+		t.Errorf("override pact: %s %v remaining %v", v.CheckIn.Status, v.Actions, v.OverridesRemaining)
+	}
+}

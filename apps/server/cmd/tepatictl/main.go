@@ -23,7 +23,7 @@ const usage = `usage: tepatictl <command>
 
 commands:
   version                          print the build version
-  seed --scenario overdue|invite|today|passbook   create development data
+  seed --scenario overdue|invite|today|passbook|review   create development data
                                      overdue  an active pact with check-ins past their deadline;
                                               the worker should mark them missed within 2 minutes
                                      invite   a proposed pact with an open invite link
@@ -31,6 +31,8 @@ commands:
                                               dated today are open, submitted, approved and missed
                                      passbook one active pact with 24 days of printed lines, the
                                               doer's day today still open
+                                     review   a backer with three proofs to review: two submitted
+                                              and one auto-approved, inside its override window
   advance --pact <id>              move a clock to just past the pact's next open deadline and run
                                    the real sweep (the e2e's test clock)
   pact show <id>                   print a pact, its check-ins and its ledger
@@ -71,16 +73,16 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 func runSeed(ctx context.Context, args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("seed", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	scenario := fs.String("scenario", "", "overdue, invite, today or passbook")
+	scenario := fs.String("scenario", "", "overdue, invite, today, passbook or review")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	switch *scenario {
 	case "":
-		return errors.New("seed needs --scenario overdue|invite|today|passbook")
-	case "overdue", "invite", "today", "passbook":
+		return errors.New("seed needs --scenario overdue|invite|today|passbook|review")
+	case "overdue", "invite", "today", "passbook", "review":
 	default:
-		return fmt.Errorf("unknown scenario %q (want overdue, invite, today or passbook)", *scenario)
+		return fmt.Errorf("unknown scenario %q (want overdue, invite, today, passbook or review)", *scenario)
 	}
 
 	cfg, st, closeDB, err := open(ctx)
@@ -98,6 +100,8 @@ func runSeed(ctx context.Context, args []string, out io.Writer) error {
 		s, err = ctl.SeedInvite(ctx, st, now)
 	case "passbook":
 		s, err = ctl.SeedPassbook(ctx, st, now, strconv.FormatInt(now.UnixMilli(), 36))
+	case "review":
+		s, err = ctl.SeedReview(ctx, st, now, strconv.FormatInt(now.UnixMilli(), 36))
 	default:
 		// A new tag per run gives new users, so repeated runs never hit the open-pact limit.
 		s, err = ctl.SeedToday(ctx, st, now, strconv.FormatInt(now.UnixMilli(), 36))
