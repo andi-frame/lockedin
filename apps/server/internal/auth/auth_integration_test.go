@@ -76,6 +76,22 @@ func TestLoginRateLimit(t *testing.T) {
 	}
 }
 
+// A test suite (or a busy office behind one IP) can raise the budget outside production; the
+// default and the production cap stay at 10 (config.go).
+func TestLoginRateLimitCanBeRaised(t *testing.T) {
+	ctx := context.Background()
+	a := newAuth(t).WithLoginLimit(25)
+	_, _ = a.Register(ctx, RegisterInput{Email: "dewi@tepati.test", Password: "belajar-terus", DisplayName: "Dewi"})
+	for i := range 25 {
+		if _, _, err := a.Login(ctx, "dewi@tepati.test", "salah-salah", "10.0.0.20"); !errors.Is(err, ErrInvalidCredentials) {
+			t.Fatalf("attempt %d: %v", i+1, err)
+		}
+	}
+	if _, _, err := a.Login(ctx, "dewi@tepati.test", "belajar-terus", "10.0.0.20"); !errors.Is(err, ErrRateLimited) {
+		t.Fatalf("26th attempt must be limited: %v", err)
+	}
+}
+
 func TestRequireUserMiddleware(t *testing.T) {
 	ctx := context.Background()
 	a := newAuth(t)
