@@ -32,14 +32,15 @@ test("shows every state of today's check-in, each pact with its own deadline and
   await expect(band.getByText("lagi", { exact: true })).toBeVisible();
   if (isMobile) await expect(band.getByRole("img", { name: /Notifikasi/ })).toBeVisible();
 
-  // Sections follow the nearest deadline: the missed day's pact first, the open one next.
+  // Sections follow the nearest deadline: the missed day's pact first, then the open ones.
   const titles = await page.locator("h2 a").allTextContents();
-  expect(titles.slice(0, 2)).toEqual(["Today: missed", "Today: open"]);
-  expect(titles).toHaveLength(4);
+  expect(titles.slice(0, 3)).toEqual(["Today: missed", "Today: open", "Today: rules"]);
+  expect(titles).toHaveLength(5);
 
   const expected: [string, string][] = [
     ["Today: missed", "Terlewat"],
     ["Today: open", "Terbuka"],
+    ["Today: rules", "Terbuka"],
     ["Today: approved", "Disetujui"],
     ["Today: submitted", "Menunggu tinjauan"],
   ];

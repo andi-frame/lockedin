@@ -28,7 +28,8 @@ log.skip("the API allows 10 auth requests a minute per IP; wait a minute between
 
 // today.spec.ts signs in as a doer who has every check-in state at once. The states come from
 // the real service rules (tepatictl seed --scenario today), with new users on every run. One doer
-// per Playwright project, because a spec declares a rest day and that changes the data.
+// per spec and per Playwright project, because a spec changes the data it works on (a rest day, a
+// submitted proof) and the next one must find the day as the seed left it.
 async function seedToday(project: string): Promise<{ email: string; password: string }> {
   const seeded = await capture(["bun", join(import.meta.dir, "ctl.ts"), "seed", "--scenario", "today"]);
   const doer = parseSeedLogin(seeded.stdout, "doer");
@@ -37,14 +38,20 @@ ${seeded.stderr || seeded.stdout}`);
   log.ok(`seeded ${doer.email} for ${project}`);
   return doer;
 }
-const desktop = await seedToday("desktop");
-const mobile = await seedToday("mobile");
+const [todayDesktop, todayMobile, proofDesktop, proofMobile] = [
+  await seedToday("today/desktop"),
+  await seedToday("today/mobile"),
+  await seedToday("proof/desktop"),
+  await seedToday("proof/mobile"),
+];
 
 await run(["bunx", "playwright", "test", ...process.argv.slice(2)], {
   cwd: join(paths.root, "apps", "web"),
   env: {
-    E2E_TODAY_EMAIL_DESKTOP: desktop.email,
-    E2E_TODAY_EMAIL_MOBILE: mobile.email,
-    E2E_TODAY_PASSWORD: desktop.password,
+    E2E_TODAY_EMAIL_DESKTOP: todayDesktop.email,
+    E2E_TODAY_EMAIL_MOBILE: todayMobile.email,
+    E2E_PROOF_EMAIL_DESKTOP: proofDesktop.email,
+    E2E_PROOF_EMAIL_MOBILE: proofMobile.email,
+    E2E_TODAY_PASSWORD: todayDesktop.password,
   },
 });

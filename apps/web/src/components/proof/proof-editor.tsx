@@ -181,7 +181,7 @@ export function ProofEditor({
       </div>
 
       {linkOpen ? (
-        <form onSubmit={applyLink} className="flex flex-col gap-2 border-b border-rule bg-sunken p-2 sm:flex-row sm:items-start">
+        <form onSubmit={applyLink} noValidate className="flex flex-col gap-2 border-b border-rule bg-sunken p-2 sm:flex-row sm:items-start">
           <div className="min-w-0 flex-1">
             <Input
               type="url"

@@ -17,7 +17,10 @@ export function useAttachments(pactId: string, initial: TrayItem[] = []) {
   const [items, dispatch] = useReducer(trayReducer, initial);
   const jobs = useRef(new Map<string, { controller: AbortController; file: File; kind: AttachmentKind }>());
   const count = useRef(initial.length);
-  count.current = items.length;
+  // Mirrors the size of the tray for `add`, which can run twice before React re-renders.
+  useEffect(() => {
+    count.current = items.length;
+  }, [items.length]);
 
   const run = useCallback(
     async (localId: string) => {
@@ -61,6 +64,7 @@ export function useAttachments(pactId: string, initial: TrayItem[] = []) {
           continue;
         }
         room--;
+        count.current++;
         const localId = crypto.randomUUID();
         jobs.current.set(localId, { controller: new AbortController(), file, kind: checked.kind });
         dispatch({ type: "add", item: { localId, name: file.name, kind: checked.kind, bytes: file.size } });
