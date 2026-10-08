@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-08, after task 6.3 (the proof editor and submission; the backend is complete, Phase 5 is done and Phase 6 is in progress). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-08, after task 6.4 (the pact page with the coin book and calendar; the backend is complete, Phase 5 is done and Phase 6 is in progress). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -12,10 +12,10 @@ Last updated: 2026-10-08, after task 6.3 (the proof editor and submission; the b
 | 3 Worker | done | 3.1 asynq worker, schedule, outbox relay, reminders, `tepatictl seed`/`pact show`, air files. 3.2 notifications and email (Mailpit) |
 | 4 Uploads and media | done | 4.1 BlobStore drivers (s3 and fs, Garage enforces the signed length). 4.2 upload endpoints, `media:process`, `uploads:gc` |
 | 5 Web foundation | done | 5.1 Next.js app on Bun (PR #3). 5.2 design tokens and primitives (PR #4). 5.3 auth pages, app shell, auth guard and the Playwright e2e (PR #5) |
-| **6 Web features** | **in progress** | 6.1 new pact wizard and invite/accept flow (PR #6). 6.2 Today screen (PR #7). 6.3 proof editor and submission: done on `p6.3-proof-editor` (not pushed or merged yet). Next: 6.4 pact page with passbook and calendar |
+| **6 Web features** | **in progress** | 6.1 new pact wizard and invite/accept flow (PR #6). 6.2 Today screen (PR #7). 6.3 proof editor and submission (PR #8). 6.4 pact page with the coin book and calendar: done on `p6.4-pact-passbook` (not pushed or merged yet). Next: 6.5 review queue and check-in detail and calendar |
 | 6–9 | not started | Web features, Docker, quality gates, staging |
 
-The first unchecked task in `docs/PLAN.md` is **6.4**.
+The first unchecked task in `docs/PLAN.md` is **6.5**.
 
 ## 2. Branch and merge state
 
@@ -31,7 +31,7 @@ e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-han
 - 5.3 was merged as PR #5 (merge commit `373f3aa`, 2026-10-08). The branch `p5.3-auth-shell` still exists on `origin`, like the other two.
 - 6.1 was merged as PR #6 (merge commit `ddff0a3`, 2026-10-08). The branch `p6.1-pact-wizard` still exists on `origin`.
 - 6.2 was merged as PR #7 (merge commit `88d0da4`, 2026-10-08). The branch `p6.2-today-screen` still exists on `origin`.
-- 6.3 lives on `p6.3-proof-editor` (five code commits, `d7467a7..344d270`, plus a docs commit), cut from `main` after the 6.2 merge. It is not pushed or merged yet. Cut 6.4 from it if it is still unmerged, otherwise from `main`.
+- 6.3 was merged as PR #8 (`a54f2d7`). 6.4 lives on `p6.4-pact-passbook` (`c1e0aa3..5aca5b4`, plus a docs commit), cut from `main` after that merge. It is not pushed or merged yet. Cut 6.5 from it if it is still unmerged, otherwise from `main`.
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -159,7 +159,7 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - Uploads have no per-user rate limit beyond the global 30/min on `POST /uploads`, and no resumable upload; a dropped connection means starting that file again.
 - The worker has `/metrics` and `/healthz` only, no `/readyz`. Fine for now; add one with the compose healthchecks (7.1).
 - `tepati_settlement_transitions_total` is by job type, see §5.
-- No test-clock endpoint (`CLOCK_OVERRIDE` is config only). The e2e gets time-dependent states from `tepatictl seed --scenario today` instead (decided with the owner for 6.2); a spec that needs to *move* time during the test (6.4: miss a day and watch the line appear) needs another seed scenario or a clock endpoint, not decided.
+- No test-clock endpoint (`CLOCK_OVERRIDE` is config only), by the owner's decision. The e2e gets time-dependent states from seed scenarios built through the service (`today`, `passbook`), and moves time with `tepatictl advance --pact <id>`, which ticks one pact's open check-ins with a clock set just past their deadline (6.4).
 - `getToday` returns `review_queue_count` without rows, and `TodayCheckIn` has no commitment or rest-day count, so the Today page also calls `getReviewQueue` and `getPact` per active pact. Folding that into `getToday` would be a contract change.
 - context7 MCP was never authenticated in these sessions; asynq, Prometheus and aws-sdk-go-v2 APIs were checked by reading module source under `~/go/pkg/mod`. For Phase 5 (Next.js 16, Tailwind v4, next-intl, Tiptap 3) read the official docs, or authenticate context7, before relying on memory of those APIs.
 
@@ -184,7 +184,7 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - **Domain components** (`src/components`): `Amount` (`coins`, `direction` debit|credit|balance, optional `rate` for the Rupiah line, sizes sm to xl), `Countdown` (`until`, optional `serverNow`, `onCover`; digits in fixed cells, one polite live region per minute), `StatusChip` (a `Record` over the generated `CheckInStatus`, so a new API status fails the typecheck until it has a chip), `MemberLine` (monogram and name in the member's fixed colour; `memberSlot(id, ids)` in `src/lib/member.ts` picks the slot from the sorted ids). Pure logic is in `src/lib/format.ts` (Intl `id-ID`, BigInt Rupiah), `countdown.ts` and `member.ts`, all table-tested.
 - **Kitchen sink:** `/dev/kitchen-sink` (404 in a production build) shows everything with a fixed server clock and synthetic data. Use it to look at a primitive in both themes (`ThemeToggle` in its header, or emulate `prefers-color-scheme`).
 - **Gotchas found:** next-intl message keys cannot contain `.` (use `auth_email_taken` for the code `auth.email_taken`; `errorMessageKey` does the mapping). Big heredocs fail in Git Bash: write component files with the Write tool. The Playwright MCP only writes screenshots under the repo (use `.playwright-mcp/`, gitignored), and an element screenshot with `section >> nth=N` is the way to look closely at one part of a long page. The Next dev indicator badge overlaps content in screenshots; it does not exist in production.
-- **Not built yet:** the passbook print animation (6.4), a wordmark (text wordmark until one exists), Tiptap (6.3).
+- **Not built yet:** a wordmark (text wordmark until one exists).
 
 **What 5.3 added (sign-in and the shell):**
 - **Guard:** `src/proxy.ts` (Next 16's `middleware`) redirects a request without a `tepati_session` cookie to `/login?next=<path>`, and `/` to `/login` or `/today`. Public: `/login`, `/register`, `/dev/*`. The pure rules and `safeNext` (same-site paths only, no open redirect) are in `src/lib/auth/guard.ts` with table tests. The proxy only sees the cookie, so the `(app)` layout calls `/me` through `getCurrentUser()` (`src/lib/auth/session.ts`, server only) and redirects on 401; `/login` and `/register` do the reverse for a live session. The proxy must not redirect signed-in visitors away from `/login` (a stale cookie would loop). Look for `proxy.ts: Nms` in the dev log to know it ran.
@@ -215,6 +215,13 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - **Seed:** `tepatictl seed --scenario today` now has five pacts; "Today: rules" needs 10 words and one ready attachment. `bun run test:e2e` seeds one doer per spec and per project (`E2E_TODAY_EMAIL_*`, `E2E_PROOF_EMAIL_*`, `E2E_TODAY_PASSWORD`). The fixtures `tests/e2e/fixtures/photo.png` and `clip.mp4` are tiny files made with ffmpeg.
 - **Needs running:** the media worker, ffmpeg and libvips (STATUS §6), because "Siap" only appears when the server has processed the file.
 
+**What 6.4 added (the pact page):**
+- **Route:** `/pacts/[id]` keeps the agreement view for `draft`, `proposed` and `scheduled`, and shows `RunningPact` (`src/app/(app)/pacts/[id]/running.tsx`) for `active`, `settling` and `completed`: the cover-teal header band with the guilloche (title, status, dates), then two columns (one on a phone): the coin book, and beside it the calendar, the members and the terms in a `<details>`.
+- **Pure rules** (table-tested): `src/lib/passbook.ts` (`PAGE_SIZE` 20, `mergeLines`, `arrivals`, `rollValue`), `src/lib/pact/calendar.ts` (`monthOf`, `shiftMonth`, `monthsBetween`, `startMonth`, `weeksOf` Monday first, `dayCells`).
+- **Client code** (`src/components/pact`): `usePactLive` (first page from the server, older pages by cursor, a refresh of the first page and the calendar every 30 s and when the tab comes back; the lines newer than any shown are the arrivals), `Passbook` (date, keterangan with the member's name under it in their line colour, debit, kredit, saldo; an observer loads the next page, a button does the same), `RollingAmount` (the big saldo rolls to the new figure), `PactCalendar` (month grid with prev and next, the status chip's symbol plus a tone, a bar in the member's colour, today in the highlighter, a legend), `PactLive` (composes them).
+- **Print motion:** `.print-line` (slide, 240 ms) and `.print-digits` (the digits type left to right in 320 ms, in as many steps as characters, `--chars`) in `globals.css`; the saldo rolls after 320 ms; under reduced motion the global rule makes durations and delays zero. A polite live region announces the new line. The balance and every `balance_after` are the server's; nothing is summed in the browser.
+- **Seed and test clock:** `tepatictl seed --scenario passbook` (new users `passbook-<tag>-*@tepati.test`, one active pact "Passbook: history" with 24 days of lines, 33 in all, the backer's proof for today already sent and the doer's still open) and `tepatictl advance --pact <id>` (see §6 gaps). `Service.SweepCheckIns(ids)` is the seam that lets `advance` tick one pact only. `bun run test:e2e` seeds one passbook pact per project (`E2E_BOOK_EMAIL_*`).
+
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
 - Auth is cookie based with a CSRF header (`X-CSRF-Token`, value from the `tepati_csrf` cookie) on unsafe methods, and mutating calls take an `Idempotency-Key`. Details in `docs/adr/0010-api-conventions.md`.
@@ -222,4 +229,4 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - Email links point at `/pacts/<id>`, `/review` and `/invite/<token>`; these routes must exist.
 - The server does not check `starts_on` against the date: a pact proposed for tomorrow and signed after tomorrow starts with check-ins that are already overdue. The wizard only prevents choosing a start before tomorrow. Needs a rule in SPEC (refuse to schedule once `starts_on` has passed?) and a server check; not decided.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p6.4-pact-passbook`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 6.5 in the same session as 6.4 unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p6.5-review-queue`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 6.6 in the same session as 6.5 unless asked.

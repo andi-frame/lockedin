@@ -14,6 +14,7 @@ import { unwrap } from "@/lib/api/unwrap";
 import { getCurrentUser } from "@/lib/auth/session";
 import { memberSlot } from "@/lib/member";
 import { agreementState } from "@/lib/pact/agreement";
+import { RunningPact } from "./running";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -22,8 +23,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: pact?.title ?? (await getTranslations("Pacts"))("title") };
 }
 
-// The agreement view: who has signed, the terms in plain language, and what each person can do next.
-// The passbook and calendar for a running pact arrive with task 6.4.
+// Before a pact runs this is the agreement view: who has signed, the terms in plain language, and
+// what each person can do next. Once it runs (or is settling or done) it is the coin book and calendar.
 export default async function PactPage({
   params,
   searchParams,
@@ -39,6 +40,8 @@ export default async function PactPage({
     if (err instanceof ApiError && (err.status === 404 || err.status === 400)) notFound();
     throw err;
   });
+
+  if (pact.status === "active" || pact.status === "settling" || pact.status === "completed") return <RunningPact pact={pact} me={user.id} />;
 
   const state = agreementState(pact, user.id);
   const backer = pact.members.find((m) => m.role === "backer");
@@ -154,9 +157,6 @@ export default async function PactPage({
       ) : null}
 
       {pact.status === "scheduled" ? <p className="mt-8 max-w-prose text-[15px]">{t("scheduled", { date: date(pact.starts_on) })}</p> : null}
-      {pact.status === "active" || pact.status === "settling" || pact.status === "completed" ? (
-        <p className="mt-8 max-w-prose text-[15px] text-muted">{t("laterScreens")}</p>
-      ) : null}
     </>
   );
 }

@@ -360,7 +360,10 @@
     "newInvite": "Create a new link",
     "doerPlaceholder": "Doer",
     "scheduled": "The pact is scheduled and starts on {date}.",
-    "laterScreens": "The passbook and calendar for a running pact arrive in a later update."
+    "members": "Members",
+    "ledgerTitle": "Coin book",
+    "calendarTitle": "Calendar",
+    "termsHint": "The agreed terms"
   },
   "Ledger": {
     "open": "Full coin book",
@@ -444,5 +447,32 @@
     "cancel": "Cancel",
     "sent": "Proof sent.",
     "updated": "Proof updated."
+  },
+  "Passbook": {
+    "saldo": "Balance",
+    "caption": "Coin book, newest line first",
+    "colDate": "Date",
+    "colNote": "Description",
+    "colDebit": "Debit",
+    "colCredit": "Credit",
+    "colSaldo": "Balance",
+    "debitShort": "D",
+    "creditShort": "C",
+    "loadMore": "Load earlier lines",
+    "loading": "Loading lines…",
+    "loadError": "Could not load earlier lines.",
+    "retry": "Try again",
+    "end": "That is the first line of this book.",
+    "printed": "New line printed: {note}. The balance is now {saldo} coins.",
+    "by": "by {name}"
+  },
+  "Calendar": {
+    "prev": "Previous month",
+    "next": "Next month",
+    "grid": "Check-in status by day, {month}",
+    "noCheckIn": "no check-in",
+    "legend": "What the symbols mean",
+    "day": "{date}: {marks}",
+    "mark": "{name} {status}"
   }
 }

@@ -20,6 +20,8 @@ func TestUsageErrors(t *testing.T) {
 		{"seed unknown scenario", []string{"seed", "--scenario", "chaos"}, `unknown scenario "chaos"`},
 		{"pact without subcommand", []string{"pact"}, "pact show"},
 		{"pact show without id", []string{"pact", "show"}, "pact id"},
+		{"advance without pact", []string{"advance"}, "advance --pact"},
+		{"advance bad id", []string{"advance", "--pact", "nope"}, "advance --pact"},
 		{"pact show bad id", []string{"pact", "show", "nope"}, "not a UUID"},
 	}
 	for _, tc := range cases {
