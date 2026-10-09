@@ -79,7 +79,15 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Change my name, language, time zone or which emails I get
+         * @description Only the fields that are sent change. The name is also the signature typed when accepting
+         *     terms; signatures already given keep the name that was typed then. `email_kinds_off` replaces
+         *     the whole list. Only the kinds in `EmailKind` can be switched off (SPEC §9): invites, a
+         *     dispute opened against you and a settled pact are always mailed, and the in-app inbox is
+         *     never switched off.
+         */
+        patch: operations["updateMe"];
         trace?: never;
     };
     "/today": {
@@ -755,8 +763,23 @@ export interface components {
              * @example Asia/Jakarta
              */
             timezone: string;
+            /** @description The kinds of email this person has switched off, sorted. Empty means every email is on. */
+            email_kinds_off: components["schemas"]["EmailKind"][];
             /** Format: date-time */
             created_at: string;
+        };
+        /**
+         * @description A kind of notification email that can be switched off.
+         * @enum {string}
+         */
+        EmailKind: "terms_changed" | "terms_signed" | "proof_submitted" | "proof_rejected" | "proof_overridden" | "proof_auto_approved";
+        UpdateMeRequest: {
+            display_name?: string;
+            /** @enum {string} */
+            locale?: "id" | "en";
+            /** @description IANA zone. */
+            timezone?: string;
+            email_kinds_off?: components["schemas"]["EmailKind"][];
         };
         RegisterRequest: {
             /** Format: email */
@@ -1423,6 +1446,32 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description The current user. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            "4XX": components["responses"]["Problem"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMeRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated user. */
             200: {
                 headers: {
                     [name: string]: unknown;

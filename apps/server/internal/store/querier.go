@@ -134,6 +134,8 @@ type Querier interface {
 	UpdateCheckInState(ctx context.Context, arg UpdateCheckInStateParams) (int64, error)
 	// Terms can change only before both members accepted (SPEC §3).
 	UpdatePactTerms(ctx context.Context, arg UpdatePactTermsParams) (int64, error)
+	// Only the columns that are sent change (null = leave as is); email_off is replaced as a whole.
+	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
 	// Expiry is checked by the service against its injected clock.
 	UseInvite(ctx context.Context, tokenHash string) (int64, error)
 }

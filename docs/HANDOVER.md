@@ -168,7 +168,7 @@ If your tool wants its own instruction file (`GEMINI.md`, `.codex/...`), make it
 
 **9.2 the landing page is done** (`/`, see PLAN 9.2 and the brief in `.impeccable/surfaces/apps-web-src-app-page-tsx.md`). Screenshots of a UI change: the Playwright MCP may fail to connect; a throwaway Bun script using `chromium` from `@playwright/test` in `apps/web` works (delete it after).
 
-The owner decided on 2026-10-09 that the MVP gets `PATCH /me` and per-kind email preferences (PLAN 9.4, not built). The `starts_on` rule is open: the owner said "later".
+`PATCH /me` and the per-kind email preferences are built (PLAN 9.4). The `starts_on` rule is open: the owner said "later".
 
 ## 10. Questions that are the owner's to answer (do not decide silently)
 
@@ -176,7 +176,6 @@ The owner decided on 2026-10-09 that the MVP gets `PATCH /me` and per-kind email
 - Whether to install Go 1.26 system-wide (removes the `dev-env.sh` Go workaround).
 - A real SMTP provider, a domain and DNS for staging and production (both `<DOMAIN>` and `media.<DOMAIN>` must resolve to the host; Caddy gets the certificates by itself). Staging can keep Mailpit.
 - HEIC/AVIF handling: the sniffer accepts them, but decoding depends on the libvips build and was not tested with a real HEIC file.
-- (Decided 2026-10-09: the MVP gets `PATCH /me` and per-kind email preferences, PLAN 9.4. Settings stays read-only until it is built.)
 - A "resend invite" endpoint (the invite email is the only place the plaintext token is mailed; see `docs/STATUS.md §6`).
 
 ## 11. Before you stop a session

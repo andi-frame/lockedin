@@ -176,9 +176,31 @@
     "timezone": "Zona waktu",
     "appearance": "Tampilan",
     "notifications": "Notifikasi",
-    "notificationsBody": "Pengingat dan kabar kontrak muncul di kotak masuk notifikasi. Sebagian juga dikirim ke emailmu. Pilihan untuk mematikannya belum ada.",
+    "notificationsBody": "Pengingat dan kabar kontrak muncul di kotak masuk notifikasi, dan itu tidak bisa dimatikan.",
     "notificationsOpen": "Buka notifikasi",
-    "readOnly": "Nama, zona waktu, dan bahasa belum bisa diubah dari aplikasi."
+    "nameHint": "Ini juga nama yang kamu ketik saat menandatangani ketentuan baru. Tanda tangan yang sudah ada tetap memakai nama saat itu.",
+    "nameRequired": "Nama tidak boleh kosong.",
+    "nameLong": "Nama maksimal 80 karakter.",
+    "language": "Bahasa",
+    "languageId": "Indonesia",
+    "languageEn": "English",
+    "timezoneHint": "Dipakai untuk tanggal di Hari ini dan di notifikasi. Setiap kontrak tetap punya zona waktunya sendiri.",
+    "save": "Simpan",
+    "saving": "Menyimpan",
+    "saved": "Perubahan disimpan.",
+    "nothingToSave": "Belum ada yang berubah.",
+    "emailTitle": "Email",
+    "emailBody": "Pilih email yang mau kamu terima. Isinya sudah ada di aplikasi, jadi mematikannya tidak membuatmu ketinggalan apa pun.",
+    "emailLegend": "Kirim email kalau",
+    "kind": {
+      "proofSubmitted": "ada bukti baru yang harus kamu tinjau",
+      "proofRejected": "buktimu ditolak",
+      "proofOverridden": "persetujuan atas buktimu dibatalkan",
+      "proofAutoApproved": "buktimu disetujui otomatis",
+      "termsChanged": "temanmu mengubah ketentuan kontrak",
+      "termsSigned": "temanmu menandatangani ketentuan"
+    },
+    "emailMustStay": "Yang selalu dikirim: undangan kontrak, sanggahan yang dibuka atas tinjauanmu, dan kontrak yang sudah selesai. Di situ ada batas waktu atau pembayaran yang bergantung padamu."
   },
   "Boundary": {
     "title": "Halaman ini gagal dimuat",

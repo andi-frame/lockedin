@@ -183,6 +183,36 @@ func (e DecisionAction) Valid() bool {
 	}
 }
 
+// Defines values for EmailKind.
+const (
+	EmailKindProofAutoApproved EmailKind = "proof_auto_approved"
+	EmailKindProofOverridden   EmailKind = "proof_overridden"
+	EmailKindProofRejected     EmailKind = "proof_rejected"
+	EmailKindProofSubmitted    EmailKind = "proof_submitted"
+	EmailKindTermsChanged      EmailKind = "terms_changed"
+	EmailKindTermsSigned       EmailKind = "terms_signed"
+)
+
+// Valid indicates whether the value is a known member of the EmailKind enum.
+func (e EmailKind) Valid() bool {
+	switch e {
+	case EmailKindProofAutoApproved:
+		return true
+	case EmailKindProofOverridden:
+		return true
+	case EmailKindProofRejected:
+		return true
+	case EmailKindProofSubmitted:
+		return true
+	case EmailKindTermsChanged:
+		return true
+	case EmailKindTermsSigned:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ErrorCode.
 const (
 	AuthCsrf                    ErrorCode = "auth.csrf"
@@ -368,76 +398,76 @@ func (e MemberTermsRole) Valid() bool {
 
 // Defines values for NotificationKind.
 const (
-	DayMissed          NotificationKind = "day_missed"
-	DisputeDismissed   NotificationKind = "dispute_dismissed"
-	DisputeOpened      NotificationKind = "dispute_opened"
-	DisputeUpheld      NotificationKind = "dispute_upheld"
-	MemberJoined       NotificationKind = "member_joined"
-	PactScheduled      NotificationKind = "pact_scheduled"
-	PactSettled        NotificationKind = "pact_settled"
-	PayoutConfirmed    NotificationKind = "payout_confirmed"
-	PayoutMarkedPaid   NotificationKind = "payout_marked_paid"
-	ProofApproved      NotificationKind = "proof_approved"
-	ProofAutoApproved  NotificationKind = "proof_auto_approved"
-	ProofEdited        NotificationKind = "proof_edited"
-	ProofOverridden    NotificationKind = "proof_overridden"
-	ProofRejected      NotificationKind = "proof_rejected"
-	ProofSubmitted     NotificationKind = "proof_submitted"
-	RejectionFinal     NotificationKind = "rejection_final"
-	ReminderCutoff30m  NotificationKind = "reminder_cutoff_30m"
-	ReminderCutoff3h   NotificationKind = "reminder_cutoff_3h"
-	RestDeclared       NotificationKind = "rest_declared"
-	ReviewDeadlineSoon NotificationKind = "review_deadline_soon"
-	TermsChanged       NotificationKind = "terms_changed"
-	TermsSigned        NotificationKind = "terms_signed"
+	NotificationKindDayMissed          NotificationKind = "day_missed"
+	NotificationKindDisputeDismissed   NotificationKind = "dispute_dismissed"
+	NotificationKindDisputeOpened      NotificationKind = "dispute_opened"
+	NotificationKindDisputeUpheld      NotificationKind = "dispute_upheld"
+	NotificationKindMemberJoined       NotificationKind = "member_joined"
+	NotificationKindPactScheduled      NotificationKind = "pact_scheduled"
+	NotificationKindPactSettled        NotificationKind = "pact_settled"
+	NotificationKindPayoutConfirmed    NotificationKind = "payout_confirmed"
+	NotificationKindPayoutMarkedPaid   NotificationKind = "payout_marked_paid"
+	NotificationKindProofApproved      NotificationKind = "proof_approved"
+	NotificationKindProofAutoApproved  NotificationKind = "proof_auto_approved"
+	NotificationKindProofEdited        NotificationKind = "proof_edited"
+	NotificationKindProofOverridden    NotificationKind = "proof_overridden"
+	NotificationKindProofRejected      NotificationKind = "proof_rejected"
+	NotificationKindProofSubmitted     NotificationKind = "proof_submitted"
+	NotificationKindRejectionFinal     NotificationKind = "rejection_final"
+	NotificationKindReminderCutoff30m  NotificationKind = "reminder_cutoff_30m"
+	NotificationKindReminderCutoff3h   NotificationKind = "reminder_cutoff_3h"
+	NotificationKindRestDeclared       NotificationKind = "rest_declared"
+	NotificationKindReviewDeadlineSoon NotificationKind = "review_deadline_soon"
+	NotificationKindTermsChanged       NotificationKind = "terms_changed"
+	NotificationKindTermsSigned        NotificationKind = "terms_signed"
 )
 
 // Valid indicates whether the value is a known member of the NotificationKind enum.
 func (e NotificationKind) Valid() bool {
 	switch e {
-	case DayMissed:
+	case NotificationKindDayMissed:
 		return true
-	case DisputeDismissed:
+	case NotificationKindDisputeDismissed:
 		return true
-	case DisputeOpened:
+	case NotificationKindDisputeOpened:
 		return true
-	case DisputeUpheld:
+	case NotificationKindDisputeUpheld:
 		return true
-	case MemberJoined:
+	case NotificationKindMemberJoined:
 		return true
-	case PactScheduled:
+	case NotificationKindPactScheduled:
 		return true
-	case PactSettled:
+	case NotificationKindPactSettled:
 		return true
-	case PayoutConfirmed:
+	case NotificationKindPayoutConfirmed:
 		return true
-	case PayoutMarkedPaid:
+	case NotificationKindPayoutMarkedPaid:
 		return true
-	case ProofApproved:
+	case NotificationKindProofApproved:
 		return true
-	case ProofAutoApproved:
+	case NotificationKindProofAutoApproved:
 		return true
-	case ProofEdited:
+	case NotificationKindProofEdited:
 		return true
-	case ProofOverridden:
+	case NotificationKindProofOverridden:
 		return true
-	case ProofRejected:
+	case NotificationKindProofRejected:
 		return true
-	case ProofSubmitted:
+	case NotificationKindProofSubmitted:
 		return true
-	case RejectionFinal:
+	case NotificationKindRejectionFinal:
 		return true
-	case ReminderCutoff30m:
+	case NotificationKindReminderCutoff30m:
 		return true
-	case ReminderCutoff3h:
+	case NotificationKindReminderCutoff3h:
 		return true
-	case RestDeclared:
+	case NotificationKindRestDeclared:
 		return true
-	case ReviewDeadlineSoon:
+	case NotificationKindReviewDeadlineSoon:
 		return true
-	case TermsChanged:
+	case NotificationKindTermsChanged:
 		return true
-	case TermsSigned:
+	case NotificationKindTermsSigned:
 		return true
 	default:
 		return false
@@ -525,6 +555,24 @@ func (e Role) Valid() bool {
 	case RoleBacker:
 		return true
 	case RoleDoer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateMeRequestLocale.
+const (
+	UpdateMeRequestLocaleEn UpdateMeRequestLocale = "en"
+	UpdateMeRequestLocaleId UpdateMeRequestLocale = "id"
+)
+
+// Valid indicates whether the value is a known member of the UpdateMeRequestLocale enum.
+func (e UpdateMeRequestLocale) Valid() bool {
+	switch e {
+	case UpdateMeRequestLocaleEn:
+		return true
+	case UpdateMeRequestLocaleId:
 		return true
 	default:
 		return false
@@ -684,6 +732,9 @@ type Decision struct {
 
 // DecisionAction defines model for DecisionAction.
 type DecisionAction string
+
+// EmailKind A kind of notification email that can be switched off.
+type EmailKind string
 
 // ErrorCode Stable machine-readable error code. The web app maps each one to an i18n message.
 //
@@ -1130,6 +1181,19 @@ type TodayPact struct {
 	Title        string       `json:"title"`
 }
 
+// UpdateMeRequest defines model for UpdateMeRequest.
+type UpdateMeRequest struct {
+	DisplayName   *string                `json:"display_name,omitempty"`
+	EmailKindsOff *[]EmailKind           `json:"email_kinds_off,omitempty"`
+	Locale        *UpdateMeRequestLocale `json:"locale,omitempty"`
+
+	// Timezone IANA zone.
+	Timezone *string `json:"timezone,omitempty"`
+}
+
+// UpdateMeRequestLocale defines model for UpdateMeRequest.Locale.
+type UpdateMeRequestLocale string
+
 // UploadIntent defines model for UploadIntent.
 type UploadIntent struct {
 	AttachmentId openapi_types.UUID `json:"attachment_id"`
@@ -1158,8 +1222,11 @@ type User struct {
 	CreatedAt   time.Time           `json:"created_at"`
 	DisplayName string              `json:"display_name"`
 	Email       openapi_types.Email `json:"email"`
-	Id          openapi_types.UUID  `json:"id"`
-	Locale      UserLocale          `json:"locale"`
+
+	// EmailKindsOff The kinds of email this person has switched off, sorted. Empty means every email is on.
+	EmailKindsOff []EmailKind        `json:"email_kinds_off"`
+	Id            openapi_types.UUID `json:"id"`
+	Locale        UserLocale         `json:"locale"`
 
 	// Timezone IANA zone
 	Timezone string `json:"timezone"`
@@ -1367,6 +1434,9 @@ type SubmitProofJSONRequestBody = ProofRequest
 // RejectCheckInJSONRequestBody defines body for RejectCheckIn for application/json ContentType.
 type RejectCheckInJSONRequestBody = ReasonRequest
 
+// UpdateMeJSONRequestBody defines body for UpdateMe for application/json ContentType.
+type UpdateMeJSONRequestBody = UpdateMeRequest
+
 // MarkNotificationsReadJSONRequestBody defines body for MarkNotificationsRead for application/json ContentType.
 type MarkNotificationsReadJSONRequestBody = MarkReadRequest
 
@@ -1435,6 +1505,9 @@ type ServerInterface interface {
 	// GetMe The signed-in user
 	// (GET /me)
 	GetMe(c fiber.Ctx) error
+	// UpdateMe Change my name, language, time zone or which emails I get
+	// (PATCH /me)
+	UpdateMe(c fiber.Ctx) error
 	// ListNotifications My inbox
 	// (GET /notifications)
 	ListNotifications(c fiber.Ctx, params ListNotificationsParams) error
@@ -2048,6 +2121,24 @@ func (siw *ServerInterfaceWrapper) GetMe(c fiber.Ctx) error {
 
 	handler := func(c fiber.Ctx) error {
 		return siw.Handler.GetMe(c)
+	}
+
+	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
+		m := siw.HandlerMiddlewares[i]
+		next := handler
+		handler = func(c fiber.Ctx) error {
+			return m(c, next)
+		}
+	}
+
+	return handler(c)
+}
+
+// UpdateMe operation middleware
+func (siw *ServerInterfaceWrapper) UpdateMe(c fiber.Ctx) error {
+
+	handler := func(c fiber.Ctx) error {
+		return siw.Handler.UpdateMe(c)
 	}
 
 	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
@@ -2817,6 +2908,8 @@ func RegisterHandlersWithOptions(router fiber.Router, si ServerInterface, option
 
 	router.Get(options.BaseURL+"/me", wrapper.GetMe)
 
+	router.Patch(options.BaseURL+"/me", wrapper.UpdateMe)
+
 	router.Get(options.BaseURL+"/today", wrapper.GetToday)
 
 	router.Get(options.BaseURL+"/pacts", wrapper.ListPacts)
@@ -3494,6 +3587,47 @@ type GetMedefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response GetMedefaultApplicationProblemPlusJSONResponse) VisitGetMeResponse(ctx fiber.Ctx) error {
+	ctx.Response().Header.Set("Content-Type", "application/problem+json")
+	ctx.Status(response.StatusCode)
+
+	return ctx.JSON(&response.Body)
+}
+
+type UpdateMeRequestObject struct {
+	Body *UpdateMeJSONRequestBody
+}
+
+type UpdateMeResponseObject interface {
+	VisitUpdateMeResponse(ctx fiber.Ctx) error
+}
+
+type UpdateMe200JSONResponse User
+
+func (response UpdateMe200JSONResponse) VisitUpdateMeResponse(ctx fiber.Ctx) error {
+	ctx.Response().Header.Set("Content-Type", "application/json")
+	ctx.Status(200)
+
+	return ctx.JSON(&response)
+}
+
+type UpdateMe4XXApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateMe4XXApplicationProblemPlusJSONResponse) VisitUpdateMeResponse(ctx fiber.Ctx) error {
+	ctx.Response().Header.Set("Content-Type", "application/problem+json")
+	ctx.Status(response.StatusCode)
+
+	return ctx.JSON(&response.Body)
+}
+
+type UpdateMedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateMedefaultApplicationProblemPlusJSONResponse) VisitUpdateMeResponse(ctx fiber.Ctx) error {
 	ctx.Response().Header.Set("Content-Type", "application/problem+json")
 	ctx.Status(response.StatusCode)
 
@@ -4216,6 +4350,9 @@ type StrictServerInterface interface {
 	// GetMe The signed-in user
 	// (GET /me)
 	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
+	// UpdateMe Change my name, language, time zone or which emails I get
+	// (PATCH /me)
+	UpdateMe(ctx context.Context, request UpdateMeRequestObject) (UpdateMeResponseObject, error)
 	// ListNotifications My inbox
 	// (GET /notifications)
 	ListNotifications(ctx context.Context, request ListNotificationsRequestObject) (ListNotificationsResponseObject, error)
@@ -4718,6 +4855,37 @@ func (sh *strictHandler) GetMe(ctx fiber.Ctx) error {
 		return err
 	} else if validResponse, ok := response.(GetMeResponseObject); ok {
 		if err := validResponse.VisitGetMeResponse(ctx); err != nil {
+			return err
+		}
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// UpdateMe operation middleware
+func (sh *strictHandler) UpdateMe(ctx fiber.Ctx) error {
+	var request UpdateMeRequestObject
+
+	var body UpdateMeJSONRequestBody
+	if err := ctx.Bind().Body(&body); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+	request.Body = &body
+
+	handler := func(ctx fiber.Ctx, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateMe(ctx.Context(), request.(UpdateMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateMe")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(UpdateMeResponseObject); ok {
+		if err := validResponse.VisitUpdateMeResponse(ctx); err != nil {
 			return err
 		}
 	} else if response != nil {

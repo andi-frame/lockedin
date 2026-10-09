@@ -308,6 +308,41 @@ func TestAuthLifecycleOverHTTP(t *testing.T) {
 	second.ok(200, "GET", "/api/v1/me", nil) // other devices stay signed in
 }
 
+// PLAN 9.4: PATCH /me changes only what is sent, refuses what cannot be switched off, and needs a
+// session and the CSRF token like every other unsafe request.
+func TestUpdateMeOverHTTP(t *testing.T) {
+	s := newStack(t)
+	c := &client{s: s, name: "Sari"}
+	var u api.User
+	c.ok(201, "POST", "/api/v1/auth/register", map[string]any{"email": "sari@tepati.test", "password": "correct horse battery", "display_name": "Sari"}).into(t, &u)
+	if u.EmailKindsOff == nil || len(u.EmailKindsOff) != 0 {
+		t.Fatalf("a new user has every email on, as an empty list (not null): %#v", u.EmailKindsOff)
+	}
+
+	c.ok(200, "PATCH", "/api/v1/me", map[string]any{"display_name": " Sari Dewi ", "locale": "en", "email_kinds_off": []string{"terms_signed", "proof_rejected"}}).into(t, &u)
+	if u.DisplayName != "Sari Dewi" || u.Locale != "en" || u.Timezone != "Asia/Jakarta" || len(u.EmailKindsOff) != 2 || u.EmailKindsOff[0] != "proof_rejected" {
+		t.Fatalf("after PATCH: %+v", u)
+	}
+	var again api.User
+	c.ok(200, "GET", "/api/v1/me", nil).into(t, &again)
+	if again.DisplayName != "Sari Dewi" || len(again.EmailKindsOff) != 2 {
+		t.Fatalf("GET after PATCH: %+v", again)
+	}
+	c.ok(200, "PATCH", "/api/v1/me", map[string]any{"timezone": "Asia/Makassar"}).into(t, &u)
+	if u.Timezone != "Asia/Makassar" || len(u.EmailKindsOff) != 2 {
+		t.Fatalf("a PATCH without email_kinds_off must keep the list: %+v", u)
+	}
+
+	c.fails(400, api.AuthInvalidName, "PATCH", "/api/v1/me", map[string]any{"display_name": "  "})
+	c.fails(400, api.ValidationFailed, "PATCH", "/api/v1/me", map[string]any{"timezone": "Mars/Olympus"})
+	c.fails(400, api.ValidationFailed, "PATCH", "/api/v1/me", map[string]any{"locale": "fr"})
+	c.fails(400, api.ValidationFailed, "PATCH", "/api/v1/me", map[string]any{"email_kinds_off": []string{"dispute_opened"}})
+
+	s.anon().fails(401, api.AuthUnauthenticated, "PATCH", "/api/v1/me", map[string]any{"display_name": "X"})
+	forged := &client{s: s, name: "forger", session: c.session, csrf: "forged"}
+	forged.fails(403, api.AuthCsrf, "PATCH", "/api/v1/me", map[string]any{"display_name": "X"})
+}
+
 // ---------------------------------------------------------------- pact onboarding
 
 func TestPactOnboardingOverHTTP(t *testing.T) {
@@ -607,7 +642,7 @@ func TestNotificationsOverHTTP(t *testing.T) {
 
 	var page api.NotificationPage
 	bima.ok(200, "GET", "/api/v1/notifications?limit=2", nil).into(t, &page)
-	if len(page.Items) != 2 || page.NextCursor == nil || page.UnreadCount != 3 || page.Items[0].Kind != api.PactSettled {
+	if len(page.Items) != 2 || page.NextCursor == nil || page.UnreadCount != 3 || page.Items[0].Kind != api.NotificationKindPactSettled {
 		t.Fatalf("page 1 = %+v", page)
 	}
 	if page.Items[0].Payload["pact_id"] == nil {

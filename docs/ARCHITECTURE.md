@@ -244,6 +244,7 @@ Base path `/api/v1`. Authentication uses session cookies. Errors use `problem+js
 |---|---|---|
 | POST | `/auth/register`, `/auth/login`, `/auth/logout` | session lifecycle |
 | GET | `/me` | current user |
+| PATCH | `/me` | change name, language, time zone, and which emails are on (SPEC §9) |
 | GET | `/today` | aggregate for the Today screen: my open check-ins with deadlines, my review queue count, and a pot summary per active pact |
 | GET/POST | `/pacts` | list mine / create draft |
 | GET/PATCH | `/pacts/{id}` | detail / edit terms (draft/proposed only) |

@@ -31,8 +31,17 @@ func apiDatePtr(t time.Time, valid bool) *openapi_types.Date {
 func apiUser(u store.User) api.User {
 	return api.User{
 		Id: u.ID, Email: openapi_types.Email(u.Email), DisplayName: u.DisplayName,
-		Locale: api.UserLocale(u.Locale), Timezone: u.Timezone, CreatedAt: u.CreatedAt,
+		Locale: api.UserLocale(u.Locale), Timezone: u.Timezone, EmailKindsOff: emailKinds(u.EmailOff), CreatedAt: u.CreatedAt,
 	}
+}
+
+// emailKinds is never nil: the contract says an empty list, and JSON null would break clients.
+func emailKinds(off []string) []api.EmailKind {
+	out := make([]api.EmailKind, 0, len(off))
+	for _, k := range off {
+		out = append(out, api.EmailKind(k))
+	}
+	return out
 }
 
 func apiRef(m service.MemberView) api.MemberRef {

@@ -53,7 +53,7 @@ with c as (
   where notifications.id = $1 and notifications.emailed_at is null
   returning notifications.id, notifications.user_id, notifications.kind, notifications.payload
 )
-select c.id, c.kind, c.payload, u.email, u.display_name, u.locale
+select c.id, c.kind, c.payload, u.email, u.display_name, u.locale, u.email_off
 from c join users u on u.id = c.user_id
 `
 
@@ -64,6 +64,7 @@ type ClaimNotificationEmailRow struct {
 	Email       string
 	DisplayName string
 	Locale      string
+	EmailOff    []string
 }
 
 // Claims one notification for emailing and returns what the mail needs. No row: already
@@ -78,6 +79,7 @@ func (q *Queries) ClaimNotificationEmail(ctx context.Context, id int64) (ClaimNo
 		&i.Email,
 		&i.DisplayName,
 		&i.Locale,
+		&i.EmailOff,
 	)
 	return i, err
 }

@@ -121,6 +121,6 @@ Restoring after losing the host: install Docker, restore the env file, `deploy:u
 ## 10. Known gaps
 
 - The server does not compare a pact's `starts_on` with today's date, so a pact proposed for a date and signed after it starts with overdue check-ins (STATUS §6).
-- The account cannot be changed from the app (no `PATCH /me`), and notification e-mail cannot be switched off per kind.
+- Changing the e-mail address and the password is not possible from the app (name, language, time zone and which e-mails to get are, in Settings).
 - The CSP keeps `'unsafe-inline'` for scripts and styles because Next.js writes inline ones; a per-request nonce is the next hardening step.
 - Dumps and uploads live on one host until you copy them elsewhere (section 6).

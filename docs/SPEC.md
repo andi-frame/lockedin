@@ -215,6 +215,10 @@ User-triggered transitions (approve, reject, dispute, resolve, override, rest) g
 | Dispute opened | backer | in-app + email |
 | Pact settled, payout due | both | in-app + email |
 
+**Switching emails off (decided 2026-10-09).** A person can turn off the *email* for these kinds: terms changed, terms signed, proof submitted (the digest), rejected, overridden, and auto-approved. Their content is also in the app, and missing one costs nothing. The email always goes out for an invite, for a dispute opened against your review (the backer has a deadline to decide it, or the doer wins) and for a settled pact (a payout depends on it). The in-app notification is never switched off. The list is stored as the kinds that are off, so a kind added later is on for everyone. A switched-off kind is marked as handled when the worker reaches it, so switching it back on does not mail what was missed meanwhile.
+
+**The account (`PATCH /me`).** A person can change their display name, language and time zone. The name is also the signature typed on terms: signatures already given keep the name that was typed then, and the next signature must match the current name. The time zone is the default for new pacts and the zone of Today's date and the inbox; a pact keeps its own zone.
+
 ## 10. Non-functional requirements
 
 - p95 API latency below 150 ms for reads and below 300 ms for writes at 200 RPS on a single 2 vCPU API instance (excluding uploads).

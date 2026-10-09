@@ -140,6 +140,7 @@ describe("unwrap", () => {
       display_name: "A",
       locale: "id" as const,
       timezone: "Asia/Jakarta",
+      email_kinds_off: [],
       created_at: "2026-10-08T00:00:00Z",
     };
     const { fetch } = recorder(() => json(me));

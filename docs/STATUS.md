@@ -242,7 +242,7 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - **Read state:** `NotificationList` (client) posts the ids on the page to `/notifications/read` once after hydration and refreshes the route, so the bell loses its count; the "Baru" labels stay for that visit. `NotificationBell` is now a link to the inbox (it was an inert readout).
 - **Pure rules:** `src/lib/notification/inbox.ts` (`KIND_TARGET`, `payloadRefs`, `notificationHref`, `checkInIdsToResolve`, `unreadIds`), table-tested, plus a test that every kind has copy in both languages.
 - **Settings:** unchanged controls. The page now says the account cannot be changed from the app yet, and has a Notifikasi section that says what is sent where and links to the inbox.
-- **Decided by the owner (2026-10-09): yes**, the MVP gets `PATCH /me` (name, time zone, language) and per-kind email preferences. Not built yet: PLAN 9.4. The API has neither today and Settings is read-only until then.
+- **Decided by the owner (2026-10-09): yes**, the MVP gets `PATCH /me` (name, time zone, language) and per-kind email preferences. Built in 9.4: see "What 9.4 added". Still not possible: changing the e-mail address or the password.
 
 **What 7.1 added (Dockerfiles):**
 - `deploy/docker/server.Dockerfile`: Go 1.26 build stage (module cache and build cache mounts), then `debian:bookworm-slim` with `ffmpeg libvips-tools ca-certificates tzdata`, user 10001. One image holds `api`, `worker`, `tepatictl` and `goose` (in `/usr/local/bin`) and the migrations in `/app/migrations`; the default command is `api`, compose picks the others. The version is stamped with `-X ...buildinfo.Version`. 989 MB.
@@ -302,6 +302,11 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 **What 9.2 added (the landing page):**
 - `/` is now the landing page for a visitor without a session (`components/landing/*`, copy in the `Landing` messages, the example month in `lib/landing/sample.ts`, brief `.impeccable/surfaces/apps-web-src-app-page-tsx.md`). The guard (`lib/auth/guard.ts`) lets `/` through without a cookie and sends a visitor with one to `/today`.
 - The pact calendar's "today" cell used to ink its marks with the status colours, pale on the yellow in the dark theme; fixed in 9.3 (the marks wear the cell's own ink, as on the landing page).
+
+**What 9.4 added (account and email preferences):**
+- `PATCH /me` (name, language, time zone, `email_kinds_off`); Settings is editable. The six switchable kinds are in `internal/domain/emailprefs.go`; invites, `dispute_opened` and `pact_settled` are always mailed (SPEC §9). The mail claims in `internal/service/mailing.go` honour the list; `users.email_off` holds what is off.
+- A new emailed notification kind must be decided in `notify/render_test.go` (switchable or must-stay-on), or that test fails.
+- Gap: logging in on a new device does not copy the account's language into the `tepati_locale` cookie.
 
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
