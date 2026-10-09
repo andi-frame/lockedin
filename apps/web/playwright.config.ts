@@ -11,6 +11,9 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
+  // One retry on CI: the suite drives a real stack through real browsers, and a single slow step should not fail a run.
+  // A test that needs the retry shows as "flaky" in the report, so it is not hidden.
+  retries: process.env.CI ? 1 : 0,
   reporter: [["list"]],
   outputDir: "./test-results",
   // A slower stack (native mode with Redis behind WSL, a cold dev server) can set these higher.

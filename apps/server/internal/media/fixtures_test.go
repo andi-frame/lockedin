@@ -89,7 +89,9 @@ func gpsExif() []byte {
 
 func pngFile(t *testing.T, path string) string {
 	t.Helper()
-	run(t, "ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x240", "-frames:v", "1", path)
+	// -f image2 and -c:v png force PNG bytes whatever the file is called: without them ffmpeg picks
+	// the container from the extension, and "holiday.mp4" became a real one-frame video, not a renamed PNG.
+	run(t, "ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x240", "-frames:v", "1", "-f", "image2", "-c:v", "png", path)
 	return path
 }
 

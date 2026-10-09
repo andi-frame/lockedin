@@ -73,10 +73,15 @@ test("the button waits for words and ready attachments, then the proof is sent a
   await expect(toolbar.getByRole("button", { name: "Tebal" })).toBeVisible();
   await expect(toolbar.getByRole("button", { name: /Garis bawah|Underline/ })).toHaveCount(0);
 
+  // Each toolbar click is waited out (the button's pressed state) before typing: the editor takes its
+  // focus back in the same transaction, and keys typed before that are lost on a slow runner.
+  const bold = toolbar.getByRole("button", { name: "Tebal" });
   await body(page).click();
-  await toolbar.getByRole("button", { name: "Tebal" }).click();
+  await bold.click();
+  await expect(bold).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.type("Selesai latihan soal integral dan limit, ");
-  await toolbar.getByRole("button", { name: "Tebal" }).click();
+  await bold.click();
+  await expect(bold).toHaveAttribute("aria-pressed", "false");
   await page.keyboard.type("benar delapan dari sepuluh");
   await expect(page.getByText("10 dari 10 kata")).toBeVisible();
   await expect(page.getByText("Kurang 10 kata lagi.")).toHaveCount(0);
@@ -108,7 +113,7 @@ test("the button waits for words and ready attachments, then the proof is sent a
   // Until the deadline the proof can be changed: the editor comes back with what was written.
   await rules.getByRole("link", { name: "Ubah bukti" }).click();
   await expect(page.getByRole("heading", { name: "Ubah bukti", level: 1 })).toBeVisible();
-  await expect(body(page)).toContainText("Selesai latihan soal integral dan limit");
+  await expect(body(page)).toContainText("Selesai latihan soal integral dan limit", { timeout: 15_000 });
   await expect(page.getByText("10 dari 10 kata")).toBeVisible();
   await expect(page.getByText("Siap", { exact: true })).toHaveCount(2);
   await expect(send(page)).toBeEnabled();

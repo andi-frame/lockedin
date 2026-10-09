@@ -253,6 +253,23 @@ func TestFullHDVideoBecomes720p(t *testing.T) {
 	}
 }
 
+// A clip that is a single frame long has nothing to seek to: the poster frame must come from the
+// start rather than from a time after the last frame, which ffmpeg answers with "success" and no file.
+func TestOneFrameVideoStillGetsAPoster(t *testing.T) {
+	p := newProcessor(t)
+	dir := t.TempDir()
+	src := filepath.Join(dir, "still.mp4")
+	run(t, "ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x240", "-frames:v", "1",
+		"-c:v", "libx264", "-pix_fmt", "yuv420p", src)
+	res, err := p.Process(context.Background(), src, KindVideo, filepath.Join(dir, "work"))
+	if err != nil {
+		t.Fatalf("a one-frame video must be accepted with a poster: %v", err)
+	}
+	if res.Thumb == nil || res.Thumb.Size == 0 {
+		t.Fatal("no poster for a one-frame video")
+	}
+}
+
 func TestSmallVideoIsNotUpscaled(t *testing.T) {
 	p := newProcessor(t)
 	dir := t.TempDir()

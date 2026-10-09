@@ -54,6 +54,7 @@ bun run setup                     # copies deploy/env/*.example → .env files i
 | `bun run lint` | tsc `--noEmit` for scripts, Redocly lint of `api/openapi.yaml`, `gofmt -l`, `go vet` and, in `apps/web`, `tsc --noEmit` plus ESLint |
 | `bun run go:tool <tool> …` | runs goose / sqlc / oapi-codegen pinned in `apps/server/tools/go.mod` (Go downloads the 1.26 toolchain for that module automatically) |
 | `bun run deploy:build -- --env staging` | builds `tepati-server` (api, worker, tepatictl, goose, migrations) and `tepati-web`, each tagged `<env>` and with the `git describe` version; `--only server\|web` builds one |
+| `bun run deploy:env-local` | writes `deploy/env/.env.staging` for a deploy on this machine or a CI runner (`https://localhost`, Mailpit, fresh secrets, raised rate limits); refuses to overwrite a file |
 | `bun run deploy:up -- --env staging` | checks `deploy/env/.env.<env>` (no `CHANGE_ME`, `S3_PUBLIC_ENDPOINT` on `media.<DOMAIN>`) and the images, brings up infra, sets up Garage (layout, key, buckets; generates the S3 key pair into the env file the first time), then migrate, api, worker, web and Caddy, then the CORS rule for uploads. Compose project `tepati-<env>`. `--backup` / `--no-backup` (default: on for production) |
 | `bun run deploy:scale -- --env staging api=2 web=2 worker=2` | changes the number of copies of the stateless services; nothing else is recreated, and Caddy finds new api and web copies through DNS |
 
@@ -124,3 +125,15 @@ For a machine where Docker is not an option. Postgres and Redis run on the host,
 4. Next.js allows one dev server per project folder, so stop `dev:hybrid` or `dev:docker` first (or run native from another checkout). Docker containers may stay up; use other ports in `.env.native` if they hold the defaults.
 5. `TEPATI_NATIVE=1` makes `bun run db:migrate`, `bun run ctl` and the e2e seeds use `.env.native` (and its database) instead of the Docker one: `TEPATI_NATIVE=1 bun run ctl -- seed --scenario today`. For the e2e on a slow stack: `TEPATI_NATIVE=1 E2E_BASE_URL=http://localhost:3010 E2E_API_URL=http://localhost:18090 E2E_TIMEOUT_MS=120000 E2E_EXPECT_TIMEOUT_MS=30000 bun run test:e2e`.
 6. A throwaway Postgres for a check, without touching an installed server (Windows, PowerShell or Git Bash): `initdb -D .data/pg-native -U tepati --auth=trust`, `pg_ctl -D .data/pg-native -o "-p 5440" -l .data/pg-native.log start`, then `psql -h localhost -p 5440 -U tepati -d postgres -c "create database tepati"` and `DATABASE_URL=postgres://tepati@localhost:5440/tepati?sslmode=disable` in `.env.native`. Stop it with `pg_ctl -D .data/pg-native stop`. `.data/` is gitignored.
+
+## 8. CI
+
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`, in three jobs:
+
+| Job | Commands | Notes |
+|---|---|---|
+| `check` | `bun run lint`, `bun run codegen -- --check`, `bun run test` | installs ffmpeg and libvips so the media golden tests run instead of skipping; the codegen check fails if regenerating sqlc, the Go server or the web types changes a tracked file |
+| `integration` | `bun run setup`, `bun run infra:up`, `bun run test:integration` | the same Docker infra as local development (Postgres, Redis, Garage, Mailpit) |
+| `e2e` | `deploy:env-local`, `deploy:build -- --env staging`, `deploy:up -- --env staging`, `test:e2e` with `TEPATI_CTL_PROJECT=staging E2E_BASE_URL=https://localhost E2E_API_URL=https://localhost` | the built images behind Caddy, seeded through the api container; uploads `apps/web/test-results` and the stack logs on failure; Playwright retries once on CI and reports a retried test as flaky |
+
+To reproduce the `e2e` job on a laptop, run those four commands in order (delete `deploy/env/.env.staging` first if it exists, and `docker compose -p tepati-staging ... down -v` if an older stack left volumes behind, because the new secrets will not match the old database).
