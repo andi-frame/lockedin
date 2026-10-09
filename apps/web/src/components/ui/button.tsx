@@ -21,6 +21,9 @@ export const buttonVariants = cva(
         ghost: "text-ink hover:bg-sunken",
         decision: "bg-stamp text-stamp-foreground hover:bg-stamp-hover",
         "decision-quiet": "border border-stamp-text bg-surface text-stamp-text hover:bg-stamp-tint",
+        // On the cover-teal band (the landing page), where the teal primary would vanish.
+        onCover: "bg-cover-ink text-cover hover:bg-cover-ink/90",
+        onCoverQuiet: "border border-cover-ink/45 text-cover-ink hover:bg-cover-ink/10",
       },
       size: {
         md: "h-11 px-4 text-[15px]",
