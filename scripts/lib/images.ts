@@ -28,11 +28,13 @@ export function parseBuildArgs(argv: string[]): BuildOptions | { error: string }
 
 /**
  * One `docker build` per image, from the repo root (both Dockerfiles copy from `apps/` and the
- * lockfile). Forward slashes on purpose: Docker accepts them on Windows too.
+ * lockfile). `--pull` refreshes the base images: a floating tag is only as new as the local copy,
+ * and an old Go patch release carries known standard library vulnerabilities. Forward slashes on
+ * purpose: Docker accepts them on Windows too.
  */
 export function buildCommands(opts: BuildOptions, version: string, root: string): string[][] {
   return opts.only.map((image) => [
-    "docker", "build",
+    "docker", "build", "--pull",
     "-f", `${root}/deploy/docker/${image}.Dockerfile`,
     "-t", `tepati-${image}:${opts.env}`,
     "-t", `tepati-${image}:${version}`,

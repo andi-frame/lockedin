@@ -2,6 +2,7 @@
 #   check        lint, generated code is committed, unit tests (Go and web, media golden tests included)
 #   integration  Go integration tests against the real dev infra (Postgres, Redis, Garage in Docker)
 #   e2e          the built images behind Caddy on https://localhost, then the Playwright suite
+#   vulncheck    known vulnerabilities in the Go code (govulncheck) and in the web dependencies (bun audit)
 # The e2e job runs the same commands as docs/RUNNING.md section 6, so a failure there reproduces on a
 # laptop with `bun run deploy:env-local`, `deploy:build`, `deploy:up` and `test:e2e`.
 name: ci
@@ -32,7 +33,9 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       - uses: actions/setup-go@v5
         with:
-          go-version-file: apps/server/go.mod
+          # The newest 1.26 patch, not go.mod's minimum: older patches carry standard library vulnerabilities.
+          go-version: "1.26"
+          check-latest: true
           cache-dependency-path: |
             apps/server/go.sum
             apps/server/tools/go.sum
@@ -54,7 +57,9 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       - uses: actions/setup-go@v5
         with:
-          go-version-file: apps/server/go.mod
+          # The newest 1.26 patch, not go.mod's minimum: older patches carry standard library vulnerabilities.
+          go-version: "1.26"
+          check-latest: true
           cache-dependency-path: |
             apps/server/go.sum
             apps/server/tools/go.sum
@@ -111,3 +116,23 @@ jobs:
           export TEPATI_ENV=staging
           docker compose -p tepati-staging -f deploy/compose.yaml -f deploy/compose.prod.yaml --env-file deploy/env/.env.staging \
             --profile infra --profile app --profile edge --profile mail-sandbox down --volumes
+
+  vulncheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          check-latest: true
+          cache-dependency-path: apps/server/go.sum
+      # Reports only what the code can reach (calls into a vulnerable function), standard library included.
+      - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+        working-directory: apps/server
+      - run: bun install --frozen-lockfile
+      # braces (a dev-only glob helper under eslint-config-next) has no fixed release yet: see PLAN 8.5.
+      - run: bun audit --audit-level=high --ignore GHSA-vfj7-8cjw-p6xm
