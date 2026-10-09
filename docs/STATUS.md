@@ -14,7 +14,7 @@ Last updated: 2026-10-08, after task 8.1 (CI; the backend is complete, Phases 5,
 | 5 Web foundation | done | 5.1 Next.js app on Bun (PR #3). 5.2 design tokens and primitives (PR #4). 5.3 auth pages, app shell, auth guard and the Playwright e2e (PR #5) |
 | 6 Web features | done | 6.1 new pact wizard and invite/accept flow (PR #6). 6.2 Today screen (PR #7). 6.3 proof editor and submission (PR #8). 6.4 pact page with the coin book and calendar (PR #9). 6.5 review queue and check-in detail (PR #10). 6.6 settlement and payout screens (PR #11). 6.7 notifications inbox and settings: done on `p6.7-notifications` (not pushed or merged yet). Next: Phase 7 |
 | 7 Docker and deploy | done | 7.1 Dockerfiles (PR #13). 7.2 compose dev and prod, Caddy, deploy:up, deploy:scale, backups (PR #14). 7.3 native mode polish: done on `p7.3-native-polish` (not pushed or merged yet) |
-| 8 Quality gates | in progress | 8.1 CI workflow: written and run locally on `p8.1-ci` (not pushed or merged, and **not yet run on GitHub**). Next: 8.2 impeccable finish review |
+| 8 Quality gates | in progress | 8.1 CI (PR #16, green on GitHub). Next: 8.2 impeccable finish review |
 | 9 | not started | Staging deploy, landing page |
 
 The first unchecked task in `docs/PLAN.md` is **8.2** (the impeccable finish review). The real staging deploy (9.1) needs the owner's decisions on the SMTP provider, the domain and DNS (a `media.` host too), see `docs/HANDOVER.md` §10.
@@ -33,7 +33,7 @@ e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-han
 - 5.3 was merged as PR #5 (merge commit `373f3aa`, 2026-10-08). The branch `p5.3-auth-shell` still exists on `origin`, like the other two.
 - 6.1 was merged as PR #6 (merge commit `ddff0a3`, 2026-10-08). The branch `p6.1-pact-wizard` still exists on `origin`.
 - 6.2 was merged as PR #7 (merge commit `88d0da4`, 2026-10-08). The branch `p6.2-today-screen` still exists on `origin`.
-- 6.3 was merged as PR #8 (`a54f2d7`), 6.4 as PR #9 (`d4e89b2`), 6.5 as PR #10 (`93d095a`), 6.6 as PR #11 (`e8121ad`), 6.7 as PR #12 (`72b934b`), 7.1 as PR #13 (`fa114b0`), 7.2 as PR #14 (`c6bb76b`) and 7.3 as PR #15 (`7e495f7`). 8.1 lives on `p8.1-ci` (`4245bf0..0a779e2`, plus a docs commit), cut from `main` after the 7.3 merge. It is not pushed or merged yet. After the owner pushes it, **read the first GitHub run and fix what it shows**: the workflow was never run on a runner.
+- 6.3 was merged as PR #8 (`a54f2d7`), 6.4 as PR #9 (`d4e89b2`), 6.5 as PR #10 (`93d095a`), 6.6 as PR #11 (`e8121ad`), 6.7 as PR #12 (`72b934b`), 7.1 as PR #13 (`fa114b0`), 7.2 as PR #14 (`c6bb76b`) and 7.3 as PR #15 (`7e495f7`). 8.1 was merged as PR #16 after two GitHub runs (the first failed on a media defect, see PLAN 8.1; the second was green in all three jobs).
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -271,7 +271,7 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - `.github/workflows/ci.yml`: `check` (lint, `codegen --check`, unit tests with ffmpeg and libvips installed), `integration` (`setup`, `infra:up`, `test:integration`), `e2e` (`deploy:env-local`, `deploy:build`, `deploy:up`, then the Playwright suite against `https://localhost`, with artifacts and stack logs on failure). Runs on pull requests and pushes to `main`; one retry on CI.
 - `bun run deploy:env-local` (`scripts/deploy-env-local.ts`, `scripts/lib/localenv.ts`): a ready `.env.staging` for a deploy on this machine or a runner.
 - `docs/RUNNING.md` section 8 explains the jobs and how to reproduce `e2e` on a laptop.
-- **Not verified:** a run on GitHub (action versions, the runner's libvips, timing, the Docker build time without a layer cache). One e2e test (`proof.spec.ts`, desktop) failed once in a full run here and passed 3 of 3 alone; it is not explained.
+- **Run on GitHub (PR #16):** all three jobs green on the second run (about 5 minutes each in parallel). The first run found a real media defect (a one-frame video got no poster; fixed in `internal/media`). One e2e test (`proof.spec.ts`, desktop) failed once in a full local run and passed 3 of 3 alone; it did not fail on GitHub and is not explained.
 
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
