@@ -17,6 +17,7 @@ export type CalendarMember = { id: string; name: string; slot: MemberSlot };
 
 // The symbol says what happened; its ink repeats it (never alone). The member is told apart by the
 // bar under the symbol in their fixed line colour, and by which side of the cell they sit on.
+// On the yellow of today the ink is the cell's own: these colours are tuned for paper (pale on yellow in the dark theme).
 const ink: Record<CheckInStatus, string> = {
   open: "text-muted",
   submitted: "text-teal-text",
@@ -118,7 +119,7 @@ export function PactCalendar({
                         const slot = byId.get(m.memberId)?.slot ?? 0;
                         return (
                           <span key={m.memberId} data-status={m.status} className="flex flex-col items-center gap-px">
-                            <Icon weight="bold" className={cn("size-4", ink[m.status])} />
+                            <Icon weight="bold" className={cn("size-4", cell.today ? "text-today-ink" : ink[m.status])} />
                             <span className={cn("h-0.5 w-3.5 rounded-full", bar[slot])} />
                           </span>
                         );

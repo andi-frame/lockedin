@@ -61,6 +61,10 @@ test("the coin book shows the saldo, pages in by cursor, and the calendar marks 
   await expect(today).toHaveCount(1);
   await expect(today.locator('[data-status="open"]')).toHaveCount(1);
   await expect(today.locator('[data-status="submitted"]')).toHaveCount(1);
+  // The status colours are tuned for paper, so on the yellow the marks wear the cell's own ink
+  // (in the dark theme they were pale on yellow). The symbol still says what happened.
+  const cellInk = await today.evaluate((el) => getComputedStyle(el).color);
+  for (const svg of await today.locator("[data-status] svg").all()) await expect(svg).toHaveCSS("color", cellInk);
 
   // Earlier days: approved, rest, rejected and missed all appear somewhere in the pact's two months.
   const calendar = page.getByTestId("calendar");
