@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatIdr } from "@/lib/format";
 import type { Draft, DraftErrors, MemberDraft } from "@/lib/pact/draft";
 import { WeekdayPicker } from "./weekday-picker";
+import { useFocusOnDesktop } from "@/lib/use-focus-on-desktop";
 
 export type StepProps = {
   draft: Draft;
@@ -40,23 +41,24 @@ function Group({ legend, children }: { legend: string; children: ReactNode }) {
 const err = (t: (k: string) => string, errors: DraftErrors, path: string) => (errors[path] ? t(errors[path]) : undefined);
 
 export function BasicsStep({ draft, errors, minStart, set }: StepProps) {
+  const titleRef = useFocusOnDesktop<HTMLInputElement>();
   const t = useTranslations();
   const e = (p: string) => err(t, errors, p);
   const knownZone = (zones as readonly string[]).includes(draft.timezone);
   return (
     <div className="flex flex-col gap-5">
       <Field label={t("Wizard.titleLabel")} hint={t("Wizard.titleHint")} error={e("title")}>
-        <Input name="title" value={draft.title} maxLength={140} autoFocus onChange={(ev) => set({ title: ev.target.value })} />
+        <Input name="title" autoComplete="off" ref={titleRef} value={draft.title} maxLength={140} onChange={(ev) => set({ title: ev.target.value })} />
       </Field>
       <Field label={t("Wizard.descriptionLabel")} hint={t("Wizard.descriptionHint")} error={e("description")}>
-        <Textarea name="description" value={draft.description} rows={3} onChange={(ev) => set({ description: ev.target.value })} />
+        <Textarea autoComplete="off" name="description" value={draft.description} rows={3} onChange={(ev) => set({ description: ev.target.value })} />
       </Field>
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label={t("Wizard.startsLabel")} error={e("startsOn")}>
-          <Input name="startsOn" type="date" min={minStart} value={draft.startsOn} onChange={(ev) => set({ startsOn: ev.target.value })} />
+          <Input autoComplete="off" name="startsOn" type="date" min={minStart} value={draft.startsOn} onChange={(ev) => set({ startsOn: ev.target.value })} />
         </Field>
         <Field label={t("Wizard.endsLabel")} error={e("endsOn")}>
-          <Input name="endsOn" type="date" min={draft.startsOn} value={draft.endsOn} onChange={(ev) => set({ endsOn: ev.target.value })} />
+          <Input autoComplete="off" name="endsOn" type="date" min={draft.startsOn} value={draft.endsOn} onChange={(ev) => set({ endsOn: ev.target.value })} />
         </Field>
       </div>
       <Field label={t("Wizard.timezoneLabel")} hint={t("Wizard.timezoneHint")} error={e("timezone")}>
@@ -85,13 +87,14 @@ function MemberFields({ who, props }: { who: "backer" | "doer"; props: StepProps
   const e = (f: string) => err(t, errors, `${who}.${f}`);
   const num = (f: "restDays" | "minAttachments" | "minWords", label: string, hint?: string) => (
     <Field label={label} hint={hint} error={e(f)}>
-      <Input name={`${who}.${f}`} inputMode="numeric" value={m[f]} onChange={(ev) => setMember(who, { [f]: ev.target.value })} />
+      <Input autoComplete="off" name={`${who}.${f}`} inputMode="numeric" value={m[f]} onChange={(ev) => setMember(who, { [f]: ev.target.value })} />
     </Field>
   );
   return (
     <div className="flex flex-col gap-5">
       <Field label={t("Wizard.commitmentLabel")} hint={t(`Wizard.commitmentHint_${who}`)} error={e("commitment")}>
         <Textarea
+          autoComplete="off"
           name={`${who}.commitment`}
           value={m.commitment}
           rows={2}
@@ -154,7 +157,7 @@ export function RulesStep(props: StepProps) {
     const idr = opts.idr ? idrOf(value, rate) : undefined;
     return (
       <Field label={label} hint={opts.hint} error={e(name)}>
-        <Input name={name} inputMode="numeric" value={value} onChange={(ev) => set({ [name]: ev.target.value })} />
+        <Input autoComplete="off" name={name} inputMode="numeric" value={value} onChange={(ev) => set({ [name]: ev.target.value })} />
         {idr ? <p className="font-mono text-sm tabular-nums text-muted">{t("Wizard.worth", { idr })}</p> : null}
       </Field>
     );
@@ -164,7 +167,7 @@ export function RulesStep(props: StepProps) {
     const idr = idrOf(value, rate);
     return (
       <Field label={label} hint={hint} error={e(`${who}.penalty`)}>
-        <Input name={`${who}.penalty`} inputMode="numeric" value={value} onChange={(ev) => setMember(who, { penalty: ev.target.value })} />
+        <Input autoComplete="off" name={`${who}.penalty`} inputMode="numeric" value={value} onChange={(ev) => setMember(who, { penalty: ev.target.value })} />
         {idr ? <p className="font-mono text-sm tabular-nums text-muted">{t("Wizard.worth", { idr })}</p> : null}
       </Field>
     );
@@ -182,7 +185,7 @@ export function RulesStep(props: StepProps) {
       <Group legend={t("Wizard.groupDeadline")}>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label={t("Wizard.cutoffLabel")} hint={t("Wizard.cutoffHint")} error={e("cutoff")}>
-            <Input name="cutoff" type="time" value={draft.cutoff} onChange={(ev) => set({ cutoff: ev.target.value })} />
+            <Input autoComplete="off" name="cutoff" type="time" value={draft.cutoff} onChange={(ev) => set({ cutoff: ev.target.value })} />
           </Field>
           {field("graceMinutes", t("Wizard.graceLabel"), { hint: t("Wizard.graceHint") })}
         </div>

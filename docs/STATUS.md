@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-08, after task 8.2 (the design finish review; the backend is complete, Phases 5, 6 and 7 are done and Phase 8 is in progress). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-08, after task 8.3 (the web-design-guidelines audit; the backend is complete, Phases 5, 6 and 7 are done and Phase 8 is in progress). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -14,10 +14,10 @@ Last updated: 2026-10-08, after task 8.2 (the design finish review; the backend 
 | 5 Web foundation | done | 5.1 Next.js app on Bun (PR #3). 5.2 design tokens and primitives (PR #4). 5.3 auth pages, app shell, auth guard and the Playwright e2e (PR #5) |
 | 6 Web features | done | 6.1 new pact wizard and invite/accept flow (PR #6). 6.2 Today screen (PR #7). 6.3 proof editor and submission (PR #8). 6.4 pact page with the coin book and calendar (PR #9). 6.5 review queue and check-in detail (PR #10). 6.6 settlement and payout screens (PR #11). 6.7 notifications inbox and settings: done on `p6.7-notifications` (not pushed or merged yet). Next: Phase 7 |
 | 7 Docker and deploy | done | 7.1 Dockerfiles (PR #13). 7.2 compose dev and prod, Caddy, deploy:up, deploy:scale, backups (PR #14). 7.3 native mode polish: done on `p7.3-native-polish` (not pushed or merged yet) |
-| 8 Quality gates | in progress | 8.1 CI (PR #16, green on GitHub). 8.2 design finish review, `DESIGN.md` and `.impeccable/design.json`: done on `p8.2-impeccable-finish` (not pushed or merged yet). Next: 8.3 web-design-guidelines audit |
+| 8 Quality gates | in progress | 8.1 CI (PR #16). 8.2 design finish review, `DESIGN.md` (PR #17). 8.3 web-design-guidelines audit: done on `p8.3-web-guidelines` (not pushed or merged yet). Next: 8.4 load test |
 | 9 | not started | Staging deploy, landing page |
 
-The first unchecked task in `docs/PLAN.md` is **8.3** (the web-design-guidelines audit). The real staging deploy (9.1) needs the owner's decisions on the SMTP provider, the domain and DNS (a `media.` host too), see `docs/HANDOVER.md` §10.
+The first unchecked task in `docs/PLAN.md` is **8.4** (the k6 load test). The real staging deploy (9.1) needs the owner's decisions on the SMTP provider, the domain and DNS (a `media.` host too), see `docs/HANDOVER.md` §10.
 
 ## 2. Branch and merge state
 
@@ -33,7 +33,7 @@ e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-han
 - 5.3 was merged as PR #5 (merge commit `373f3aa`, 2026-10-08). The branch `p5.3-auth-shell` still exists on `origin`, like the other two.
 - 6.1 was merged as PR #6 (merge commit `ddff0a3`, 2026-10-08). The branch `p6.1-pact-wizard` still exists on `origin`.
 - 6.2 was merged as PR #7 (merge commit `88d0da4`, 2026-10-08). The branch `p6.2-today-screen` still exists on `origin`.
-- 6.3 was merged as PR #8 (`a54f2d7`), 6.4 as PR #9 (`d4e89b2`), 6.5 as PR #10 (`93d095a`), 6.6 as PR #11 (`e8121ad`), 6.7 as PR #12 (`72b934b`), 7.1 as PR #13 (`fa114b0`), 7.2 as PR #14 (`c6bb76b`) and 7.3 as PR #15 (`7e495f7`). 8.1 was merged as PR #16 (`728c86c`) after several GitHub runs (see PLAN 8.1). 8.2 lives on `p8.2-impeccable-finish` (`cfa8ab2..f5d46d7`, plus a docs commit), cut from `main` after that merge; it is not pushed or merged yet.
+- 6.3 was merged as PR #8 (`a54f2d7`), 6.4 as PR #9 (`d4e89b2`), 6.5 as PR #10 (`93d095a`), 6.6 as PR #11 (`e8121ad`), 6.7 as PR #12 (`72b934b`), 7.1 as PR #13 (`fa114b0`), 7.2 as PR #14 (`c6bb76b`) and 7.3 as PR #15 (`7e495f7`). 8.1 was merged as PR #16 (`728c86c`) after several GitHub runs (see PLAN 8.1). 8.2 was merged as PR #17 (`f0c4e37`). 8.3 lives on `p8.3-web-guidelines` (`5fa5082`, plus a docs commit), cut from `main` after that merge; it is not pushed or merged yet.
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -278,6 +278,10 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - **`DESIGN.md` and `.impeccable/design.json`:** the design system as built (tokens read from `src/styles/tokens.css`, rules, components). `bun run lint` does not check them; if the tokens change, regenerate or edit both. They are the reference for any new screen, together with `.impeccable/surfaces/apps-web-src-app-app.md`.
 - **Rules worth knowing:** red and green mean coins only; violet only for human decisions; yellow only for today; the guilloche only on header bands; text links are underlined; no nested cards, kickers, gradient text, hard shadows or glyph icons.
 
+**What 8.3 added (guidelines audit):**
+- The proof form and the new-pact wizard warn before the tab is closed or reloaded with unsaved work (`src/lib/unsaved.ts`); the sign-in, register and new-pact name fields focus themselves only with a mouse (`src/lib/use-focus-on-desktop.ts`); non-auth fields have `autocomplete="off"`; progress labels end with an ellipsis; `theme-color` follows the page ground and the chosen theme; touch and overscroll defaults are set. The accepted exceptions and the reasons are in PLAN 8.3.
+- `DESIGN.md` now also lists the small type steps (small, micro, prose headings) and the selection colour; `impeccable detect` compares the code against it and reports nothing.
+
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
 - Auth is cookie based with a CSRF header (`X-CSRF-Token`, value from the `tepati_csrf` cookie) on unsafe methods, and mutating calls take an `Idempotency-Key`. Details in `docs/adr/0010-api-conventions.md`.
@@ -285,4 +289,4 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - Email links point at `/pacts/<id>`, `/review` and `/invite/<token>`; these routes must exist.
 - The server does not check `starts_on` against the date: a pact proposed for tomorrow and signed after tomorrow starts with check-ins that are already overdue. The wizard only prevents choosing a start before tomorrow. Needs a rule in SPEC (refuse to schedule once `starts_on` has passed?) and a server check; not decided.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p8.3-web-guidelines`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 8.4 in the same session as 8.3 unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p8.4-load-test`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 8.5 in the same session as 8.4 unless asked.

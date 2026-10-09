@@ -47,7 +47,7 @@
   },
   "Common": {
     "close": "Close",
-    "loading": "Loading",
+    "loading": "Loading…",
     "dismissToast": "Dismiss notification"
   },
   "Status": {
@@ -98,7 +98,7 @@
     "hidePassword": "Hide password",
     "login": "Sign in",
     "register": "Create account",
-    "working": "Working",
+    "working": "Working…",
     "noAccount": "No account yet?",
     "haveAccount": "Already have an account?",
     "emailRequired": "Enter your email.",
@@ -121,7 +121,7 @@
     "notificationsUnread": "Notifications, {count} unread",
     "skip": "Skip to content",
     "logout": "Sign out",
-    "loggingOut": "Signing out"
+    "loggingOut": "Signing out…"
   },
   "Today": {
     "title": "Today",
@@ -138,7 +138,7 @@
     "restBody": "Today does not count and carries no penalty. Your rest days go from {left} to {after}. This cannot be undone.",
     "restCancel": "Cancel",
     "restConfirm": "Yes, take a rest day",
-    "restWorking": "Working",
+    "restWorking": "Working…",
     "restDone": "Rest day taken.",
     "waitingReview": "Waiting for {partner} to review. If it is not reviewed before {until}, the proof is approved automatically.",
     "words": "· {n} words",
@@ -243,7 +243,7 @@
     "next": "Next",
     "propose": "Propose the pact",
     "save": "Save changes",
-    "sending": "Sending",
+    "sending": "Sending…",
     "fixFirst": "Some fields need fixing. We took you to that step.",
     "titleLabel": "Pact name",
     "titleHint": "Example: UTBK practice questions in November",
@@ -435,7 +435,7 @@
     "remove": "Remove {name}",
     "preparing": "Preparing",
     "uploading": "Uploading {pct}%",
-    "processing": "Processing on the server",
+    "processing": "Processing on the server…",
     "ready": "Ready",
     "retry": "Try again",
     "rejectedGeneric": "This file was rejected.",
@@ -457,7 +457,7 @@
     "whyReady": "Every requirement is met. Ready to send.",
     "send": "Send proof",
     "update": "Save changes",
-    "sending": "Sending",
+    "sending": "Sending…",
     "cancel": "Cancel",
     "sent": "Proof sent.",
     "updated": "Proof updated."

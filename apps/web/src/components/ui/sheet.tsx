@@ -34,7 +34,7 @@ export function SheetContent({
       <D.Overlay className={overlayClasses} />
       <D.Content
         className={cn(
-          "fixed z-50 flex flex-col gap-4 overflow-y-auto border-rule-strong bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pr-14 text-ink shadow-overlay",
+          "fixed z-50 flex flex-col gap-4 overflow-y-auto overscroll-contain border-rule-strong bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pr-14 text-ink shadow-overlay",
           sides[side],
           className,
         )}

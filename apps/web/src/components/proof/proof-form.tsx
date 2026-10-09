@@ -19,6 +19,7 @@ import { readyIds, trayCounts, type TrayItem } from "@/lib/proof/tray";
 import { AttachmentTray } from "./attachment-tray";
 import { ProofEditor } from "./proof-editor";
 import { useAttachments, type Refusal } from "./use-attachments";
+import { useUnsavedChangesWarning } from "@/lib/unsaved";
 
 const empty: ProofDoc = { type: "doc", content: [{ type: "paragraph" }] };
 
@@ -64,6 +65,9 @@ export function ProofForm({
   const attempt = useRef<{ payload: string; key: string }>(undefined);
 
   const analysis = useMemo(() => analyzeDoc(doc), [doc]);
+  // Words typed or files added are lost if the tab is closed or reloaded before sending: the browser asks first.
+  const [savedDoc] = useState(() => JSON.stringify(initialDoc ?? empty));
+  useUnsavedChangesWarning(JSON.stringify(doc) !== savedDoc || (!editing && tray.items.length > 0));
   const words = analysis.ok ? analysis.words : 0;
   const counts = trayCounts(tray.items);
   const evidence = checkEvidence(rules, { words, ready: counts.ready, pending: counts.pending });

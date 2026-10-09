@@ -17,6 +17,7 @@ import { firstInvalidStep, steps, toPactDraft, validateStep, type Draft, type Dr
 import { InviteShare } from "./invite-share";
 import { TermsSummary } from "./terms-summary";
 import { BasicsStep, CommitmentStep, RulesStep, type StepProps } from "./wizard-fields";
+import { useUnsavedChangesWarning } from "@/lib/unsaved";
 
 type Pact = components["schemas"]["Pact"];
 
@@ -46,6 +47,9 @@ export function Wizard({ me, initial, pact }: Props) {
   const [emailError, setEmailError] = useState<string>();
   const [pending, setPending] = useState(false);
   const [invite, setInvite] = useState<{ pactId: string; token: string; emailed: boolean }>();
+  // A half-filled pact is lost if the tab is closed or reloaded: the browser asks first. Done once the invite is out.
+  const [initialDraft] = useState(() => JSON.stringify(initial));
+  useUnsavedChangesWarning(!invite && JSON.stringify(draft) !== initialDraft);
 
   // A retry of the same action reuses its key so the server replays instead of acting twice; an
   // edit between attempts is a different action and gets a new key.

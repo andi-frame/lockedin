@@ -12,6 +12,7 @@ import { unwrap } from "@/lib/api/unwrap";
 import { formErrorFromApi, validateRegister, type FormError as FormErrorState } from "@/lib/auth/forms";
 import { FormError, focusFirstInvalid } from "./form-error";
 import { PasswordInput } from "./password-input";
+import { useFocusOnDesktop } from "@/lib/use-focus-on-desktop";
 
 const none: FormErrorState = { fields: {} };
 
@@ -22,6 +23,7 @@ export function RegisterForm({ next, locale }: { next: string; locale: "id" | "e
   const [error, setError] = useState<FormErrorState>(none);
   const [pending, setPending] = useState(false);
 
+  const nameRef = useFocusOnDesktop<HTMLInputElement>();
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
@@ -58,7 +60,7 @@ export function RegisterForm({ next, locale }: { next: string; locale: "id" | "e
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
       <Field label={t("Auth.nameLabel")} hint={t("Auth.nameHint")} error={error.fields.name ? t(error.fields.name) : undefined}>
-        <Input name="name" autoComplete="name" autoFocus />
+        <Input name="name" autoComplete="name" ref={nameRef} />
       </Field>
       <Field label={t("Auth.emailLabel")} error={error.fields.email ? t(error.fields.email) : undefined}>
         <Input name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} />

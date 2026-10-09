@@ -52,6 +52,26 @@
   summary {
     cursor: pointer;
   }
+  /* A tap acts at once (no double-tap-to-zoom wait), and the flash on a tapped control is the cover teal, not the browser's grey. */
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  summary,
+  [role="button"],
+  [role="tab"] {
+    touch-action: manipulation;
+  }
+  html {
+    -webkit-tap-highlight-color: color-mix(in oklab, var(--color-primary) 16%, transparent);
+  }
+  /* No widow in a short title. */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
   button:disabled {
     cursor: not-allowed;
   }

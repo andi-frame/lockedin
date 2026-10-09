@@ -87,7 +87,7 @@ export function MarkPaidButton({ pactId, doerName }: { pactId: string; doerName:
             <DialogDescription>{t("markBody", { name: doerName })}</DialogDescription>
           </DialogHeader>
           <Field label={t("noteLabel")} hint={t("noteHint")} error={state.ok ? undefined : t("noteTooLong", { max: NOTE_MAX })}>
-            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} autoFocus />
+            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} autoComplete="off" autoFocus />
           </Field>
           <p className="-mt-2 font-mono text-[13px] tabular-nums text-muted">{t("noteCount", { n: state.length, max: NOTE_MAX })}</p>
           {call.error ? <FormError>{call.error}</FormError> : null}

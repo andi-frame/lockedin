@@ -190,6 +190,7 @@ export function ProofEditor({
               autoCapitalize="none"
               spellCheck={false}
               aria-label={t("linkLabel")}
+              autoComplete="off"
               placeholder="https://"
               value={link}
               aria-invalid={linkError ? true : undefined}
