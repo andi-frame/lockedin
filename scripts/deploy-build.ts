@@ -13,7 +13,7 @@ if (!(await dockerAvailable())) fail("Docker is not running. Start Docker Deskto
 const described = await capture(["git", "describe", "--always", "--dirty"], { cwd: paths.root });
 const version = described.code === 0 ? described.stdout.trim() : "dev";
 
-for (const cmd of buildCommands(opts, version, paths.root)) {
+for (const cmd of buildCommands(opts, version, paths.root, { pull: process.env.TEPATI_BUILD_PULL !== "0" })) {
   log.step(`building ${cmd[cmd.indexOf("-t") + 1]} (version ${version})`);
   await run(cmd, { env: { DOCKER_BUILDKIT: "1" } });
 }

@@ -1,0 +1,73 @@
+# Copies the Docker Hub organisation images in deploy/ci-images.txt to this repository's GHCR
+# packages (PLAN 9.8). Docker Hub limits anonymous pulls per IP and GitHub's runners share IPs, so
+# ci.yml pulls these from GHCR instead (scripts/ci-images.ts) and tags them with their original names.
+# Each copy is `FROM <source>` plus a label that links the package to this repository, which is what
+# lets ci.yml read it with the job's own token. Runs when the list changes, by hand, and weekly so a
+# floating tag such as oven/bun:1.4 does not go stale. Only CI uses these copies; production and
+# laptops keep pulling from Docker Hub.
+name: mirror-images
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+  push:
+    branches: [main]
+    paths: [deploy/ci-images.txt, .github/workflows/mirror-images.yml]
+  pull_request:
+    paths: [deploy/ci-images.txt, .github/workflows/mirror-images.yml]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  BUN_VERSION: "1.4.2"
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker Hub login
+        if: ${{ env.DOCKERHUB_TOKEN != '' }}
+        # Docker Hub's auth endpoint has timed out on runners; then the pulls stay anonymous.
+        continue-on-error: true
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+      - name: GitHub Container Registry login
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - name: Copy the images
+        run: |
+          mapfile -t pairs < <(bun scripts/ci-images.ts pairs)
+          failed=0
+          for pair in "${pairs[@]}"; do
+            read -r source mirror <<< "$pair"
+            copied=0
+            # The source registry is the one that rate-limits, so a failed pull is retried a few times.
+            for attempt in 1 2 3 4 5 6; do
+              if printf 'FROM %s\n' "$source" | docker buildx build --platform linux/amd64 --push \
+                --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+                -t "$mirror" -; then
+                copied=1
+                break
+              fi
+              echo "attempt $attempt for $source failed; waiting"
+              sleep 30
+            done
+            if [ "$copied" = 1 ]; then echo "copied $source to $mirror"; else echo "::error::could not copy $source"; failed=1; fi
+          done
+          exit "$failed"
