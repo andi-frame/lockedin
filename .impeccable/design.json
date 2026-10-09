@@ -1,0 +1,512 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-09T04:30:27+00:00",
+  "title": "Design System: Tepati",
+  "extensions": {
+    "colorMeta": {
+      "ground": {
+        "role": "neutral",
+        "displayName": "Security Paper",
+        "canonical": "oklch(0.966 0.007 145.5)",
+        "dark": "oklch(0.185 0.02 200)",
+        "tonalRamp": [
+          "oklch(0.15 0.007 145.5)",
+          "oklch(0.27 0.007 145.5)",
+          "oklch(0.39 0.007 145.5)",
+          "oklch(0.51 0.007 145.5)",
+          "oklch(0.63 0.007 145.5)",
+          "oklch(0.75 0.007 145.5)",
+          "oklch(0.87 0.007 145.5)",
+          "oklch(0.95 0.007 145.5)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Paper Surface",
+        "canonical": "oklch(0.985 0.004 145)",
+        "dark": "oklch(0.225 0.022 200)",
+        "tonalRamp": [
+          "oklch(0.15 0.004 145)",
+          "oklch(0.27 0.004 145)",
+          "oklch(0.39 0.004 145)",
+          "oklch(0.51 0.004 145)",
+          "oklch(0.63 0.004 145)",
+          "oklch(0.75 0.004 145)",
+          "oklch(0.87 0.004 145)",
+          "oklch(0.95 0.004 145)"
+        ]
+      },
+      "sunken": {
+        "role": "neutral",
+        "displayName": "Sunken Paper",
+        "canonical": "oklch(0.94 0.009 150)",
+        "dark": "oklch(0.16 0.02 200)",
+        "tonalRamp": [
+          "oklch(0.15 0.009 150)",
+          "oklch(0.27 0.009 150)",
+          "oklch(0.39 0.009 150)",
+          "oklch(0.51 0.009 150)",
+          "oklch(0.63 0.009 150)",
+          "oklch(0.75 0.009 150)",
+          "oklch(0.87 0.009 150)",
+          "oklch(0.95 0.009 150)"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Hairline Rule",
+        "canonical": "oklch(0.867 0.013 172.3)",
+        "dark": "oklch(0.32 0.02 195)",
+        "tonalRamp": [
+          "oklch(0.15 0.013 172.3)",
+          "oklch(0.27 0.013 172.3)",
+          "oklch(0.39 0.013 172.3)",
+          "oklch(0.51 0.013 172.3)",
+          "oklch(0.63 0.013 172.3)",
+          "oklch(0.75 0.013 172.3)",
+          "oklch(0.87 0.013 172.3)",
+          "oklch(0.95 0.013 172.3)"
+        ]
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Strong Rule",
+        "canonical": "oklch(0.6 0.02 180)",
+        "dark": "oklch(0.52 0.03 190)",
+        "tonalRamp": [
+          "oklch(0.15 0.020 180)",
+          "oklch(0.27 0.020 180)",
+          "oklch(0.39 0.020 180)",
+          "oklch(0.51 0.020 180)",
+          "oklch(0.63 0.020 180)",
+          "oklch(0.75 0.020 180)",
+          "oklch(0.87 0.020 180)",
+          "oklch(0.95 0.020 180)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(0.244 0.025 191.3)",
+        "dark": "oklch(0.93 0.022 95)",
+        "tonalRamp": [
+          "oklch(0.15 0.025 191.3)",
+          "oklch(0.27 0.025 191.3)",
+          "oklch(0.39 0.025 191.3)",
+          "oklch(0.51 0.025 191.3)",
+          "oklch(0.63 0.025 191.3)",
+          "oklch(0.75 0.025 191.3)",
+          "oklch(0.87 0.025 191.3)",
+          "oklch(0.95 0.025 191.3)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "oklch(0.44 0.02 190)",
+        "dark": "oklch(0.75 0.02 170)",
+        "tonalRamp": [
+          "oklch(0.15 0.020 190)",
+          "oklch(0.27 0.020 190)",
+          "oklch(0.39 0.020 190)",
+          "oklch(0.51 0.020 190)",
+          "oklch(0.63 0.020 190)",
+          "oklch(0.75 0.020 190)",
+          "oklch(0.87 0.020 190)",
+          "oklch(0.95 0.020 190)"
+        ]
+      },
+      "cover": {
+        "role": "primary",
+        "displayName": "Passbook Cover Teal",
+        "canonical": "oklch(0.322 0.048 192.9)",
+        "dark": "oklch(0.25 0.04 195)",
+        "tonalRamp": [
+          "oklch(0.15 0.048 192.9)",
+          "oklch(0.27 0.048 192.9)",
+          "oklch(0.39 0.048 192.9)",
+          "oklch(0.51 0.048 192.9)",
+          "oklch(0.63 0.048 192.9)",
+          "oklch(0.75 0.048 192.9)",
+          "oklch(0.87 0.048 192.9)",
+          "oklch(0.95 0.048 192.9)"
+        ]
+      },
+      "cover-ink": {
+        "role": "neutral",
+        "displayName": "Cover Ink",
+        "canonical": "oklch(0.955 0.012 150)",
+        "dark": "oklch(0.95 0.012 150)",
+        "tonalRamp": [
+          "oklch(0.15 0.012 150)",
+          "oklch(0.27 0.012 150)",
+          "oklch(0.39 0.012 150)",
+          "oklch(0.51 0.012 150)",
+          "oklch(0.63 0.012 150)",
+          "oklch(0.75 0.012 150)",
+          "oklch(0.87 0.012 150)",
+          "oklch(0.95 0.012 150)"
+        ]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Primary Teal",
+        "canonical": "oklch(0.322 0.048 192.9)",
+        "dark": "oklch(0.74 0.085 186)",
+        "tonalRamp": [
+          "oklch(0.15 0.048 192.9)",
+          "oklch(0.27 0.048 192.9)",
+          "oklch(0.39 0.048 192.9)",
+          "oklch(0.51 0.048 192.9)",
+          "oklch(0.63 0.048 192.9)",
+          "oklch(0.75 0.048 192.9)",
+          "oklch(0.87 0.048 192.9)",
+          "oklch(0.95 0.048 192.9)"
+        ]
+      },
+      "teal-tint": {
+        "role": "primary",
+        "displayName": "Teal Tint",
+        "canonical": "oklch(0.93 0.02 185)",
+        "dark": "oklch(0.3 0.04 190)",
+        "tonalRamp": [
+          "oklch(0.15 0.020 185)",
+          "oklch(0.27 0.020 185)",
+          "oklch(0.39 0.020 185)",
+          "oklch(0.51 0.020 185)",
+          "oklch(0.63 0.020 185)",
+          "oklch(0.75 0.020 185)",
+          "oklch(0.87 0.020 185)",
+          "oklch(0.95 0.020 185)"
+        ]
+      },
+      "teal-text": {
+        "role": "primary",
+        "displayName": "Teal Text",
+        "canonical": "oklch(0.322 0.048 192.9)",
+        "dark": "oklch(0.84 0.07 186)",
+        "tonalRamp": [
+          "oklch(0.15 0.048 192.9)",
+          "oklch(0.27 0.048 192.9)",
+          "oklch(0.39 0.048 192.9)",
+          "oklch(0.51 0.048 192.9)",
+          "oklch(0.63 0.048 192.9)",
+          "oklch(0.75 0.048 192.9)",
+          "oklch(0.87 0.048 192.9)",
+          "oklch(0.95 0.048 192.9)"
+        ]
+      },
+      "debit": {
+        "role": "semantic",
+        "displayName": "Debit Red",
+        "canonical": "oklch(0.5 0.182 29.5)",
+        "dark": "oklch(0.74 0.14 25)",
+        "tonalRamp": [
+          "oklch(0.15 0.182 29.5)",
+          "oklch(0.27 0.182 29.5)",
+          "oklch(0.39 0.182 29.5)",
+          "oklch(0.51 0.182 29.5)",
+          "oklch(0.63 0.182 29.5)",
+          "oklch(0.75 0.182 29.5)",
+          "oklch(0.87 0.182 29.5)",
+          "oklch(0.95 0.182 29.5)"
+        ]
+      },
+      "credit": {
+        "role": "semantic",
+        "displayName": "Credit Green",
+        "canonical": "oklch(0.491 0.09 172.2)",
+        "dark": "oklch(0.78 0.11 165)",
+        "tonalRamp": [
+          "oklch(0.15 0.090 172.2)",
+          "oklch(0.27 0.090 172.2)",
+          "oklch(0.39 0.090 172.2)",
+          "oklch(0.51 0.090 172.2)",
+          "oklch(0.63 0.090 172.2)",
+          "oklch(0.75 0.090 172.2)",
+          "oklch(0.87 0.090 172.2)",
+          "oklch(0.95 0.090 172.2)"
+        ]
+      },
+      "stamp": {
+        "role": "secondary",
+        "displayName": "Stamp Violet",
+        "canonical": "oklch(0.457 0.215 277)",
+        "dark": "oklch(0.56 0.2 277)",
+        "tonalRamp": [
+          "oklch(0.15 0.200 277)",
+          "oklch(0.27 0.200 277)",
+          "oklch(0.39 0.200 277)",
+          "oklch(0.51 0.200 277)",
+          "oklch(0.63 0.200 277)",
+          "oklch(0.75 0.200 277)",
+          "oklch(0.87 0.200 277)",
+          "oklch(0.95 0.200 277)"
+        ]
+      },
+      "stamp-tint": {
+        "role": "secondary",
+        "displayName": "Stamp Tint",
+        "canonical": "oklch(0.94 0.025 277)",
+        "dark": "oklch(0.3 0.07 277)",
+        "tonalRamp": [
+          "oklch(0.15 0.025 277)",
+          "oklch(0.27 0.025 277)",
+          "oklch(0.39 0.025 277)",
+          "oklch(0.51 0.025 277)",
+          "oklch(0.63 0.025 277)",
+          "oklch(0.75 0.025 277)",
+          "oklch(0.87 0.025 277)",
+          "oklch(0.95 0.025 277)"
+        ]
+      },
+      "today": {
+        "role": "tertiary",
+        "displayName": "Highlighter Yellow",
+        "canonical": "oklch(0.924 0.115 95.7)",
+        "dark": "oklch(0.86 0.11 95.7)",
+        "tonalRamp": [
+          "oklch(0.15 0.115 95.7)",
+          "oklch(0.27 0.115 95.7)",
+          "oklch(0.39 0.115 95.7)",
+          "oklch(0.51 0.115 95.7)",
+          "oklch(0.63 0.115 95.7)",
+          "oklch(0.75 0.115 95.7)",
+          "oklch(0.87 0.115 95.7)",
+          "oklch(0.95 0.115 95.7)"
+        ]
+      },
+      "member-a": {
+        "role": "tertiary",
+        "displayName": "Member Teal",
+        "canonical": "oklch(0.511 0.086 186.4)",
+        "dark": "oklch(0.76 0.1 186)",
+        "tonalRamp": [
+          "oklch(0.15 0.086 186.4)",
+          "oklch(0.27 0.086 186.4)",
+          "oklch(0.39 0.086 186.4)",
+          "oklch(0.51 0.086 186.4)",
+          "oklch(0.63 0.086 186.4)",
+          "oklch(0.75 0.086 186.4)",
+          "oklch(0.87 0.086 186.4)",
+          "oklch(0.95 0.086 186.4)"
+        ]
+      },
+      "member-b": {
+        "role": "tertiary",
+        "displayName": "Member Berry",
+        "canonical": "oklch(0.459 0.17 3.8)",
+        "dark": "oklch(0.74 0.15 5)",
+        "tonalRamp": [
+          "oklch(0.15 0.170 3.8)",
+          "oklch(0.27 0.170 3.8)",
+          "oklch(0.39 0.170 3.8)",
+          "oklch(0.51 0.170 3.8)",
+          "oklch(0.63 0.170 3.8)",
+          "oklch(0.75 0.170 3.8)",
+          "oklch(0.87 0.170 3.8)",
+          "oklch(0.95 0.170 3.8)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The page title (h1) on app screens."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section titles (h2)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running text and list rows."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Chips, column heads, hints."
+      },
+      "amount": {
+        "displayName": "Amount",
+        "purpose": "The saldo and settlement amounts, in tabular mono."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "Dates, times, counts and countdown cells, in tabular mono."
+      }
+    },
+    "shadows": [
+      {
+        "name": "panel",
+        "value": "0 1px 2px oklch(0.25 0.04 195 / 0.1)",
+        "purpose": "A rare raised panel; surfaces are flat at rest."
+      },
+      {
+        "name": "overlay",
+        "value": "0 2px 4px oklch(0.25 0.04 195 / 0.08), 0 16px 40px -8px oklch(0.25 0.04 195 / 0.28)",
+        "purpose": "Dialogs, sheets and menus floating over the page."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-quint",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Overlays, dialogs, sheets and toasts entering."
+      },
+      {
+        "name": "print-line",
+        "value": "240ms slide",
+        "purpose": "A new passbook line slides in under the last one."
+      },
+      {
+        "name": "print-digits",
+        "value": "320ms typing",
+        "purpose": "The line's digits type in left to right; the saldo then rolls to its new value."
+      },
+      {
+        "name": "state",
+        "value": "150ms ease-out",
+        "purpose": "Colour and border changes on controls."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0ms",
+        "purpose": "Every duration and delay is zero; the result appears at once."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The main action of a screen, such as Kirim bukti. Cover teal.",
+      "html": "<button class=\"ds-btn-primary\">Kirim bukti</button>",
+      "css": ":host{--color-ground:oklch(0.966 0.007 145.5);--color-surface:oklch(0.985 0.004 145);--color-sunken:oklch(0.94 0.009 150);--color-rule:oklch(0.867 0.013 172.3);--color-rule-strong:oklch(0.6 0.02 180);--color-ink:oklch(0.244 0.025 191.3);--color-muted:oklch(0.44 0.02 190);--color-cover:oklch(0.322 0.048 192.9);--color-cover-ink:oklch(0.955 0.012 150);--color-primary:oklch(0.322 0.048 192.9);--color-primary-foreground:oklch(0.955 0.012 150);--color-stamp:oklch(0.457 0.215 277);--color-stamp-foreground:oklch(0.985 0.004 277);--color-stamp-tint:oklch(0.94 0.025 277);--color-stamp-text:oklch(0.457 0.215 277);--color-teal-tint:oklch(0.93 0.02 185);--color-debit:oklch(0.5 0.182 29.5);--color-credit:oklch(0.491 0.09 172.2);--color-today:oklch(0.924 0.115 95.7);--color-today-ink:oklch(0.244 0.025 191.3);--color-member-a:oklch(0.511 0.086 186.4);--color-member-b:oklch(0.459 0.17 3.8);font-family:Geist,ui-sans-serif,system-ui,sans-serif;font-size:15px;color:var(--color-ink)}.ds-btn-primary{height:44px;padding:0 16px;border:0;border-radius:6px;background:var(--color-primary);color:var(--color-primary-foreground);font:500 15px/1 inherit;font-family:inherit;cursor:pointer;transition:background-color 150ms ease-out,transform 150ms ease-out}.ds-btn-primary:hover{background:oklch(0.27 0.045 193)}.ds-btn-primary:active{transform:translateY(1px)}.ds-btn-primary:focus-visible{outline:2px solid oklch(0.45 0.07 190);outline-offset:2px}"
+    },
+    {
+      "name": "Decision Button",
+      "kind": "button",
+      "refersTo": "button-decision",
+      "description": "A human decision: approve, mark paid, confirm receipt. Stamp violet, used for nothing else.",
+      "html": "<button class=\"ds-btn-decision\">Setujui</button> <button class=\"ds-btn-decision-quiet\">Tolak</button>",
+      "css": ":host{--color-ground:oklch(0.966 0.007 145.5);--color-surface:oklch(0.985 0.004 145);--color-sunken:oklch(0.94 0.009 150);--color-rule:oklch(0.867 0.013 172.3);--color-rule-strong:oklch(0.6 0.02 180);--color-ink:oklch(0.244 0.025 191.3);--color-muted:oklch(0.44 0.02 190);--color-cover:oklch(0.322 0.048 192.9);--color-cover-ink:oklch(0.955 0.012 150);--color-primary:oklch(0.322 0.048 192.9);--color-primary-foreground:oklch(0.955 0.012 150);--color-stamp:oklch(0.457 0.215 277);--color-stamp-foreground:oklch(0.985 0.004 277);--color-stamp-tint:oklch(0.94 0.025 277);--color-stamp-text:oklch(0.457 0.215 277);--color-teal-tint:oklch(0.93 0.02 185);--color-debit:oklch(0.5 0.182 29.5);--color-credit:oklch(0.491 0.09 172.2);--color-today:oklch(0.924 0.115 95.7);--color-today-ink:oklch(0.244 0.025 191.3);--color-member-a:oklch(0.511 0.086 186.4);--color-member-b:oklch(0.459 0.17 3.8);font-family:Geist,ui-sans-serif,system-ui,sans-serif;font-size:15px;color:var(--color-ink)}.ds-btn-decision,.ds-btn-decision-quiet{height:44px;padding:0 16px;border-radius:6px;font:500 15px/1 inherit;font-family:inherit;cursor:pointer;transition:background-color 150ms ease-out}.ds-btn-decision{border:0;background:var(--color-stamp);color:var(--color-stamp-foreground)}.ds-btn-decision:hover{background:oklch(0.4 0.2 277)}.ds-btn-decision-quiet{border:1px solid var(--color-stamp);background:var(--color-surface);color:var(--color-stamp-text)}.ds-btn-decision-quiet:hover{background:var(--color-stamp-tint)}.ds-btn-decision:focus-visible,.ds-btn-decision-quiet:focus-visible{outline:2px solid oklch(0.45 0.07 190);outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A quieter action next to the primary one, such as Ambil hari jeda.",
+      "html": "<button class=\"ds-btn-secondary\">Ambil hari jeda</button>",
+      "css": ":host{--color-ground:oklch(0.966 0.007 145.5);--color-surface:oklch(0.985 0.004 145);--color-sunken:oklch(0.94 0.009 150);--color-rule:oklch(0.867 0.013 172.3);--color-rule-strong:oklch(0.6 0.02 180);--color-ink:oklch(0.244 0.025 191.3);--color-muted:oklch(0.44 0.02 190);--color-cover:oklch(0.322 0.048 192.9);--color-cover-ink:oklch(0.955 0.012 150);--color-primary:oklch(0.322 0.048 192.9);--color-primary-foreground:oklch(0.955 0.012 150);--color-stamp:oklch(0.457 0.215 277);--color-stamp-foreground:oklch(0.985 0.004 277);--color-stamp-tint:oklch(0.94 0.025 277);--color-stamp-text:oklch(0.457 0.215 277);--color-teal-tint:oklch(0.93 0.02 185);--color-debit:oklch(0.5 0.182 29.5);--color-credit:oklch(0.491 0.09 172.2);--color-today:oklch(0.924 0.115 95.7);--color-today-ink:oklch(0.244 0.025 191.3);--color-member-a:oklch(0.511 0.086 186.4);--color-member-b:oklch(0.459 0.17 3.8);font-family:Geist,ui-sans-serif,system-ui,sans-serif;font-size:15px;color:var(--color-ink)}.ds-btn-secondary{height:44px;padding:0 16px;border:1px solid var(--color-rule-strong);border-radius:6px;background:var(--color-surface);color:var(--color-ink);font:500 15px/1 inherit;font-family:inherit;cursor:pointer;transition:background-color 150ms ease-out}.ds-btn-secondary:hover{background:var(--color-sunken)}.ds-btn-secondary:focus-visible{outline:2px solid oklch(0.45 0.07 190);outline-offset:2px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A labelled field with a hint, 44px tall, with a focus ring.",
+      "html": "<label class=\"ds-label\">Nama kontrak<span class=\"ds-hint\">Contoh: Latihan soal UTBK bulan November</span><input class=\"ds-input\" value=\"Latihan soal UTBK\"></label>",
+      "css": ":host{--color-ground:oklch(0.966 0.007 145.5);--color-surface:oklch(0.985 0.004 145);--color-sunken:oklch(0.94 0.009 150);--color-rule:oklch(0.867 0.013 172.3);--color-rule-strong:oklch(0.6 0.02 180);--color-ink:oklch(0.244 0.025 191.3);--color-muted:oklch(0.44 0.02 190);--color-cover:oklch(0.322 0.048 192.9);--color-cover-ink:oklch(0.955 0.012 150);--color-primary:oklch(0.322 0.048 192.9);--color-primary-foreground:oklch(0.955 0.012 150);--color-stamp:oklch(0.457 0.215 277);--color-stamp-foreground:oklch(0.985 0.004 277);--color-stamp-tint:oklch(0.94 0.025 277);--color-stamp-text:oklch(0.457 0.215 277);--color-teal-tint:oklch(0.93 0.02 185);--color-debit:oklch(0.5 0.182 29.5);--color-credit:oklch(0.491 0.09 172.2);--color-today:oklch(0.924 0.115 95.7);--color-today-ink:oklch(0.244 0.025 191.3);--color-member-a:oklch(0.511 0.086 186.4);--color-member-b:oklch(0.459 0.17 3.8);font-family:Geist,ui-sans-serif,system-ui,sans-serif;font-size:15px;color:var(--color-ink)}.ds-label{display:grid;gap:4px;font:500 14px/1.25 inherit;font-family:inherit}.ds-hint{font-weight:400;color:var(--color-muted)}.ds-input{height:44px;padding:0 12px;border:1px solid var(--color-rule-strong);border-radius:6px;background:var(--color-surface);color:var(--color-ink);font:15px inherit;font-family:inherit}.ds-input:hover{border-color:oklch(0.244 0.025 191.3 / .6)}.ds-input:focus-visible{outline:2px solid oklch(0.45 0.07 190);outline-offset:0;border-color:oklch(0.45 0.07 190)}"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "badge-stamp",
+      "description": "A status as icon plus word. Violet only when a person decided (Disetujui); red when coins moved (Terlewat).",
+      "html": "<span class=\"ds-chip ds-chip-stamp\">Disetujui</span> <span class=\"ds-chip ds-chip-debit\">Terlewat</span> <span class=\"ds-chip ds-chip-quiet\">Terbuka</span>",
+      "css": ":host{--color-ground:oklch(0.966 0.007 145.5);--color-surface:oklch(0.985 0.004 145);--color-sunken:oklch(0.94 0.009 150);--color-rule:oklch(0.867 0.013 172.3);--color-rule-strong:oklch(0.6 0.02 180);--color-ink:oklch(0.244 0.025 191.3);--color-muted:oklch(0.44 0.02 190);--color-cover:oklch(0.322 0.048 192.9);--color-cover-ink:oklch(0.955 0.012 150);--color-primary:oklch(0.322 0.048 192.9);--color-primary-foreground:oklch(0.955 0.012 150);--color-stamp:oklch(0.457 0.215 277);--color-stamp-foreground:oklch(0.985 0.004 277);--color-stamp-tint:oklch(0.94 0.025 277);--color-stamp-text:oklch(0.457 0.215 277);--color-teal-tint:oklch(0.93 0.02 185);--color-debit:oklch(0.5 0.182 29.5);--color-credit:oklch(0.491 0.09 172.2);--color-today:oklch(0.924 0.115 95.7);--color-today-ink:oklch(0.244 0.025 191.3);--color-member-a:oklch(0.511 0.086 186.4);--color-member-b:oklch(0.459 0.17 3.8);font-family:Geist,ui-sans-serif,system-ui,sans-serif;font-size:15px;color:var(--color-ink)}.ds-chip{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border:1px solid transparent;border-radius:6px;font:500 13px/20px inherit;font-family:inherit}.ds-chip-stamp{border-color:var(--color-stamp-text);background:var(--color-stamp-tint);color:var(--color-stamp-text)}.ds-chip-debit{background:oklch(0.95 0.022 25);color:var(--color-debit)}.ds-chip-quiet{border-color:var(--color-rule);background:var(--color-sunken);color:var(--color-muted)}"
+    },
+    {
+      "name": "Header Band",
+      "kind": "custom",
+      "refersTo": "header-band",
+      "description": "The cover-teal band with the guilloche: title, today's date in highlighter yellow, and the countdown in fixed mono cells.",
+      "html": "<header class=\"ds-band\"><h1>Hari ini</h1><span class=\"ds-today\">Jumat, 9 Oktober</span><p class=\"ds-count\"><b>13</b>:<b>12</b>:<b>59</b> lagi</p></header>",
+      "css": ":host{--color-ground:oklch(0.966 0.007 145.5);--color-surface:oklch(0.985 0.004 145);--color-sunken:oklch(0.94 0.009 150);--color-rule:oklch(0.867 0.013 172.3);--color-rule-strong:oklch(0.6 0.02 180);--color-ink:oklch(0.244 0.025 191.3);--color-muted:oklch(0.44 0.02 190);--color-cover:oklch(0.322 0.048 192.9);--color-cover-ink:oklch(0.955 0.012 150);--color-primary:oklch(0.322 0.048 192.9);--color-primary-foreground:oklch(0.955 0.012 150);--color-stamp:oklch(0.457 0.215 277);--color-stamp-foreground:oklch(0.985 0.004 277);--color-stamp-tint:oklch(0.94 0.025 277);--color-stamp-text:oklch(0.457 0.215 277);--color-teal-tint:oklch(0.93 0.02 185);--color-debit:oklch(0.5 0.182 29.5);--color-credit:oklch(0.491 0.09 172.2);--color-today:oklch(0.924 0.115 95.7);--color-today-ink:oklch(0.244 0.025 191.3);--color-member-a:oklch(0.511 0.086 186.4);--color-member-b:oklch(0.459 0.17 3.8);font-family:Geist,ui-sans-serif,system-ui,sans-serif;font-size:15px;color:var(--color-ink)}.ds-band{padding:24px 28px;border-radius:10px;background-color:var(--color-cover);color:var(--color-cover-ink);background-image:repeating-radial-gradient(circle at 18% 120%,transparent 0 11px,oklch(0.955 0.012 150 / .09) 11px 12px),repeating-radial-gradient(circle at 82% -30%,transparent 0 11px,oklch(0.955 0.012 150 / .09) 11px 12px)}.ds-band h1{display:inline;margin:0 16px 0 0;font-size:30px;font-weight:600;letter-spacing:-.025em}.ds-today{padding:4px 10px;border-radius:6px;background:var(--color-today);color:var(--color-today-ink);font-weight:500;font-size:14px}.ds-count{margin:16px 0 0;font-family:Geist Mono,ui-monospace,monospace;font-size:13px}.ds-count b{display:inline-block;width:1.7ch;font-size:32px;font-weight:600;text-align:center;background:oklch(1 0 0 / .08);border-radius:6px}"
+    },
+    {
+      "name": "Passbook Lines",
+      "kind": "custom",
+      "refersTo": "panel",
+      "description": "The coin book: date, description, debit, credit and saldo as printed lines with hairlines, amounts in tabular mono with sign and D/K labels.",
+      "html": "<table class=\"ds-book\"><thead><tr><th>Tanggal</th><th>Keterangan</th><th class=\"r\">Debit</th><th class=\"r\">Kredit</th><th class=\"r\">Saldo</th></tr></thead><tbody><tr><td>9 Okt</td><td>Terlewat 9 Okt</td><td class=\"r debit\">&minus;50</td><td></td><td class=\"r\">950</td></tr><tr><td>9 Okt</td><td>Pot awal</td><td></td><td class=\"r credit\">+1.000</td><td class=\"r\">1.000</td></tr></tbody></table>",
+      "css": ":host{--color-ground:oklch(0.966 0.007 145.5);--color-surface:oklch(0.985 0.004 145);--color-sunken:oklch(0.94 0.009 150);--color-rule:oklch(0.867 0.013 172.3);--color-rule-strong:oklch(0.6 0.02 180);--color-ink:oklch(0.244 0.025 191.3);--color-muted:oklch(0.44 0.02 190);--color-cover:oklch(0.322 0.048 192.9);--color-cover-ink:oklch(0.955 0.012 150);--color-primary:oklch(0.322 0.048 192.9);--color-primary-foreground:oklch(0.955 0.012 150);--color-stamp:oklch(0.457 0.215 277);--color-stamp-foreground:oklch(0.985 0.004 277);--color-stamp-tint:oklch(0.94 0.025 277);--color-stamp-text:oklch(0.457 0.215 277);--color-teal-tint:oklch(0.93 0.02 185);--color-debit:oklch(0.5 0.182 29.5);--color-credit:oklch(0.491 0.09 172.2);--color-today:oklch(0.924 0.115 95.7);--color-today-ink:oklch(0.244 0.025 191.3);--color-member-a:oklch(0.511 0.086 186.4);--color-member-b:oklch(0.459 0.17 3.8);font-family:Geist,ui-sans-serif,system-ui,sans-serif;font-size:15px;color:var(--color-ink)}.ds-book{width:100%;border-collapse:collapse;font-size:15px}.ds-book th{padding:8px 4px;border-bottom:1px solid var(--color-rule-strong);color:var(--color-muted);font-weight:500;font-size:13px;text-align:left}.ds-book td{padding:10px 4px;border-bottom:1px solid var(--color-rule);font-family:Geist Mono,ui-monospace,monospace;font-variant-numeric:tabular-nums}.ds-book td:nth-child(2){font-family:inherit}.ds-book .r{text-align:right}.ds-book .debit{color:var(--color-debit)}.ds-book .credit{color:var(--color-credit)}"
+    },
+    {
+      "name": "Member Line",
+      "kind": "custom",
+      "description": "A member: a fixed-colour initial plate and a name underlined in the same colour, with the role under it.",
+      "html": "<span class=\"ds-member\"><i class=\"ds-plate\">A(</i><span><u>Andi (buku)</u><small>Penyokong</small></span></span>",
+      "css": ":host{--color-ground:oklch(0.966 0.007 145.5);--color-surface:oklch(0.985 0.004 145);--color-sunken:oklch(0.94 0.009 150);--color-rule:oklch(0.867 0.013 172.3);--color-rule-strong:oklch(0.6 0.02 180);--color-ink:oklch(0.244 0.025 191.3);--color-muted:oklch(0.44 0.02 190);--color-cover:oklch(0.322 0.048 192.9);--color-cover-ink:oklch(0.955 0.012 150);--color-primary:oklch(0.322 0.048 192.9);--color-primary-foreground:oklch(0.955 0.012 150);--color-stamp:oklch(0.457 0.215 277);--color-stamp-foreground:oklch(0.985 0.004 277);--color-stamp-tint:oklch(0.94 0.025 277);--color-stamp-text:oklch(0.457 0.215 277);--color-teal-tint:oklch(0.93 0.02 185);--color-debit:oklch(0.5 0.182 29.5);--color-credit:oklch(0.491 0.09 172.2);--color-today:oklch(0.924 0.115 95.7);--color-today-ink:oklch(0.244 0.025 191.3);--color-member-a:oklch(0.511 0.086 186.4);--color-member-b:oklch(0.459 0.17 3.8);font-family:Geist,ui-sans-serif,system-ui,sans-serif;font-size:15px;color:var(--color-ink)}.ds-member{display:inline-flex;align-items:center;gap:8px}.ds-plate{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:6px;background:var(--color-member-a);color:oklch(0.985 0.004 186);font:600 12px Geist Mono,ui-monospace,monospace;font-style:normal}.ds-member u{text-decoration-color:var(--color-member-a);text-decoration-thickness:2px;text-underline-offset:4px;font-weight:500}.ds-member small{display:block;color:var(--color-muted);font-size:13px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Buku Tabungan",
+    "overview": "Tepati is a bank passbook for a promise between two students. Every coin that moves is a dated, printed line with a debit, a credit and the saldo after it, and the saldo is always the sum of the lines above it. A deep passbook-cover teal owns the shell on a cool mint security paper; stamp violet, highlighter yellow, debit and credit are meaning colours, never decoration; the dark theme is the same book under a desk lamp.",
+    "keyCharacteristics": [
+      "One teal cover colour for chrome; four meaning colours that are never decorative.",
+      "Geist for words, Geist Mono with tabular figures for every amount, date and countdown.",
+      "Radius 6px on controls and 10px on panels, nothing else.",
+      "Flat paper with hairline rules; a tinted shadow only on what floats.",
+      "The passbook print: a line slides in, its digits type, the saldo rolls."
+    ],
+    "rules": [
+      {
+        "name": "The Coins-Only Rule",
+        "body": "Red and green mean coins leaving and entering the pot. Never use them for a status, a check or a success message.",
+        "section": "colors"
+      },
+      {
+        "name": "The Stamp Rule",
+        "body": "Violet is reserved for a human decision. If no person decided anything, it is not violet.",
+        "section": "colors"
+      },
+      {
+        "name": "The Only-Today Rule",
+        "body": "Highlighter yellow marks today and nothing else.",
+        "section": "colors"
+      },
+      {
+        "name": "The Fixed Line Rule",
+        "body": "A member keeps the same line colour everywhere they appear.",
+        "section": "colors"
+      },
+      {
+        "name": "The Printed Number Rule",
+        "body": "Every amount, date and countdown is Geist Mono with tabular figures.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Paper Rule",
+        "body": "Surfaces are flat at rest; depth appears only on what floats above the page.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do show a coin amount with its sign, the D or K label and the word.",
+      "Do set every number, date and countdown in Geist Mono with tabular figures.",
+      "Do keep violet for human decisions, yellow for today and the member colours fixed.",
+      "Do draw icons from Phosphor in one weight, and give each status an icon and a word.",
+      "Do underline text links; on touch there is no hover.",
+      "Do respect reduced motion."
+    ],
+    "donts": [
+      "Don't add streak flames, confetti, green-check heatmaps or gamified pastel cards.",
+      "Don't use red or green for anything but coins, or violet for anything a person did not decide.",
+      "Don't put the guilloche on the rail, panels or rows.",
+      "Don't nest cards, add kickers above headings, or use gradient text, hard offset shadows or emoji icons.",
+      "Don't compute the balance in the browser.",
+      "Don't introduce a third radius or a colour outside the tokens."
+    ]
+  }
+}
