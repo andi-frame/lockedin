@@ -47,7 +47,7 @@
   },
   "Common": {
     "close": "Tutup",
-    "loading": "Memuat",
+    "loading": "Memuat…",
     "dismissToast": "Tutup pemberitahuan"
   },
   "Status": {
@@ -98,7 +98,7 @@
     "hidePassword": "Sembunyikan kata sandi",
     "login": "Masuk",
     "register": "Buat akun",
-    "working": "Memproses",
+    "working": "Memproses…",
     "noAccount": "Belum punya akun?",
     "haveAccount": "Sudah punya akun?",
     "emailRequired": "Isi emailmu.",
@@ -121,7 +121,7 @@
     "notificationsUnread": "Notifikasi, {count} belum dibaca",
     "skip": "Lewati ke konten",
     "logout": "Keluar",
-    "loggingOut": "Sedang keluar"
+    "loggingOut": "Sedang keluar…"
   },
   "Today": {
     "title": "Hari ini",
@@ -138,7 +138,7 @@
     "restBody": "Hari ini tidak dihitung dan tanpa denda. Sisa hari jeda berkurang dari {left} jadi {after}. Ini tidak bisa dibatalkan.",
     "restCancel": "Batal",
     "restConfirm": "Ya, ambil hari jeda",
-    "restWorking": "Memproses",
+    "restWorking": "Memproses…",
     "restDone": "Hari jeda diambil.",
     "waitingReview": "Menunggu tinjauan {partner}. Kalau belum ditinjau sebelum {until}, bukti disetujui otomatis.",
     "words": "· {n} kata",
@@ -243,7 +243,7 @@
     "next": "Lanjut",
     "propose": "Ajukan kontrak",
     "save": "Simpan perubahan",
-    "sending": "Mengirim",
+    "sending": "Mengirim…",
     "fixFirst": "Ada isian yang perlu diperbaiki. Kami membawamu ke langkah itu.",
     "titleLabel": "Nama kontrak",
     "titleHint": "Contoh: Latihan soal UTBK bulan November",
@@ -435,7 +435,7 @@
     "remove": "Hapus {name}",
     "preparing": "Menyiapkan",
     "uploading": "Mengunggah {pct}%",
-    "processing": "Memproses di server",
+    "processing": "Memproses di server…",
     "ready": "Siap",
     "retry": "Coba lagi",
     "rejectedGeneric": "File ini ditolak.",
@@ -457,7 +457,7 @@
     "whyReady": "Semua syarat terpenuhi. Siap dikirim.",
     "send": "Kirim bukti",
     "update": "Simpan perubahan",
-    "sending": "Mengirim",
+    "sending": "Mengirim…",
     "cancel": "Batal",
     "sent": "Bukti terkirim.",
     "updated": "Bukti diperbarui."

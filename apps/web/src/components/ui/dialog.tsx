@@ -41,7 +41,7 @@ export function DialogContent({ className, children, ...props }: ComponentProps<
       <D.Overlay className={overlayClasses} />
       <D.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto",
+          "fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto overscroll-contain",
           "rounded-panel border border-rule-strong bg-surface p-5 pr-14 text-ink shadow-overlay",
           "data-[state=open]:motion-safe:animate-dialog-in data-[state=closed]:motion-safe:animate-dialog-out",
           className,

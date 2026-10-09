@@ -40,6 +40,8 @@ colors:
   today-dark: "oklch(0.86 0.11 95.7)"
   member-a-dark: "oklch(0.76 0.1 186)"
   member-b-dark: "oklch(0.74 0.15 5)"
+  selection: "oklch(0.85 0.06 188)"
+  selection-dark: "oklch(0.46 0.07 188)"
 typography:
   display:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
@@ -75,6 +77,26 @@ typography:
     fontWeight: 400
     lineHeight: 1.4
     fontFeature: "'tnum'"
+  small:
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.875rem"
+    fontWeight: 500
+    lineHeight: 1.45
+  micro:
+    fontFamily: "Geist Mono, ui-monospace, Cascadia Mono, monospace"
+    fontSize: "11px"
+    fontWeight: 600
+    lineHeight: 1
+  prose-heading:
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1.25rem"
+    fontWeight: 600
+    lineHeight: 1.4
+  prose-subheading:
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1.0625rem"
+    fontWeight: 600
+    lineHeight: 1.45
 rounded:
   control: "6px"
   panel: "10px"
@@ -167,6 +189,8 @@ Every colour is one `light-dark()` pair in `apps/web/src/styles/tokens.css`; the
 - **Rule** (`oklch(0.867 0.013 172.3)`) and **Rule Strong** (`oklch(0.6 0.02 180)`): hairlines between lines, and the border of controls.
 - **Debit Red** (`oklch(0.5 0.182 29.5)`) and **Credit Green** (`oklch(0.491 0.09 172.2)`): coins only. Never the only signal: a sign, the D or K label and the word travel with them.
 
+- **Selection Teal** (`oklch(0.85 0.06 188)` light, `oklch(0.46 0.07 188)` dark): the text-selection highlight, themed so it is not the browser blue.
+
 ### Named Rules
 **The Coins-Only Rule.** Red and green mean coins leaving and entering the pot. A status, a check mark or a success toast is never green or red for its own sake.
 **The Stamp Rule.** Violet is reserved for a human decision. If no person decided anything, the element is not violet.
@@ -188,6 +212,9 @@ Every colour is one `light-dark()` pair in `apps/web/src/styles/tokens.css`; the
 - **Label** (500, 13px): chips, column heads, hints.
 - **Amount** (Mono 600, up to 2.25rem): the saldo and settlement amounts, with the unit "koin" and the rupiah equivalent in smaller mono.
 - **Data** (Mono 400, 13px): dates, times, counts, countdown cells.
+- **Small** (500, 0.875rem, 1.45): secondary lines under a title, hints, compact list metadata.
+- **Micro** (Mono 600, 11px): the D and K marks on an amount and the unread count on the bell; nothing else is this small.
+- **Prose heading and subheading** (600, 1.25rem and 1.0625rem): headings inside a proof the doer wrote, in the editor and when it is read (`.proof-prose`).
 
 ### Named Rules
 **The Printed Number Rule.** Every amount, date and countdown is Geist Mono with tabular figures. Numbers are never set in the sans.

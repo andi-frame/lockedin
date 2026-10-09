@@ -183,7 +183,7 @@ function ReasonDialog({ action, checkInId, overridesRemaining }: { action: Exclu
             hint={t("reasonHint", { min: REASON_MIN })}
             error={reason !== "" && !state.ok ? (state.tooLong ? t("reasonTooLong", { max: REASON_MAX }) : t("reasonMissing", { n: state.missing })) : undefined}
           >
-            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} autoFocus rows={4} />
+            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} autoComplete="off" autoFocus rows={4} />
           </Field>
           <p className="-mt-2 font-mono text-[13px] tabular-nums text-muted">{t("reasonCount", { n: state.length, max: REASON_MAX })}</p>
 

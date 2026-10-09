@@ -12,6 +12,7 @@ import { unwrap } from "@/lib/api/unwrap";
 import { formErrorFromApi, validateLogin, type FormError as FormErrorState } from "@/lib/auth/forms";
 import { FormError, focusFirstInvalid } from "./form-error";
 import { PasswordInput } from "./password-input";
+import { useFocusOnDesktop } from "@/lib/use-focus-on-desktop";
 
 const none: FormErrorState = { fields: {} };
 
@@ -22,6 +23,7 @@ export function LoginForm({ next }: { next: string }) {
   const [error, setError] = useState<FormErrorState>(none);
   const [pending, setPending] = useState(false);
 
+  const emailRef = useFocusOnDesktop<HTMLInputElement>();
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
@@ -52,7 +54,7 @@ export function LoginForm({ next }: { next: string }) {
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
       <Field label={t("Auth.emailLabel")} error={error.fields.email ? t(error.fields.email) : undefined}>
-        <Input name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} autoFocus />
+        <Input name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} ref={emailRef} />
       </Field>
       <Field label={t("Auth.passwordLabel")} error={error.fields.password ? t(error.fields.password) : undefined}>
         <PasswordInput name="password" autoComplete="current-password" />
