@@ -55,6 +55,12 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+      # Most base images come through Google's Docker Hub mirror, which has no per-IP limit; an
+      # image it does not carry is still pulled from Docker Hub itself.
+      - name: Docker Hub mirror
+        run: |
+          echo '{"registry-mirrors":["https://mirror.gcr.io"]}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
       # Docker Hub limits anonymous pulls per IP and the runners share IPs, so a run can fail with
       # "toomanyrequests" before it tests anything (PLAN 9.8). Signed in, the limit is the account's.
       # Without the secrets (a fork's pull request) this is skipped and the pulls stay anonymous.
@@ -103,6 +109,12 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+      # Most base images come through Google's Docker Hub mirror, which has no per-IP limit; an
+      # image it does not carry is still pulled from Docker Hub itself.
+      - name: Docker Hub mirror
+        run: |
+          echo '{"registry-mirrors":["https://mirror.gcr.io"]}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
       # Docker Hub limits anonymous pulls per IP and the runners share IPs, so a run can fail with
       # "toomanyrequests" before it tests anything (PLAN 9.8). Signed in, the limit is the account's.
       # Without the secrets (a fork's pull request) this is skipped and the pulls stay anonymous.
