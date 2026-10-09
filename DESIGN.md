@@ -243,6 +243,7 @@ Two radii: 6px on controls, chips and cells; 10px on panels and header bands. Bo
 - **Primary:** cover teal fill with light text; the dark theme uses a light teal fill with dark text.
 - **Decision:** stamp violet fill (approve, mark paid, confirm); `decision-quiet` is an outlined violet version (reject, dispute).
 - **Secondary / Ghost:** surface with a strong rule; ghost has no border and a sunken hover.
+- **On cover (landing page only):** `onCover` is a light fill (the cover-ink colour) with cover-teal text, and `onCoverQuiet` an outlined version, because the teal primary would vanish on the teal band. They are used nowhere else.
 - **Disabled / Loading:** half opacity and no pointer; loading keeps the label and swaps the icon for a spinner.
 
 ### Chips and status

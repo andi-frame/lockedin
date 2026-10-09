@@ -6,7 +6,7 @@ Written 2026-10-08, after the preparation of task 9.1, by the agent that built P
 
 - **Tepati** is a study-pact app (two peers, a coin IOU ledger, daily proof). Folder name is `lockedin`; product name is Tepati.
 - **Done:** Phases 0 to 4 (the whole backend), **5.1** (the `apps/web` scaffold, PR #3), **5.2** (design tokens, dark desk-lamp theme, UI primitives, `/dev/kitchen-sink`, PR #4) **5.3** (auth guard `src/proxy.ts`, `/login`, `/register`, the signed-in shell, `auth.spec.ts`, PR #5) and **6.1** (the pact wizard, the agreement page and the invite flow, PR #6) **6.2** (the Today screen, PR #7) **6.3** (the proof editor and submission, PR #8) and **6.4** (the pact page with the coin book and calendar, PR #9) and **6.5** (the review queue and the check-in detail, PR #10) and **6.6** (the settlement and payout screens, PR #11) and **6.7** (the notifications inbox and settings, PR #12, which closes Phase 6) and **7.1** (the Dockerfiles, PR #13) and **7.2** (compose, Caddy, deploy scripts, backups, PR #14) and **7.3** (native mode polish, PR #15, which closes Phase 7) and **8.1** (CI, PR #16, green on GitHub) and **8.2** (the design finish review and `DESIGN.md`, PR #17) and **8.3** (the web-design-guidelines audit, PR #18) and **8.4** (the load test, PR #19) and **8.5** (the security review, PR #20, which closes Phase 8). The preparation of **9.1** (the runbook and the restore drill, with no server) is on branch `p9.1-staging`, committed, **not pushed or merged**; the deploy itself is not done.
-- **Next task:** `docs/PLAN.md` **9.1 Deploy to a VPS** (prepared; it needs the owner's server, domain and SMTP) and **9.2 the landing page** (does not need a server; a design round with its own brief). Playbook in §9.
+- **Next task:** `docs/PLAN.md` **9.1 Deploy to a VPS** (prepared; it needs the owner's server, domain and SMTP) (9.2, the landing page, is done). Playbook in §9.
 - **Phases 2 to 4 are merged into `main`** (pull request #1, https://github.com/andi-frame/lockedin/pull/1, merge commit `054e61a`, 2026-10-08, not squashed). `origin` is `https://github.com/andi-frame/lockedin.git`. The seven task branches (`p2.1-openapi` ... `p4.2-uploads`) were deleted on 2026-10-08 at the owner's request; their commits are in `main`. Do not delete branches unasked. The owner asked for the push and the merge explicitly each time: push, open PRs and merge only when they ask, and never force-push.
 - **First three commands in a new Git Bash terminal:**
 
@@ -159,14 +159,14 @@ Phases 0 and 1 (repository foundation, schema, domain rules, services) are on `m
 
 If your tool wants its own instruction file (`GEMINI.md`, `.codex/...`), make it a short pointer to `AGENTS.md` and this file. Do not copy rules into several places; they drift.
 
-## 9. Playbook for the next task: 9.1 on a real server, and 9.2
+## 9. Playbook for the next task: 9.1 on a real server
 
 **9.1 is prepared, not done.** `docs/RUNBOOK.md` is the script: read it first. What is verified: the first deploy, update, scaling and backup on a local staging stack (`DOMAIN=localhost`), and the restore drill, including the way back. What is not: anything on a real server (DNS, a Let's Encrypt certificate, real SMTP, the drill on the server, off-host copies). Ask the owner for: the host (or access to it), the domain and DNS control, the SMTP provider and sender, and where to copy the dumps. If the owner would rather run the commands themselves, give them the runbook sections 2, 3 and 6 in order and read the output they paste; `deploy:up` prints what is wrong with an env file before it does anything.
 
 1. `git checkout main && git pull --ff-only && git checkout -b p9.1-deploy` (the preparation is on `p9.1-staging` until it is merged). CI runs on every pull request; keep it green.
 2. After the real deploy: tick 9.1 in PLAN with the date, the host class and the drill's result, and write the drill's date in RUNBOOK section 6. Anything the real server taught you goes into the runbook's troubleshooting table.
 
-**9.2 the landing page** is a Persuade surface: `/impeccable shape landing` gets its own surface brief and direction round (the app shell's contract does not cover it; see the "Unresolved" line of `.impeccable/surfaces/apps-web-src-app-app.md`). It needs the owner's answers to the shape questions (who it is for and what a first-time visitor should do), PRODUCT.md and `DESIGN.md` as the world to extend, and the same finish review as 8.2. Do not start it in the same session as the deploy unless asked.
+**9.2 the landing page is done** (`/`, see PLAN 9.2 and the brief in `.impeccable/surfaces/apps-web-src-app-page-tsx.md`). Screenshots of a UI change: the Playwright MCP may fail to connect; a throwaway Bun script using `chromium` from `@playwright/test` in `apps/web` works (delete it after).
 
 The owner's other open questions (§10) still stand: `PATCH /me` and notification preferences, and the `starts_on` rule.
 
