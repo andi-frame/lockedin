@@ -138,6 +138,8 @@ For a machine where Docker is not an option. Postgres and Redis run on the host,
 | `integration` | `bun run setup`, `bun run infra:up`, `bun run test:integration` | the same Docker infra as local development (Postgres, Redis, Garage, Mailpit) |
 | `e2e` | `deploy:env-local`, `deploy:build -- --env staging`, `deploy:up -- --env staging`, `test:e2e` with `TEPATI_CTL_PROJECT=staging E2E_BASE_URL=https://localhost E2E_API_URL=https://localhost` | the built images behind Caddy, seeded through the api container; uploads `apps/web/test-results` and the stack logs on failure; Playwright retries once on CI and reports a retried test as flaky |
 
+**Docker Hub secrets.** The `integration` and `e2e` jobs pull `postgres`, `redis`, `golang` and other base images, and Docker Hub limits anonymous pulls per IP while GitHub's runners share IPs, so a run can fail with `toomanyrequests` before it tests anything. Both jobs sign in with `docker/login-action` when the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` exist (a free Docker Hub account and a personal access token with read-only access are enough). Without the secrets, for example in a fork's pull request, the step is skipped and the pulls stay anonymous. If a run fails with `toomanyrequests`, check that both secrets are set and that the token has not expired.
+
 To reproduce the `e2e` job on a laptop, run those four commands in order (delete `deploy/env/.env.staging` first if it exists, and `docker compose -p tepati-staging ... down -v` if an older stack left volumes behind, because the new secrets will not match the old database).
 
 ## 9. Load test

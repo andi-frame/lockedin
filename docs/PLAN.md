@@ -298,6 +298,8 @@ Each task's Done when includes: loading, empty, and error states; Indonesian cop
   - **Verify:** `bun run lint`, `bun run test` and `bun run test:integration` pass, with new tests: `TestStartHasPassed` (domain), `TestStartDatePassedStopsTheFlow` (service, real Postgres: refused at create, on the 3rd after the backer signed on the 2nd, on propose and on edit into the past, nothing scheduled, and moving the dates later works), and a 409 case in the HTTP tests. Server tests use a fake clock, so none of them depends on today's date.
   - Ruling: SPEC did not answer this, so the conservative reading was taken (refuse, rather than shift the schedule or skip the overdue days, which would change what both people agreed to). The cost if wrong: a pair who sign a day late must edit the dates and sign again. Not done: the web does not warn before the signing screen that the date has passed; the server's message appears when they try to sign.
 
+- [ ] **9.8 CI signs in to Docker Hub** (`p9.8-ci-dockerhub-login`): PR #27's `integration` and `e2e` jobs failed three times, and after waiting, with `toomanyrequests: You have reached your unauthenticated pull rate limit` while pulling `postgres`, `redis` and `golang`: Docker Hub limits anonymous pulls per IP and GitHub's runners share IPs. Both jobs now run `docker/login-action` first, with the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`; without them (a fork's pull request) the step is skipped and nothing else changes. **Stays unchecked until the owner has added the two secrets and a run has passed with them** (the secrets cannot be set from here). The workflow YAML parses; the change itself cannot be tried locally.
+
 ---
 
 ### Worked example (used by test 1.6)
