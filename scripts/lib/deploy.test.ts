@@ -5,6 +5,7 @@ import { parseEnv } from "./env.ts";
 const good = `
 APP_BASE_URL=https://staging.example.org
 DOMAIN=staging.example.org
+ACME_EMAIL=ops@example.org
 SESSION_SECRET=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 POSTGRES_PASSWORD=pw
 DATABASE_URL=postgres://tepati:\${POSTGRES_PASSWORD}@postgres:5432/tepati?sslmode=disable
@@ -94,4 +95,42 @@ test("scaling recreates nothing else: no dependencies, one up for the named serv
   expect(scaleCommand(["docker", "compose"], { api: 3, web: 2 })).toEqual([
     "docker", "compose", "up", "-d", "--no-deps", "--no-recreate", "--scale", "api=3", "--scale", "web=2", "api", "web",
   ]);
+});
+
+// A real server is not a laptop: these are the ways an env file written for one goes wrong on the other.
+const real = (extra: string) =>
+  parseEnv(
+    good
+      .replace("https://staging.example.org", "https://tepati.example.org")
+      .replace("DOMAIN=staging.example.org", "DOMAIN=tepati.example.org")
+      .replace("https://media.staging.example.org", "https://media.tepati.example.org")
+      .replace("ACME_EMAIL=ops@example.org" + String.fromCharCode(10), "") + extra,
+  );
+
+test("production cannot be served from localhost", () => {
+  const env = parseEnv(good.replace("https://staging.example.org", "https://localhost").replace("DOMAIN=staging.example.org", "DOMAIN=localhost").replace("https://media.staging.example.org", "https://media.localhost"));
+  expect(problemsInEnv("production", env)).toContain("DOMAIN is localhost: production needs a real domain (localhost is only for trying a deploy on this machine)");
+  expect(problemsInEnv("staging", env).filter((p) => p.startsWith("DOMAIN"))).toEqual([]);
+});
+
+test("a real domain needs an e-mail for the certificate authority", () => {
+  expect(problemsInEnv("staging", real(""))).toContain("ACME_EMAIL is missing: Let's Encrypt needs a contact address for DOMAIN=tepati.example.org");
+  expect(problemsInEnv("staging", real("ACME_EMAIL=ops@example.org\n"))).toEqual([]);
+});
+
+test("the public address must be the domain Caddy serves", () => {
+  const env = real("ACME_EMAIL=ops@example.org\nAPP_BASE_URL=https://other.example.org\n");
+  expect(problemsInEnv("staging", env)).toContain("APP_BASE_URL (https://other.example.org) must be https://tepati.example.org, the domain Caddy serves");
+});
+
+test("production sends real mail, not into Mailpit", () => {
+  const env = real("ACME_EMAIL=ops@example.org\n");
+  expect(problemsInEnv("production", env)).toContain("SMTP_URL points at Mailpit: production needs a real SMTP server");
+  expect(problemsInEnv("staging", env)).toEqual([]);
+});
+
+test("the API refuses to start with a raised auth limit in production; say so before the deploy", () => {
+  const env = real("ACME_EMAIL=ops@example.org\nAUTH_RATE_LIMIT_PER_MIN=200\nSMTP_URL=smtps://u:p@smtp.example.org:465\n");
+  expect(problemsInEnv("production", env)).toContain("AUTH_RATE_LIMIT_PER_MIN=200 is above 10: the API refuses to start with that in production");
+  expect(problemsInEnv("staging", env)).toEqual([]);
 });
