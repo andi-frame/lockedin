@@ -640,34 +640,50 @@ func TestNonMembersGetNotFoundEverywhere(t *testing.T) {
 	hash := strings.Repeat("a", 64)
 
 	type op struct {
-		name, method, path, unknownPath string
-		body                            any
+		name, method, path, unknownPath, template string
+		body                                      any
 	}
 	pact := func(suffix string) (string, string) { return sc.pactPath(suffix), "/api/v1/pacts/" + random + suffix }
 	ci := func(suffix string) (string, string) {
 		return ciPath(sc.doerCheckIn, suffix), ciPath(uuid.MustParse(random), suffix)
 	}
-	mk := func(name, method string, paths func(string) (string, string), suffix string, body any) op {
+	mk := func(name, method string, paths func(string) (string, string), base, suffix string, body any) op {
 		real, unknown := paths(suffix)
-		return op{name, method, real, unknown, body}
+		return op{name, method, real, unknown, base + suffix, body}
 	}
+	const pactBase, ciBase = "/pacts/{pactId}", "/check-ins/{checkInId}"
 	ops := []op{
-		mk("get pact", "GET", pact, "", nil),
-		mk("update pact", "PATCH", pact, "", draftBody(t, "x", workedTerms(eka.id))),
-		mk("propose", "POST", pact, "/propose", nil),
-		mk("accept", "POST", pact, "/accept", map[string]any{"terms_hash": hash, "signature_name": "Eka"}),
-		mk("list check-ins", "GET", pact, "/check-ins", nil),
-		mk("ledger", "GET", pact, "/ledger", nil),
-		mk("mark paid", "POST", pact, "/payout/mark-paid", nil),
-		mk("confirm payout", "POST", pact, "/payout/confirm", nil),
-		mk("get check-in", "GET", ci, "", nil),
-		mk("submit proof", "PUT", ci, "/proof", words(25)),
-		mk("declare rest", "POST", ci, "/rest", nil),
-		mk("approve", "POST", ci, "/approve", nil),
-		mk("reject", "POST", ci, "/reject", reason),
-		mk("override", "POST", ci, "/override", reason),
-		mk("dispute", "POST", ci, "/dispute", reason),
-		mk("resolve dispute", "POST", ci, "/dispute/resolve", map[string]any{"outcome": "uphold", "reason": "alasan yang cukup panjang"}),
+		mk("get pact", "GET", pact, pactBase, "", nil),
+		mk("update pact", "PATCH", pact, pactBase, "", draftBody(t, "x", workedTerms(eka.id))),
+		mk("propose", "POST", pact, pactBase, "/propose", nil),
+		mk("accept", "POST", pact, pactBase, "/accept", map[string]any{"terms_hash": hash, "signature_name": "Eka"}),
+		mk("list check-ins", "GET", pact, pactBase, "/check-ins", nil),
+		mk("ledger", "GET", pact, pactBase, "/ledger", nil),
+		mk("mark paid", "POST", pact, pactBase, "/payout/mark-paid", nil),
+		mk("confirm payout", "POST", pact, pactBase, "/payout/confirm", nil),
+		mk("get check-in", "GET", ci, ciBase, "", nil),
+		mk("submit proof", "PUT", ci, ciBase, "/proof", words(25)),
+		mk("declare rest", "POST", ci, ciBase, "/rest", nil),
+		mk("approve", "POST", ci, ciBase, "/approve", nil),
+		mk("reject", "POST", ci, ciBase, "/reject", reason),
+		mk("override", "POST", ci, ciBase, "/override", reason),
+		mk("dispute", "POST", ci, ciBase, "/dispute", reason),
+		mk("resolve dispute", "POST", ci, ciBase, "/dispute/resolve", map[string]any{"outcome": "uphold", "reason": "alasan yang cukup panjang"}),
+	}
+	// The table must be exactly the contract's pact- and check-in-scoped operations (spec_test.go keeps the list).
+	covered := map[string]bool{}
+	for _, o := range ops {
+		covered[o.method+" "+o.template] = true
+	}
+	for key, where := range scopedOperations {
+		if where == "table" && !covered[key] {
+			t.Errorf("%s is in scopedOperations as covered by this table but is missing from it", key)
+		}
+	}
+	for key := range covered {
+		if scopedOperations[key] != "table" {
+			t.Errorf("%s is in this table but not marked \"table\" in scopedOperations", key)
+		}
 	}
 	for _, o := range ops {
 		t.Run(o.name, func(t *testing.T) {

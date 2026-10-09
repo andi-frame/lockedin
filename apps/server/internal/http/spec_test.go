@@ -185,3 +185,49 @@ func TestPublicRoutesMatchSpecSecurity(t *testing.T) {
 		}
 	}
 }
+
+// scopedOperations lists every operation that takes a pact, check-in or attachment id in its path,
+// and which test shows that a stranger gets 404 on it (AGENTS.md invariant 8). A new operation of
+// that kind fails TestEveryScopedOperationHasAnAuthorizationTest until it is added here and tested.
+// "table" means the non-member table in api_integration_test.go (it checks this list as well);
+// "uploads" means the stranger checks in uploads_integration_test.go.
+var scopedOperations = map[string]string{
+	"GET /pacts/{pactId}":                         "table",
+	"PATCH /pacts/{pactId}":                       "table",
+	"POST /pacts/{pactId}/propose":                "table",
+	"POST /pacts/{pactId}/accept":                 "table",
+	"GET /pacts/{pactId}/check-ins":               "table",
+	"GET /pacts/{pactId}/ledger":                  "table",
+	"POST /pacts/{pactId}/payout/mark-paid":       "table",
+	"POST /pacts/{pactId}/payout/confirm":         "table",
+	"GET /check-ins/{checkInId}":                  "table",
+	"PUT /check-ins/{checkInId}/proof":            "table",
+	"POST /check-ins/{checkInId}/rest":            "table",
+	"POST /check-ins/{checkInId}/approve":         "table",
+	"POST /check-ins/{checkInId}/reject":          "table",
+	"POST /check-ins/{checkInId}/override":        "table",
+	"POST /check-ins/{checkInId}/dispute":         "table",
+	"POST /check-ins/{checkInId}/dispute/resolve": "table",
+	"POST /uploads/{attachmentId}/complete":       "uploads",
+	"GET /attachments/{attachmentId}":             "uploads",
+}
+
+func TestEveryScopedOperationHasAnAuthorizationTest(t *testing.T) {
+	scoped := regexp.MustCompile(`\{(pactId|checkInId|attachmentId)\}`)
+	var found []string
+	for _, o := range loadSpec(t).operations(t) {
+		if scoped.MatchString(o.Path) {
+			found = append(found, o.Method+" "+o.Path)
+		}
+	}
+	for _, key := range found {
+		if scopedOperations[key] == "" {
+			t.Errorf("%s takes a pact, check-in or attachment id but has no authorization test: add it to the non-member table and to scopedOperations", key)
+		}
+	}
+	for key := range scopedOperations {
+		if !contains(found, key) {
+			t.Errorf("scopedOperations lists %s, which is not in the contract (renamed or removed?)", key)
+		}
+	}
+}
