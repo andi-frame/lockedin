@@ -5,13 +5,15 @@ const freshEmail = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2
 // The toast is announced twice (visible text and a live region), so the tests wait on the request itself.
 const saved = (page: Page) => page.waitForResponse((r) => r.url().endsWith("/api/v1/me") && r.request().method() === "PATCH" && r.ok());
 
-async function register(page: Page) {
+async function register(page: Page): Promise<string> {
+  const email = freshEmail();
   await page.goto("/register");
   await page.getByLabel("Nama", { exact: true }).fill("Sari E2E");
-  await page.getByLabel("Email", { exact: true }).fill(freshEmail());
+  await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Kata sandi", { exact: true }).fill("kata-sandi-e2e-1");
   await page.getByRole("button", { name: "Buat akun" }).click();
   await expect(page).toHaveURL(/\/today$/);
+  return email;
 }
 
 test("settings: name, time zone and emails are saved and survive a reload", async ({ page }) => {
@@ -63,4 +65,31 @@ test("settings: an empty name is refused before anything is sent, and the langua
   await account.getByRole("button", { name: "Simpan" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Email" })).toBeVisible();
+});
+
+test("settings: the account's language follows the person to a new device", async ({ page }) => {
+  const email = await register(page);
+  await page.goto("/settings");
+  const account = page.locator("section[aria-labelledby=account]");
+  await account.getByLabel("Bahasa").click();
+  await page.getByRole("option", { name: "English" }).click();
+  const done = saved(page);
+  await account.getByRole("button", { name: "Simpan" }).click();
+  await done;
+  await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
+
+  // A new device has no language cookie: sign out and forget it, as another browser would.
+  await page.getByRole("button", { name: "Sign out" }).first().click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.evaluate(() => {
+    document.cookie = "tepati_locale=; path=/; max-age=0";
+  });
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Masuk" })).toBeVisible();
+
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Kata sandi", { exact: true }).fill("kata-sandi-e2e-1");
+  await page.getByRole("button", { name: "Masuk" }).click();
+  await expect(page).toHaveURL(/\/today$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
 });

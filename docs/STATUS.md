@@ -306,7 +306,7 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 **What 9.4 added (account and email preferences):**
 - `PATCH /me` (name, language, time zone, `email_kinds_off`); Settings is editable. The six switchable kinds are in `internal/domain/emailprefs.go`; invites, `dispute_opened` and `pact_settled` are always mailed (SPEC §9). The mail claims in `internal/service/mailing.go` honour the list; `users.email_off` holds what is off.
 - A new emailed notification kind must be decided in `notify/render_test.go` (switchable or must-stay-on), or that test fails.
-- Gap: logging in on a new device does not copy the account's language into the `tepati_locale` cookie.
+- Signing in copies the account's language into the `tepati_locale` cookie (9.5).
 
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
