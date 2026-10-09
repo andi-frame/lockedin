@@ -215,8 +215,14 @@ func (p *Processor) video(ctx context.Context, src, dir string, res *Result) err
 
 	poster := filepath.Join(dir, "poster.jpg")
 	at := strconv.FormatFloat(min(1, done.seconds/2), 'f', 2, 64)
-	if err := p.ffmpeg(ctx, "-ss", at, "-i", out, "-frames:v", "1", "-vf", fmt.Sprintf(`scale=-2:min(%d\,ih)`, thumbLongSide), "-q:v", "4", poster); err != nil {
-		return err
+	frame := []string{"-i", out, "-frames:v", "1", "-vf", fmt.Sprintf(`scale=-2:min(%d\,ih)`, thumbLongSide), "-q:v", "4", poster}
+	// A time past the last frame (a clip of one frame, or a container that overstates its length)
+	// makes ffmpeg fail or write nothing, so the first frame is the fallback.
+	err = p.ffmpeg(ctx, append([]string{"-ss", at}, frame...)...)
+	if _, statErr := os.Stat(poster); err != nil || statErr != nil {
+		if err = p.ffmpeg(ctx, frame...); err != nil {
+			return err
+		}
 	}
 	t, err := describe(poster, "image/jpeg", ".jpg")
 	if err != nil {
