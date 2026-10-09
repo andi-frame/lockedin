@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-08, after the preparation of task 9.1 (the runbook and the restore drill, done without a server; Phases 0 to 8 are done and merged). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-09, after task 9.2 (the landing page; 9.1 is prepared without a server; Phases 0 to 8 are done and merged). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -15,9 +15,9 @@ Last updated: 2026-10-08, after the preparation of task 9.1 (the runbook and the
 | 6 Web features | done | 6.1 new pact wizard and invite/accept flow (PR #6). 6.2 Today screen (PR #7). 6.3 proof editor and submission (PR #8). 6.4 pact page with the coin book and calendar (PR #9). 6.5 review queue and check-in detail (PR #10). 6.6 settlement and payout screens (PR #11). 6.7 notifications inbox and settings: done on `p6.7-notifications` (not pushed or merged yet). Next: Phase 7 |
 | 7 Docker and deploy | done | 7.1 Dockerfiles (PR #13). 7.2 compose dev and prod, Caddy, deploy:up, deploy:scale, backups (PR #14). 7.3 native mode polish: done on `p7.3-native-polish` (not pushed or merged yet) |
 | 8 Quality gates | done | 8.1 CI (PR #16). 8.2 design finish and `DESIGN.md` (PR #17). 8.3 guidelines audit (PR #18). 8.4 load test (PR #19). 8.5 security review: done on `p8.5-security-review` (not pushed or merged yet) |
-| 9 Staging | in progress | 9.1 deploy to a VPS: **prepared, not done** (runbook, restore drill rehearsed on a local stack, stricter `deploy:up` checks, on `p9.1-staging`; the server, DNS, SMTP and the drill on the server need the owner). 9.2 landing page: not started |
+| 9 Staging | in progress | 9.1 deploy to a VPS: **prepared, not done** (runbook, restore drill rehearsed on a local stack, stricter `deploy:up` checks, on `p9.1-staging`; the server, DNS, SMTP and the drill on the server need the owner). 9.2 landing page: **done** (`p9.2-landing`, `c79383c`) |
 
-The first unchecked task in `docs/PLAN.md` is **9.1** (deploy to a VPS): it is prepared (`docs/RUNBOOK.md`, the restore drill) but the deploy itself needs the owner's server, domain and DNS (a `media.` host too) and SMTP provider, see `docs/HANDOVER.md` §9 and §10. 9.2 (the landing page) does not need a server.
+The first unchecked task in `docs/PLAN.md` is **9.1** (deploy to a VPS): it is prepared (`docs/RUNBOOK.md`, the restore drill) but the deploy itself needs the owner's server, domain and DNS (a `media.` host too) and SMTP provider, see `docs/HANDOVER.md` §9 and §10. 9.2 (the landing page) is done.
 
 ## 2. Branch and merge state
 
@@ -299,6 +299,10 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - `deploy:up` also refuses `DOMAIN=localhost` or Mailpit in production, a real domain without `ACME_EMAIL`, `APP_BASE_URL` on another host than `DOMAIN`, and a raised auth limit in production.
 - **Still to do, with the owner:** the VPS, DNS for `<DOMAIN>` and `media.<DOMAIN>`, a Let's Encrypt certificate, real SMTP, the drill on the server (write its date in the runbook), off-host copies of the dumps and the env file.
 
+**What 9.2 added (the landing page):**
+- `/` is now the landing page for a visitor without a session (`components/landing/*`, copy in the `Landing` messages, the example month in `lib/landing/sample.ts`, brief `.impeccable/surfaces/apps-web-src-app-page-tsx.md`). The guard (`lib/auth/guard.ts`) lets `/` through without a cookie and sends a visitor with one to `/today`.
+- Known gap: the pact calendar's "today" cell (`components/pact/pact-calendar.tsx`) inks its marks with the status colours, which are pale on the yellow in the dark theme. The landing page avoids it with the cell's own ink; the app's calendar should do the same. Not fixed (separate small task).
+
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
 - Auth is cookie based with a CSRF header (`X-CSRF-Token`, value from the `tepati_csrf` cookie) on unsafe methods, and mutating calls take an `Idempotency-Key`. Details in `docs/adr/0010-api-conventions.md`.
@@ -306,4 +310,4 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - Email links point at `/pacts/<id>`, `/review` and `/invite/<token>`; these routes must exist.
 - The server does not check `starts_on` against the date: a pact proposed for tomorrow and signed after tomorrow starts with check-ins that are already overdue. The wizard only prevents choosing a start before tomorrow. Needs a rule in SPEC (refuse to schedule once `starts_on` has passed?) and a server check; not decided.
 
-**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p9.1-staging`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). Do not start 9.2 in the same session as 9.1 unless asked.
+**Process reminders (from `AGENTS.md`):** one PLAN task per branch (`p9.1-staging`), update `docs/PLAN.md` with the commit hash, update this file when behaviour changes, screenshots at 390 and 1440 px in light and dark for UI work, and refresh the knowledge graph with `/graphify . --update` (last refreshed after Phase 2). 

@@ -72,8 +72,8 @@ describe("guard", () => {
   test("a session cookie does not bounce the login page", () => {
     expect(guard({ pathname: "/login", search: "", hasSession: true })).toBeNull();
   });
-  test("the home page goes to /today with a session and /login without", () => {
+  test("the home page goes to /today with a session, and is the landing page without one", () => {
     expect(guard({ pathname: "/", search: "", hasSession: true })).toEqual({ redirect: "/today" });
-    expect(guard({ pathname: "/", search: "", hasSession: false })).toEqual({ redirect: "/login" });
+    expect(guard({ pathname: "/", search: "", hasSession: false })).toBeNull();
   });
 });

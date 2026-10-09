@@ -39,7 +39,8 @@ export type GuardInput = { pathname: string; search: string; hasSession: boolean
 
 /** `{ redirect }` when the request should be sent elsewhere, `null` to let it through. */
 export function guard({ pathname, search, hasSession }: GuardInput): { redirect: string } | null {
-  if (pathname === "/") return { redirect: hasSession ? HOME : "/login" };
+  // `/` is the landing page for a visitor without a session, and the app for one with a cookie.
+  if (pathname === "/") return hasSession ? { redirect: HOME } : null;
   if (isPublicPath(pathname)) return null;
   if (!hasSession) return { redirect: loginRedirect(pathname, search) };
   return null;

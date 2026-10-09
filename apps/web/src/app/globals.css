@@ -201,6 +201,26 @@
   animation: print-type 320ms steps(var(--chars, 6), end) 120ms both;
 }
 
+/* The landing page's example month: its stamps and lines are armed by script once the page has
+   loaded (components/landing/print-on-view.tsx), and play once when it scrolls into view. Until then,
+   and always under reduced motion, they are simply there. */
+@keyframes stamp-in {
+  from {
+    opacity: 0;
+    transform: scale(1.5) rotate(-8deg);
+  }
+}
+[data-print="armed"] .sample-stamp,
+[data-print="armed"] .sample-line {
+  opacity: 0;
+}
+[data-print="done"] .sample-stamp {
+  animation: stamp-in 220ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 38ms) both;
+}
+[data-print="done"] .sample-line {
+  animation: print-slide 240ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 38ms) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
