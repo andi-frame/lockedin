@@ -17,7 +17,7 @@ export function ReviewRows({ items, total, serverNow }: { items: Item[]; total: 
         <h2 id="to-review" className="text-lg font-semibold tracking-tight">
           {t("toReview", { n: total })}
         </h2>
-        <Link href="/review" className="text-sm font-medium text-teal-text underline-offset-4 hover:underline">
+        <Link href="/review" className="text-sm font-medium text-teal-text underline decoration-teal-text/40 underline-offset-4 hover:decoration-teal-text">
           {t("seeAll")}
         </Link>
       </div>

@@ -55,7 +55,7 @@ export function CheckInDetailView({
         </h1>
         <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[15px]">
           <StatusChip status={ci.status} />
-          <Link href={`/pacts/${pactId}`} className="font-medium text-teal-text underline-offset-4 hover:underline">
+          <Link href={`/pacts/${pactId}`} className="font-medium text-teal-text underline decoration-teal-text/40 underline-offset-4 hover:decoration-teal-text">
             {detail.pact_title}
           </Link>
           <span className="font-mono text-sm tabular-nums text-muted">{date}</span>
@@ -96,7 +96,7 @@ export function CheckInDetailView({
 
       {resendHref ? (
         <p className="mt-4">
-          <Link href={resendHref} className="text-[15px] font-medium text-teal-text underline-offset-4 hover:underline">
+          <Link href={resendHref} className="text-[15px] font-medium text-teal-text underline decoration-teal-text/40 underline-offset-4 hover:decoration-teal-text">
             {t("resend")}
           </Link>
         </p>
@@ -147,7 +147,7 @@ export function CheckInDetailView({
 
       {other ? (
         <p className="mt-8">
-          <Link href={other.href} className="text-[15px] font-medium text-teal-text underline-offset-4 hover:underline">
+          <Link href={other.href} className="text-[15px] font-medium text-teal-text underline decoration-teal-text/40 underline-offset-4 hover:decoration-teal-text">
             {other.isMe ? t("switchToMine") : t("switchTo", { name: other.name })}
           </Link>
         </p>

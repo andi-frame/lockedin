@@ -43,7 +43,7 @@ export default async function SettingsPage() {
         </h2>
         <p className="mt-2 max-w-prose text-[15px]">{t("notificationsBody")}</p>
         <p className="mt-3">
-          <Link href="/notifications" className="text-[15px] font-medium text-teal-text underline-offset-4 hover:underline">
+          <Link href="/notifications" className="text-[15px] font-medium text-teal-text underline decoration-teal-text/40 underline-offset-4 hover:decoration-teal-text">
             {t("notificationsOpen")}
           </Link>
         </p>
