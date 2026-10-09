@@ -54,6 +54,7 @@ bun run setup                     # copies deploy/env/*.example → .env files i
 | `bun run lint` | tsc `--noEmit` for scripts, Redocly lint of `api/openapi.yaml`, `gofmt -l`, `go vet` and, in `apps/web`, `tsc --noEmit` plus ESLint |
 | `bun run go:tool <tool> …` | runs goose / sqlc / oapi-codegen pinned in `apps/server/tools/go.mod` (Go downloads the 1.26 toolchain for that module automatically) |
 | `bun run deploy:build -- --env staging` | builds `tepati-server` (api, worker, tepatictl, goose, migrations) and `tepati-web`, each tagged `<env>` and with the `git describe` version; `--only server\|web` builds one |
+| `bun run load -- --env staging [--users 20] [--duration 5m] [--read-rate 200] [--write-rate 20]` | the k6 load test (`tests/load/today.js`) against a running deploy: seeds users through its api container and runs k6 from the `grafana/k6` image on the deploy's network; exits non-zero when a SPEC §10 threshold is crossed. Needs `RATE_LIMIT_PER_MIN` in the env file above the test's own rate (it checks) |
 | `bun run deploy:env-local` | writes `deploy/env/.env.staging` for a deploy on this machine or a CI runner (`https://localhost`, Mailpit, fresh secrets, raised rate limits); refuses to overwrite a file |
 | `bun run deploy:up -- --env staging` | checks `deploy/env/.env.<env>` (no `CHANGE_ME`, `S3_PUBLIC_ENDPOINT` on `media.<DOMAIN>`) and the images, brings up infra, sets up Garage (layout, key, buckets; generates the S3 key pair into the env file the first time), then migrate, api, worker, web and Caddy, then the CORS rule for uploads. Compose project `tepati-<env>`. `--backup` / `--no-backup` (default: on for production) |
 | `bun run deploy:scale -- --env staging api=2 web=2 worker=2` | changes the number of copies of the stateless services; nothing else is recreated, and Caddy finds new api and web copies through DNS |
@@ -137,3 +138,11 @@ For a machine where Docker is not an option. Postgres and Redis run on the host,
 | `e2e` | `deploy:env-local`, `deploy:build -- --env staging`, `deploy:up -- --env staging`, `test:e2e` with `TEPATI_CTL_PROJECT=staging E2E_BASE_URL=https://localhost E2E_API_URL=https://localhost` | the built images behind Caddy, seeded through the api container; uploads `apps/web/test-results` and the stack logs on failure; Playwright retries once on CI and reports a retried test as flaky |
 
 To reproduce the `e2e` job on a laptop, run those four commands in order (delete `deploy/env/.env.staging` first if it exists, and `docker compose -p tepati-staging ... down -v` if an older stack left volumes behind, because the new secrets will not match the old database).
+
+## 9. Load test
+
+`bun run load -- --env staging` needs a running deploy (section 6) and Docker; k6 itself is not installed, it runs from `grafana/k6`. It seeds `--users` doers (the `today` scenario) through the deploy's api container, logs them in, and holds `--read-rate` reads a second (Today, pacts list, a pact's ledger, notifications, review queue) and `--write-rate` proof edits a second for `--duration`. The thresholds are SPEC section 10: read p95 under 150 ms, write p95 under 300 ms, under 1 % failed requests.
+
+Before you run it: every request comes from the one k6 address, so raise `RATE_LIMIT_PER_MIN` in the env file above `(read-rate + write-rate) * 60 * 1.2` (for the defaults, 15,840; the script refuses to run below it) and bring the deploy up again so the api picks it up. Stop other heavy things on the machine (the dev stack, a browser): they compete for the CPU and the numbers are only as good as the machine. To see what a second api copy buys, run `bun run deploy:scale -- --env staging api=2` and repeat.
+
+Results of the first run, and why they are not the SPEC verdict for a 2 vCPU server, are in `docs/PLAN.md` 8.4.
