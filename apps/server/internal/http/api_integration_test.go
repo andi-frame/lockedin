@@ -367,6 +367,11 @@ func TestPactOnboardingOverHTTP(t *testing.T) {
 	}
 	andi.fails(400, api.ValidationFailed, "POST", "/api/v1/pacts", draftBody(t, "   ", workedTerms(andi.id)))
 
+	// SPEC §3: a start date that has already passed (the stack's clock is on 2026-11-01) is a 409 of its own.
+	late := workedTerms(andi.id)
+	late.StartsOn, late.EndsOn = domain.MustDate("2026-10-20"), domain.MustDate("2026-11-20")
+	andi.fails(409, api.PactStartPassed, "POST", "/api/v1/pacts", draftBody(t, "Lama", late))
+
 	edited := workedTerms(andi.id)
 	d := edited.Members[uuid.Nil]
 	d.PenaltyPerMiss = 75

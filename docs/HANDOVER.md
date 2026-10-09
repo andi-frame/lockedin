@@ -168,7 +168,7 @@ If your tool wants its own instruction file (`GEMINI.md`, `.codex/...`), make it
 
 **9.2 the landing page is done** (`/`, see PLAN 9.2 and the brief in `.impeccable/surfaces/apps-web-src-app-page-tsx.md`). Screenshots of a UI change: the Playwright MCP may fail to connect; a throwaway Bun script using `chromium` from `@playwright/test` in `apps/web` works (delete it after).
 
-`PATCH /me` and the per-kind email preferences are built (PLAN 9.4). The `starts_on` rule is open: the owner said "later".
+`PATCH /me` and the per-kind email preferences are built (PLAN 9.4). The `starts_on` rule is built too (PLAN 9.6): once the start date has passed, a pact cannot be proposed or signed.
 
 ## 10. Questions that are the owner's to answer (do not decide silently)
 

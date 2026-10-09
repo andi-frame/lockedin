@@ -243,6 +243,7 @@ const (
 	PactNotBacker               ErrorCode = "pact.not_backer"
 	PactNotDoer                 ErrorCode = "pact.not_doer"
 	PactSignatureMismatch       ErrorCode = "pact.signature_mismatch"
+	PactStartPassed             ErrorCode = "pact.start_passed"
 	PactTermsMembers            ErrorCode = "pact.terms_members"
 	PactTermsMismatch           ErrorCode = "pact.terms_mismatch"
 	ProofInvalidDoc             ErrorCode = "proof.invalid_doc"
@@ -317,6 +318,8 @@ func (e ErrorCode) Valid() bool {
 	case PactNotDoer:
 		return true
 	case PactSignatureMismatch:
+		return true
+	case PactStartPassed:
 		return true
 	case PactTermsMembers:
 		return true
@@ -745,7 +748,7 @@ type EmailKind string
 // | 403 | `auth.csrf`, `pact.not_backer`, `pact.not_doer`, `checkin.not_allowed` |
 // | 404 | `not_found` (also for non-members) |
 // | 405 | `method_not_allowed` |
-// | 409 | `auth.email_taken`, `pact.invalid_state`, `pact.terms_mismatch`, `pact.member_missing`, `pact.limit_reached`, `checkin.invalid_transition`, `checkin.conflict`, `checkin.override_limit`, `checkin.rest_limit`, `upload.quota_exceeded`, `idempotency.in_progress` |
+// | 409 | `auth.email_taken`, `pact.invalid_state`, `pact.terms_mismatch`, `pact.member_missing`, `pact.start_passed`, `pact.limit_reached`, `checkin.invalid_transition`, `checkin.conflict`, `checkin.override_limit`, `checkin.rest_limit`, `upload.quota_exceeded`, `idempotency.in_progress` |
 // | 410 | `pact.invite_invalid` |
 // | 413 | `upload.too_large`, `request.too_large` |
 // | 415 | `upload.unsupported_type`, `request.unsupported_media_type` |
@@ -973,7 +976,7 @@ type Problem struct {
 	// | 403 | `auth.csrf`, `pact.not_backer`, `pact.not_doer`, `checkin.not_allowed` |
 	// | 404 | `not_found` (also for non-members) |
 	// | 405 | `method_not_allowed` |
-	// | 409 | `auth.email_taken`, `pact.invalid_state`, `pact.terms_mismatch`, `pact.member_missing`, `pact.limit_reached`, `checkin.invalid_transition`, `checkin.conflict`, `checkin.override_limit`, `checkin.rest_limit`, `upload.quota_exceeded`, `idempotency.in_progress` |
+	// | 409 | `auth.email_taken`, `pact.invalid_state`, `pact.terms_mismatch`, `pact.member_missing`, `pact.start_passed`, `pact.limit_reached`, `checkin.invalid_transition`, `checkin.conflict`, `checkin.override_limit`, `checkin.rest_limit`, `upload.quota_exceeded`, `idempotency.in_progress` |
 	// | 410 | `pact.invite_invalid` |
 	// | 413 | `upload.too_large`, `request.too_large` |
 	// | 415 | `upload.unsupported_type`, `request.unsupported_media_type` |

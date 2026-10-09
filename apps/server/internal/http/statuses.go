@@ -27,6 +27,7 @@ var statuses = map[api.ErrorCode]int{
 	api.PactInvalidState:            409,
 	api.PactTermsMismatch:           409,
 	api.PactMemberMissing:           409,
+	api.PactStartPassed:             409,
 	api.PactLimitReached:            409,
 	api.CheckinInvalidTransition:    409,
 	api.CheckinConflict:             409,

@@ -20,6 +20,7 @@ var (
 	ErrEvidenceInsufficient = &Error{"checkin.evidence_insufficient", "the proof does not meet the pact's evidence rules"}
 	ErrOverrideLimit        = &Error{"checkin.override_limit", "no overrides left in this pact"}
 	ErrRestLimit            = &Error{"checkin.rest_limit", "no rest days left in this pact"}
+	ErrStartPassed          = &Error{"pact.start_passed", "the start date has passed; move the dates later"}
 )
 
 // CodeOf returns the stable code of a domain error, or "" for other errors.

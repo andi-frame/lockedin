@@ -22,6 +22,7 @@
     "pact_invalid_terms": "Ketentuannya ditolak server. Periksa lagi isiannya, terutama tanggal dan angka.",
     "pact_terms_members": "Data anggota di ketentuan tidak cocok. Muat ulang halaman lalu coba lagi.",
     "pact_limit_reached": "Kamu sudah punya 10 kontrak yang belum selesai. Selesaikan salah satunya dulu.",
+    "pact_start_passed": "Tanggal mulai kontrak ini sudah lewat, jadi belum bisa dilanjutkan. Ubah tanggalnya ke hari ini atau lebih lambat.",
     "pact_invalid_state": "Kontrak ini sudah berubah status, jadi aksi tadi tidak bisa dilakukan. Muat ulang halaman.",
     "pact_not_backer": "Hanya penyokong yang bisa melakukan ini.",
     "pact_terms_mismatch": "Ketentuan baru saja berubah. Halaman dimuat ulang, baca lagi sebelum menandatangani.",

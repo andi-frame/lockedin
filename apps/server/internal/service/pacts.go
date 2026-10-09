@@ -27,9 +27,24 @@ type DraftInput struct {
 	Terms       domain.Terms
 }
 
+// checkStartAhead refuses terms whose start date has already passed in the pact's zone (SPEC §3).
+func (s *Service) checkStartAhead(t domain.Terms) error {
+	passed, err := domain.StartHasPassed(t, s.clock.Now())
+	if err != nil {
+		return fmt.Errorf("%w: %v", domain.ErrInvalidTerms, err)
+	}
+	if passed {
+		return domain.ErrStartPassed
+	}
+	return nil
+}
+
 // CreateDraft stores a draft pact with the creator as backer.
 func (s *Service) CreateDraft(ctx context.Context, creator uuid.UUID, in DraftInput) (store.Pact, error) {
 	if err := checkDraftShape(in.Terms, creator, uuid.Nil); err != nil {
+		return store.Pact{}, err
+	}
+	if err := s.checkStartAhead(in.Terms); err != nil {
 		return store.Pact{}, err
 	}
 	raw, hash, err := encodeTerms(in.Terms)
@@ -78,6 +93,9 @@ func (s *Service) UpdateTerms(ctx context.Context, actor, pactID uuid.UUID, in D
 		if err := checkDraftShape(in.Terms, p.BackerID, doerKey(current, p.BackerID)); err != nil {
 			return err
 		}
+		if err := s.checkStartAhead(in.Terms); err != nil {
+			return err
+		}
 		raw, hash, err := encodeTerms(in.Terms)
 		if err != nil {
 			return err
@@ -112,6 +130,15 @@ func (s *Service) Propose(ctx context.Context, actor, pactID uuid.UUID, email *s
 		}
 		if p.BackerID != actor {
 			return ErrNotBacker
+		}
+		if p.Status == "draft" || p.Status == "proposed" {
+			terms, err := loadTerms(p)
+			if err != nil {
+				return err
+			}
+			if err := s.checkStartAhead(terms); err != nil {
+				return err
+			}
 		}
 		if p.Status == "draft" {
 			if _, err := q.SetPactStatus(ctx, store.SetPactStatusParams{ID: pactID, FromStatus: "draft", ToStatus: "proposed"}); err != nil {
@@ -237,6 +264,9 @@ func (s *Service) Accept(ctx context.Context, user, pactID uuid.UUID, termsHash,
 		}
 		if _, waiting := terms.Members[uuid.Nil]; waiting {
 			return ErrMemberMissing
+		}
+		if err := s.checkStartAhead(terms); err != nil {
+			return err
 		}
 		u, err := q.GetUser(ctx, user)
 		if err != nil {

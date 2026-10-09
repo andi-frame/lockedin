@@ -198,7 +198,7 @@ paths:
       description: |
         The creator is always the backer (SPEC §2). The doer's terms are keyed by the nil UUID
         (`00000000-0000-0000-0000-000000000000`) until the invitee joins.
-      x-problem-codes: [validation.failed, pact.invalid_terms, pact.terms_members, pact.limit_reached, auth.unauthenticated, auth.csrf]
+      x-problem-codes: [validation.failed, pact.invalid_terms, pact.terms_members, pact.limit_reached, pact.start_passed, auth.unauthenticated, auth.csrf]
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
@@ -238,7 +238,7 @@ paths:
         Only in `draft` or `proposed`. The body replaces the title, description and terms. Any
         change to the terms bumps `terms_version`, recomputes `terms_hash` and clears both
         signatures, and the other member is notified.
-      x-problem-codes: [validation.failed, pact.invalid_terms, pact.terms_members, pact.invalid_state, pact.not_backer, auth.unauthenticated, auth.csrf, not_found]
+      x-problem-codes: [validation.failed, pact.invalid_terms, pact.terms_members, pact.invalid_state, pact.not_backer, pact.start_passed, auth.unauthenticated, auth.csrf, not_found]
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
@@ -264,7 +264,7 @@ paths:
       description: |
         Backer only. Callable again while `proposed` to mint a fresh invite link. Only the hash of
         the token is stored, so the token is shown exactly once, in this response.
-      x-problem-codes: [pact.invalid_state, pact.not_backer, auth.unauthenticated, auth.csrf, not_found]
+      x-problem-codes: [pact.invalid_state, pact.not_backer, pact.start_passed, auth.unauthenticated, auth.csrf, not_found]
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
@@ -291,7 +291,7 @@ paths:
         Valid only for the exact `terms_hash` the member read, and only if `signature_name` equals
         their display name. Accepting twice is a no-op. When both members have signed the same
         hash, the pact becomes `scheduled`, the pot is funded and every check-in is generated.
-      x-problem-codes: [validation.failed, pact.terms_mismatch, pact.signature_mismatch, pact.member_missing, pact.invalid_state, auth.unauthenticated, auth.csrf, not_found]
+      x-problem-codes: [validation.failed, pact.terms_mismatch, pact.signature_mismatch, pact.member_missing, pact.invalid_state, pact.start_passed, auth.unauthenticated, auth.csrf, not_found]
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
@@ -883,7 +883,7 @@ components:
         | 403 | `auth.csrf`, `pact.not_backer`, `pact.not_doer`, `checkin.not_allowed` |
         | 404 | `not_found` (also for non-members) |
         | 405 | `method_not_allowed` |
-        | 409 | `auth.email_taken`, `pact.invalid_state`, `pact.terms_mismatch`, `pact.member_missing`, `pact.limit_reached`, `checkin.invalid_transition`, `checkin.conflict`, `checkin.override_limit`, `checkin.rest_limit`, `upload.quota_exceeded`, `idempotency.in_progress` |
+        | 409 | `auth.email_taken`, `pact.invalid_state`, `pact.terms_mismatch`, `pact.member_missing`, `pact.start_passed`, `pact.limit_reached`, `checkin.invalid_transition`, `checkin.conflict`, `checkin.override_limit`, `checkin.rest_limit`, `upload.quota_exceeded`, `idempotency.in_progress` |
         | 410 | `pact.invite_invalid` |
         | 413 | `upload.too_large`, `request.too_large` |
         | 415 | `upload.unsupported_type`, `request.unsupported_media_type` |
@@ -918,6 +918,7 @@ components:
         - pact.not_doer
         - pact.invite_invalid
         - pact.limit_reached
+        - pact.start_passed
         - pact.signature_mismatch
         - pact.member_missing
         - proof.invalid_doc

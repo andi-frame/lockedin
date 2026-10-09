@@ -54,7 +54,7 @@ draft ──propose──▶ proposed ──both accept same terms_hash──▶
 - `completed`: the backer marked the payout paid **and** the doer confirmed receipt, or the doer confirmed alone (the doer's confirmation is sufficient).
 - `cancelled`: only before `scheduled`, or by mutual agreement while active (post-MVP; MVP allows cancel only before `scheduled`).
 
-Constraints: `ends_on - starts_on` lies between 1 and 366 days. A user can be in at most 10 non-terminal pacts.
+Constraints: `ends_on - starts_on` lies between 1 and 366 days. A user can be in at most 10 non-terminal pacts. A pact cannot be created, edited, proposed or signed once `starts_on` is before today in the pact timezone (`pact.start_passed`, 409): scheduling it would generate check-ins that are overdue at once and move coins for days nobody could have met. The start day itself is still allowed, since its cutoff is ahead. The way out is to move the dates later, which clears the signatures like every edit (decided 2026-10-09; the most conservative reading, the one that moves fewer coins).
 
 ## 4. Terms (agreed upfront by both)
 
