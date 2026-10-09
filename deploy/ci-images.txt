@@ -1,0 +1,10 @@
+# Images from a Docker Hub organisation that compose or the Dockerfiles use. CI copies them to this
+# repository's GHCR packages (.github/workflows/mirror-images.yml) and pulls them from there, because
+# Docker Hub limits anonymous pulls per IP and GitHub's runners share IPs (PLAN 9.8). Official images
+# (postgres, redis, golang, caddy) are not listed: they come through Google's mirror.
+# scripts/lib/ciimages.test.ts fails when this list and what the repo uses drift apart.
+axllent/mailpit:v1.27
+dxflrs/garage:v2.4.1
+hibiken/asynqmon:0.7.2
+oven/bun:1.4
+oven/bun:1.4-slim

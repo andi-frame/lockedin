@@ -44,3 +44,11 @@ test("only the chosen image is built", () => {
 test("base images are refreshed on every build", () => {
   for (const cmd of buildCommands({ env: "staging", only: ["server", "web"] }, "dev", "/repo")) expect(cmd).toContain("--pull");
 });
+
+test("--pull can be left out, for CI, which has already put fresh base images in place", () => {
+  const [withPull] = buildCommands({ env: "staging", only: ["web"] }, "v1", "/repo");
+  const [withoutPull] = buildCommands({ env: "staging", only: ["web"] }, "v1", "/repo", { pull: false });
+  expect(withPull).toContain("--pull");
+  expect(withoutPull).not.toContain("--pull");
+  expect(withoutPull).toContain("-f");
+});

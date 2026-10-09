@@ -50,6 +50,9 @@ jobs:
   integration:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -76,6 +79,18 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
+      - name: GitHub Container Registry login
+        continue-on-error: true
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # The Docker Hub organisation images (mailpit, garage, asynqmon, bun) come from this repository's
+      # GHCR copies (.github/workflows/mirror-images.yml) and are tagged with their original names; one
+      # that cannot be pulled is left for Docker Hub.
+      - name: CI images from GHCR
+        run: bun scripts/ci-images.ts pull
       - uses: actions/setup-go@v5
         with:
           # The newest 1.26 patch, not go.mod's minimum: older patches carry standard library vulnerabilities.
@@ -100,7 +115,12 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: read
     env:
+      # The base images were just put in place, so `docker build --pull` would only fetch them again.
+      TEPATI_BUILD_PULL: "0"
       # The stack from `deploy:up`, seeded through its api container (scripts/ctl.ts).
       TEPATI_CTL_PROJECT: staging
       E2E_BASE_URL: https://localhost
@@ -130,11 +150,27 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
+      - name: GitHub Container Registry login
+        continue-on-error: true
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # The Docker Hub organisation images (mailpit, garage, asynqmon, bun) come from this repository's
+      # GHCR copies (.github/workflows/mirror-images.yml) and are tagged with their original names; one
+      # that cannot be pulled is left for Docker Hub.
+      - name: CI images from GHCR
+        run: bun scripts/ci-images.ts pull
       - run: bun install --frozen-lockfile
       - name: Playwright browser
         working-directory: apps/web
         run: bunx playwright install --with-deps chromium
       - run: bun run deploy:env-local
+      # `# syntax=docker/dockerfile:1` makes BuildKit fetch a frontend image from Docker Hub on every build;
+      # the Docker on the runner builds these files with its own, so the line is dropped for this run only.
+      - name: Build without the remote Dockerfile frontend
+        run: sed -i '/^# syntax=/d' deploy/docker/*.Dockerfile
       - run: bun run deploy:build -- --env staging
       - run: bun run deploy:up -- --env staging
       - run: bun run test:e2e
