@@ -22,6 +22,7 @@
     "pact_invalid_terms": "The server rejected the terms. Check the fields again, especially dates and numbers.",
     "pact_terms_members": "The members in the terms do not match. Reload the page and try again.",
     "pact_limit_reached": "You already have 10 unfinished pacts. Finish one first.",
+    "pact_start_passed": "This contract's start date has passed, so it cannot go on. Move the dates to today or later.",
     "pact_invalid_state": "This pact changed status, so that action is no longer possible. Reload the page.",
     "pact_not_backer": "Only the backer can do this.",
     "pact_terms_mismatch": "The terms just changed. The page reloaded, so read them again before signing.",
