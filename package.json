@@ -31,6 +31,7 @@
     "test:e2e": "bun scripts/e2e.ts",
     "lint": "bun scripts/lint.ts",
     "deploy:env-local": "bun --no-env-file scripts/deploy-env-local.ts",
+    "restore": "bun --no-env-file scripts/restore.ts",
     "load": "bun --no-env-file scripts/load.ts",
     "deploy:build": "bun scripts/deploy-build.ts",
     "deploy:up": "bun --no-env-file scripts/deploy-up.ts",

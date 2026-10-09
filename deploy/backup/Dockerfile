@@ -2,7 +2,7 @@
 # so this starts from the same Postgres image as compose.yaml; aws-cli does the S3 side.
 FROM postgres:18-alpine
 RUN apk add --no-cache aws-cli tzdata
-COPY backup.sh /usr/local/bin/backup.sh
+COPY backup.sh restore.sh /usr/local/bin/
 ENV HOME=/tmp
 USER 10001:10001
 ENTRYPOINT ["sh", "/usr/local/bin/backup.sh"]

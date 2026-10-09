@@ -41,6 +41,19 @@ export function problemsInEnv(env: Environment, values: EnvMap): string[] {
   if (domain && pub && !pub.startsWith(`https://media.${domain}`)) {
     problems.push("S3_PUBLIC_ENDPOINT must be https://media.<DOMAIN> (a path prefix breaks presigned URLs)");
   }
+  const host = (url: string | undefined) => {
+    try {
+      return new URL(url ?? "").hostname;
+    } catch {
+      return "";
+    }
+  };
+  if (domain === "localhost" && env === "production") problems.push("DOMAIN is localhost: production needs a real domain (localhost is only for trying a deploy on this machine)");
+  if (domain && domain !== "localhost" && !values.get("ACME_EMAIL")) problems.push(`ACME_EMAIL is missing: Let's Encrypt needs a contact address for DOMAIN=${domain}`);
+  if (domain && base && host(base) && host(base) !== domain) problems.push(`APP_BASE_URL (${base}) must be https://${domain}, the domain Caddy serves`);
+  if (env === "production" && host(values.get("SMTP_URL")) === "mailpit") problems.push("SMTP_URL points at Mailpit: production needs a real SMTP server");
+  const authLimit = Number(values.get("AUTH_RATE_LIMIT_PER_MIN") ?? 10);
+  if (env === "production" && authLimit > 10) problems.push(`AUTH_RATE_LIMIT_PER_MIN=${authLimit} is above 10: the API refuses to start with that in production`);
   return problems;
 }
 
