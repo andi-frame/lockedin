@@ -5,6 +5,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MemberLine } from "@/components/member-line";
 import { BackerTools, SignPanel } from "@/components/pact/pact-actions";
+import { StartPassedNotice } from "@/components/pact/start-passed-notice";
+import { startHasPassed } from "@/lib/pact/dates";
 import { PactStatusBadge } from "@/components/pact/status-badge";
 import { TermsSummary } from "@/components/pact/terms-summary";
 import { Button } from "@/components/ui/button";
@@ -141,7 +143,11 @@ export default async function PactPage({
             {t("signTitle")}
           </h2>
           <p className="mb-4 mt-1 max-w-prose text-[15px] text-muted">{t("signIntro")}</p>
-          <SignPanel pactId={pact.id} termsHash={pact.terms_hash} displayName={user.display_name} />
+          {startHasPassed(pact.starts_on, pact.timezone, new Date()) ? (
+            <StartPassedNotice date={date(pact.starts_on)} editHref={pact.my_role === "backer" && editable ? `/pacts/${pact.id}/edit` : undefined} />
+          ) : (
+            <SignPanel pactId={pact.id} termsHash={pact.terms_hash} displayName={user.display_name} />
+          )}
         </section>
       ) : null}
 

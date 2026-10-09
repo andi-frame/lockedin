@@ -55,3 +55,8 @@ export function todayIn(zone: string, now: Date): string {
 export function clockIn(iso: string, zone: string): string {
   return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: zone }).format(new Date(iso));
 }
+
+/** SPEC §3: a pact whose start date is before today in its own zone can no longer be proposed or signed (the server refuses with `pact.start_passed`). */
+export function startHasPassed(startsOn: string, zone: string, now: Date): boolean {
+  return startsOn < todayIn(zone, now);
+}

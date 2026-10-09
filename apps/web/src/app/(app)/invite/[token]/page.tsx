@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { InviteAccept } from "@/components/pact/invite-accept";
+import { StartPassedNotice } from "@/components/pact/start-passed-notice";
 import { TermsSummary } from "@/components/pact/terms-summary";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api/errors";
 import { serverApi } from "@/lib/api/server";
 import { unwrap } from "@/lib/api/unwrap";
 import { getCurrentUser } from "@/lib/auth/session";
+import { startHasPassed } from "@/lib/pact/dates";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Invite");
@@ -30,7 +32,7 @@ function Unusable({ title, body, cta }: { title: string; body: string; cta: stri
 // already sent a signed-out visitor to /login?next=/invite/<token>, so there is a user by now.
 export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const [t, user, api] = await Promise.all([getTranslations("Invite"), getCurrentUser(), serverApi()]);
+  const [t, format, user, api] = await Promise.all([getTranslations("Invite"), getFormatter(), getCurrentUser(), serverApi()]);
   if (!user) return null;
 
   const preview = await unwrap(api.GET("/invites/{token}", { params: { path: { token } } })).catch((err) => {
@@ -63,7 +65,11 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
           {t("signTitle")}
         </h2>
         <p className="mb-4 mt-1 max-w-prose text-[15px] text-muted">{t("signIntro")}</p>
-        <InviteAccept token={token} displayName={user.display_name} />
+        {startHasPassed(preview.terms.starts_on, preview.terms.timezone, new Date()) ? (
+          <StartPassedNotice date={format.dateTime(new Date(`${preview.terms.starts_on}T00:00:00Z`), { dateStyle: "long", timeZone: "UTC" })} />
+        ) : (
+          <InviteAccept token={token} displayName={user.display_name} />
+        )}
       </section>
     </>
   );

@@ -703,5 +703,11 @@
     "closeTitle": "Start with one contract.",
     "closeBody": "Create an account, set the terms, then send your friend an invitation.",
     "footer": "Tepati"
+  },
+  "StartPassed": {
+    "body": "This contract's start date, {date}, has passed, so it cannot be signed.",
+    "backer": "Move the dates to today or later, then you both sign again.",
+    "other": "Ask the backer to move the dates to today or later, then you both sign again.",
+    "edit": "Change dates"
   }
 }
