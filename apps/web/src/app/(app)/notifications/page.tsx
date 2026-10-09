@@ -66,12 +66,12 @@ export default async function NotificationsPage({ searchParams }: { searchParams
           <NotificationList rows={rows} />
           <p className="mt-4 flex gap-6 text-[15px] font-medium">
             {cursor ? (
-              <Link href="/notifications" className="text-teal-text underline-offset-4 hover:underline">
+              <Link href="/notifications" className="text-teal-text underline decoration-teal-text/40 underline-offset-4 hover:decoration-teal-text">
                 {t("newest")}
               </Link>
             ) : null}
             {page.next_cursor ? (
-              <Link href={`/notifications?cursor=${encodeURIComponent(page.next_cursor)}`} className="text-teal-text underline-offset-4 hover:underline">
+              <Link href={`/notifications?cursor=${encodeURIComponent(page.next_cursor)}`} className="text-teal-text underline decoration-teal-text/40 underline-offset-4 hover:decoration-teal-text">
                 {t("older")}
               </Link>
             ) : null}

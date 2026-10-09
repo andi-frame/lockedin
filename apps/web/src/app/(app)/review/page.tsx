@@ -61,7 +61,7 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
           </ul>
           {page.next_cursor ? (
             <p className="mt-4">
-              <Link href={`/review?cursor=${encodeURIComponent(page.next_cursor)}`} className="text-[15px] font-medium text-teal-text underline-offset-4 hover:underline">
+              <Link href={`/review?cursor=${encodeURIComponent(page.next_cursor)}`} className="text-[15px] font-medium text-teal-text underline decoration-teal-text/40 underline-offset-4 hover:decoration-teal-text">
                 {t("next")}
               </Link>
             </p>

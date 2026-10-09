@@ -16,7 +16,7 @@ This file applies to every agent working in this repo: Claude Opus, Sonnet, or H
 6. `docs/PLAN.md`: the task list. Pick the first unchecked task you are allowed to work on.
 7. `docs/RUNNING.md`: how to run, test, and deploy, including the **Docker mount rules**.
 8. `docs/adr/`: why things are the way they are. Read the ADR for an area before changing it.
-9. For any UI work: `.impeccable/surfaces/apps-web-src-app-app.md` (the direction contract), `docs/design/README.md`, and `DESIGN.md` once it exists.
+9. For any UI work: `.impeccable/surfaces/apps-web-src-app-app.md` (the direction contract), `docs/design/README.md`, and `DESIGN.md`.
 
 If `graphify-out/GRAPH_REPORT.md` exists, read it before searching the code. It maps the codebase and saves exploration time. Refresh it with `/graphify . --update` after large changes.
 

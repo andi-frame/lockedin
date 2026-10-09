@@ -23,7 +23,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         {t("skip")}
       </a>
 
-      <aside className="guilloche fixed inset-y-0 left-0 hidden w-60 flex-col bg-cover px-3 py-5 text-cover-ink lg:flex">
+      <aside className="fixed inset-y-0 left-0 hidden w-60 flex-col bg-cover px-3 py-5 text-cover-ink lg:flex">
         <div className="flex items-center justify-between px-3">
           <Wordmark />
           <NotificationBell unread={unread} />

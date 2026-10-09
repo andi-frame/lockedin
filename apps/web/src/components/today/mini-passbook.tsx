@@ -23,7 +23,7 @@ export function MiniPassbook({ pact, rate, timeZone }: { pact: TodayPact; rate: 
         <h2 id={`book-${pact.pact_id}`} className="min-w-0 text-lg font-semibold tracking-tight [overflow-wrap:anywhere]">
           {pact.title}
         </h2>
-        <Link href={`/pacts/${pact.pact_id}`} className="text-sm font-medium text-teal-text underline-offset-4 hover:underline">
+        <Link href={`/pacts/${pact.pact_id}`} className="text-sm font-medium text-teal-text underline decoration-teal-text/40 underline-offset-4 hover:decoration-teal-text">
           {t("open")}
         </Link>
       </div>
