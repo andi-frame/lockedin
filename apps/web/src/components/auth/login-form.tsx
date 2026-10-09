@@ -9,6 +9,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api/browser";
 import { unwrap } from "@/lib/api/unwrap";
+import { setLocaleCookie } from "@/lib/locale-cookie";
 import { formErrorFromApi, validateLogin, type FormError as FormErrorState } from "@/lib/auth/forms";
 import { FormError, focusFirstInvalid } from "./form-error";
 import { PasswordInput } from "./password-input";
@@ -38,7 +39,9 @@ export function LoginForm({ next }: { next: string }) {
     setError(none);
     setPending(true);
     try {
-      await unwrap(api.POST("/auth/login", { body: checked.value }));
+      const user = await unwrap(api.POST("/auth/login", { body: checked.value }));
+      // A new device starts in Indonesian; the account's language wins once the person is known.
+      setLocaleCookie(user.locale);
       // Whatever was cached belonged to nobody or to the previous account.
       queryClient.clear();
       router.replace(next);

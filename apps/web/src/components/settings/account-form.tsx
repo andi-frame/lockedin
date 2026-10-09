@@ -13,7 +13,8 @@ import { api } from "@/lib/api/browser";
 import { ApiError, errorMessageKey } from "@/lib/api/errors";
 import type { components } from "@/lib/api/schema";
 import { unwrap } from "@/lib/api/unwrap";
-import { localeCookie, type Locale } from "@/i18n/config";
+import type { Locale } from "@/i18n/config";
+import { setLocaleCookie } from "@/lib/locale-cookie";
 import { timezoneChoices } from "@/lib/settings/timezones";
 
 type User = components["schemas"]["User"];
@@ -60,7 +61,7 @@ export function AccountForm({ user }: { user: Pick<User, "display_name" | "email
       setPending(false);
       return;
     }
-    if (body.locale) document.cookie = `${localeCookie}=${body.locale}; path=/; max-age=31536000; samesite=lax`;
+    if (body.locale) setLocaleCookie(body.locale);
     setPending(false);
     toast({ title: t("saved"), tone: "success" });
     router.refresh();
