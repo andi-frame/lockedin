@@ -60,6 +60,9 @@ jobs:
       # Without the secrets (a fork's pull request) this is skipped and the pulls stay anonymous.
       - name: Docker Hub login
         if: ${{ env.DOCKERHUB_TOKEN != '' }}
+        # Docker Hub's auth endpoint has timed out on its own; then the pulls fall back to anonymous
+        # instead of failing a run that has not tested anything yet.
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
@@ -105,6 +108,9 @@ jobs:
       # Without the secrets (a fork's pull request) this is skipped and the pulls stay anonymous.
       - name: Docker Hub login
         if: ${{ env.DOCKERHUB_TOKEN != '' }}
+        # Docker Hub's auth endpoint has timed out on its own; then the pulls fall back to anonymous
+        # instead of failing a run that has not tested anything yet.
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
