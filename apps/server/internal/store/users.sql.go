@@ -14,7 +14,7 @@ import (
 const createUser = `-- name: CreateUser :one
 insert into users (id, email, password_hash, display_name, locale, timezone)
 values ($1, $2, $3, $4, $5, $6)
-returning id, email, password_hash, display_name, locale, timezone, avatar_key, email_verified_at, created_at
+returning id, email, password_hash, display_name, locale, timezone, avatar_key, email_verified_at, created_at, email_off
 `
 
 type CreateUserParams struct {
@@ -46,12 +46,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.AvatarKey,
 		&i.EmailVerifiedAt,
 		&i.CreatedAt,
+		&i.EmailOff,
 	)
 	return i, err
 }
 
 const getUser = `-- name: GetUser :one
-select id, email, password_hash, display_name, locale, timezone, avatar_key, email_verified_at, created_at from users where id = $1
+select id, email, password_hash, display_name, locale, timezone, avatar_key, email_verified_at, created_at, email_off from users where id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -67,12 +68,13 @@ func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.AvatarKey,
 		&i.EmailVerifiedAt,
 		&i.CreatedAt,
+		&i.EmailOff,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-select id, email, password_hash, display_name, locale, timezone, avatar_key, email_verified_at, created_at from users where email = $1
+select id, email, password_hash, display_name, locale, timezone, avatar_key, email_verified_at, created_at, email_off from users where email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -88,6 +90,50 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.AvatarKey,
 		&i.EmailVerifiedAt,
 		&i.CreatedAt,
+		&i.EmailOff,
+	)
+	return i, err
+}
+
+const updateUserProfile = `-- name: UpdateUserProfile :one
+update users set
+  display_name = coalesce($1::text, display_name),
+  locale       = coalesce($2::text, locale),
+  timezone     = coalesce($3::text, timezone),
+  email_off    = coalesce($4::text[], email_off)
+where id = $5
+returning id, email, password_hash, display_name, locale, timezone, avatar_key, email_verified_at, created_at, email_off
+`
+
+type UpdateUserProfileParams struct {
+	DisplayName *string
+	Locale      *string
+	Timezone    *string
+	EmailOff    []string
+	ID          uuid.UUID
+}
+
+// Only the columns that are sent change (null = leave as is); email_off is replaced as a whole.
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserProfile,
+		arg.DisplayName,
+		arg.Locale,
+		arg.Timezone,
+		arg.EmailOff,
+		arg.ID,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.DisplayName,
+		&i.Locale,
+		&i.Timezone,
+		&i.AvatarKey,
+		&i.EmailVerifiedAt,
+		&i.CreatedAt,
+		&i.EmailOff,
 	)
 	return i, err
 }

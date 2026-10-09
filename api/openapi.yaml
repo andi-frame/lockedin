@@ -130,6 +130,30 @@ paths:
               schema: { $ref: "#/components/schemas/User" }
         "4XX": { $ref: "#/components/responses/Problem" }
         default: { $ref: "#/components/responses/Problem" }
+    patch:
+      tags: [me]
+      operationId: updateMe
+      summary: Change my name, language, time zone or which emails I get
+      description: |
+        Only the fields that are sent change. The name is also the signature typed when accepting
+        terms; signatures already given keep the name that was typed then. `email_kinds_off` replaces
+        the whole list. Only the kinds in `EmailKind` can be switched off (SPEC §9): invites, a
+        dispute opened against you and a settled pact are always mailed, and the in-app inbox is
+        never switched off.
+      x-problem-codes: [validation.failed, auth.invalid_name, auth.unauthenticated, auth.csrf]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateMeRequest" }
+      responses:
+        "200":
+          description: The updated user.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
   /today:
     get:
       tags: [me]
@@ -941,14 +965,32 @@ components:
     # ------------------------------------------------------------ users
     User:
       type: object
-      required: [id, email, display_name, locale, timezone, created_at]
+      required: [id, email, display_name, locale, timezone, email_kinds_off, created_at]
       properties:
         id: { type: string, format: uuid }
         email: { type: string, format: email }
         display_name: { type: string, minLength: 1, maxLength: 80 }
         locale: { type: string, enum: [id, en] }
         timezone: { type: string, description: IANA zone, example: Asia/Jakarta }
+        email_kinds_off:
+          type: array
+          description: The kinds of email this person has switched off, sorted. Empty means every email is on.
+          items: { $ref: "#/components/schemas/EmailKind" }
         created_at: { type: string, format: date-time }
+    EmailKind:
+      type: string
+      description: A kind of notification email that can be switched off.
+      enum: [terms_changed, terms_signed, proof_submitted, proof_rejected, proof_overridden, proof_auto_approved]
+    UpdateMeRequest:
+      type: object
+      properties:
+        display_name: { type: string, minLength: 1, maxLength: 80 }
+        locale: { type: string, enum: [id, en] }
+        timezone: { type: string, description: IANA zone. }
+        email_kinds_off:
+          type: array
+          maxItems: 6
+          items: { $ref: "#/components/schemas/EmailKind" }
     RegisterRequest:
       type: object
       required: [email, password, display_name]

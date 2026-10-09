@@ -30,7 +30,8 @@ type NotificationEmail struct {
 }
 
 // ClaimNotificationEmail returns the email data for a notification, or ok=false when there is
-// nothing to send (already claimed or sent, or the notification no longer exists).
+// nothing to send (already claimed or sent, the notification no longer exists, or the person has
+// switched this kind of email off).
 func (s *Service) ClaimNotificationEmail(ctx context.Context, id int64) (NotificationEmail, bool, error) {
 	var out NotificationEmail
 	var found bool
@@ -41,6 +42,10 @@ func (s *Service) ClaimNotificationEmail(ctx context.Context, id int64) (Notific
 		}
 		if err != nil {
 			return err
+		}
+		// Claimed either way: a switched-off kind must not come back on a retry (PLAN 9.4).
+		if !wantsEmail(row.Kind, row.EmailOff) {
+			return nil
 		}
 		var n Notification
 		if err := json.Unmarshal(row.Payload, &n); err != nil || n.PactID == uuid.Nil {
@@ -95,6 +100,9 @@ func (s *Service) ClaimDigestEmail(ctx context.Context, user, pact uuid.UUID, ki
 		u, err := q.GetUser(ctx, user)
 		if err != nil {
 			return err
+		}
+		if !wantsEmail(kind, u.EmailOff) {
+			return nil // claimed above, so these are never mailed (and never retried)
 		}
 		p, err := q.GetPact(ctx, pact)
 		if err != nil {

@@ -80,10 +80,10 @@ test("the doer is told, in words, that a proof was approved automatically", asyn
   await expect(page).toHaveURL(/\/pacts\/[0-9a-f-]{36}\/days\/\d{4}-\d{2}-\d{2}\?of=[0-9a-f-]{36}$/);
 });
 
-test("settings point to the inbox and say what cannot be changed yet", async ({ page, isMobile }) => {
+test("settings point to the inbox and say that it cannot be switched off", async ({ page, isMobile }) => {
   await signIn(page, emails(isMobile).backer);
   await page.goto("/settings");
-  await expect(page.getByText("Nama, zona waktu, dan bahasa belum bisa diubah dari aplikasi.")).toBeVisible();
+  await expect(page.getByText("dan itu tidak bisa dimatikan.", { exact: false })).toBeVisible();
   await page.getByRole("link", { name: "Buka notifikasi" }).click();
   await expect(page).toHaveURL(/\/notifications$/);
 });

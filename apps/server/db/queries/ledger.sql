@@ -85,7 +85,7 @@ with c as (
   where notifications.id = $1 and notifications.emailed_at is null
   returning notifications.id, notifications.user_id, notifications.kind, notifications.payload
 )
-select c.id, c.kind, c.payload, u.email, u.display_name, u.locale
+select c.id, c.kind, c.payload, u.email, u.display_name, u.locale, u.email_off
 from c join users u on u.id = c.user_id;
 
 -- name: ReleaseNotificationEmail :exec

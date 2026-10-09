@@ -127,6 +127,34 @@ func (h *Handlers) GetMe(ctx context.Context, _ api.GetMeRequestObject) (api.Get
 	return api.GetMe200JSONResponse(apiUser(u)), nil
 }
 
+func (h *Handlers) UpdateMe(ctx context.Context, req api.UpdateMeRequestObject) (api.UpdateMeResponseObject, error) {
+	id, err := me(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.Body == nil {
+		return nil, invalid("a JSON body is required")
+	}
+	b := req.Body
+	in := service.ProfileUpdate{DisplayName: b.DisplayName, Timezone: b.Timezone}
+	if b.Locale != nil {
+		l := string(*b.Locale)
+		in.Locale = &l
+	}
+	if b.EmailKindsOff != nil {
+		off := make([]string, 0, len(*b.EmailKindsOff))
+		for _, k := range *b.EmailKindsOff {
+			off = append(off, string(k))
+		}
+		in.EmailOff = &off
+	}
+	u, err := h.svc.UpdateMe(ctx, id, in)
+	if err != nil {
+		return nil, err
+	}
+	return api.UpdateMe200JSONResponse(apiUser(u)), nil
+}
+
 // ---------------------------------------------------------------- today and review queue
 
 func (h *Handlers) GetToday(ctx context.Context, _ api.GetTodayRequestObject) (api.GetTodayResponseObject, error) {

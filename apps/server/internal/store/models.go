@@ -172,4 +172,5 @@ type User struct {
 	AvatarKey       *string
 	EmailVerifiedAt *time.Time
 	CreatedAt       time.Time
+	EmailOff        []string
 }

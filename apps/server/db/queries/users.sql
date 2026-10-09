@@ -8,3 +8,13 @@ select * from users where id = $1;
 
 -- name: GetUserByEmail :one
 select * from users where email = $1;
+
+-- name: UpdateUserProfile :one
+-- Only the columns that are sent change (null = leave as is); email_off is replaced as a whole.
+update users set
+  display_name = coalesce(sqlc.narg(display_name)::text, display_name),
+  locale       = coalesce(sqlc.narg(locale)::text, locale),
+  timezone     = coalesce(sqlc.narg(timezone)::text, timezone),
+  email_off    = coalesce(sqlc.narg(email_off)::text[], email_off)
+where id = sqlc.arg(id)
+returning *;

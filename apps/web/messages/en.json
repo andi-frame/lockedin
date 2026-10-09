@@ -176,9 +176,31 @@
     "timezone": "Time zone",
     "appearance": "Appearance",
     "notifications": "Notifications",
-    "notificationsBody": "Reminders and news about your pacts show up in the notification inbox. Some are also emailed to you. There is no way to turn them off yet.",
+    "notificationsBody": "Reminders and contract news appear in the notification inbox, and that cannot be switched off.",
     "notificationsOpen": "Open notifications",
-    "readOnly": "Your name, time zone and language cannot be changed from the app yet."
+    "nameHint": "This is also the name you type when you sign new terms. Signatures already given keep the name from that day.",
+    "nameRequired": "The name cannot be empty.",
+    "nameLong": "The name can be 80 characters at most.",
+    "language": "Language",
+    "languageId": "Indonesia",
+    "languageEn": "English",
+    "timezoneHint": "Used for dates on Today and in notifications. Each contract still has its own time zone.",
+    "save": "Save",
+    "saving": "Saving",
+    "saved": "Changes saved.",
+    "nothingToSave": "Nothing has changed.",
+    "emailTitle": "Email",
+    "emailBody": "Choose which emails you get. Their content is already in the app, so switching one off does not make you miss anything.",
+    "emailLegend": "Send me an email when",
+    "kind": {
+      "proofSubmitted": "there is new proof for me to review",
+      "proofRejected": "my proof is rejected",
+      "proofOverridden": "an approval of my proof is overridden",
+      "proofAutoApproved": "my proof is approved automatically",
+      "termsChanged": "my friend changes the contract terms",
+      "termsSigned": "my friend signs the terms"
+    },
+    "emailMustStay": "Always sent: contract invitations, a dispute opened against your review, and a contract that has been settled. A deadline or a payment can depend on those."
   },
   "Boundary": {
     "title": "This page failed to load",

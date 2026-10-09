@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/andi-frame/lockedin/apps/server/internal/domain"
 	"github.com/andi-frame/lockedin/apps/server/internal/service"
 )
 
@@ -150,5 +151,23 @@ func TestInviteTokenIsEscapedInTheLink(t *testing.T) {
 	}
 	if !strings.Contains(msg.Text, "/invite/a%20b%2Fc%3Fd") {
 		t.Fatalf("token not path-escaped:\n%s", msg.Text)
+	}
+}
+
+// PLAN 9.4: adding an emailed kind forces a decision about whether a person may switch it off
+// (domain.IsSwitchableEmailKind); this list is the other half of that decision.
+func TestEveryEmailedKindIsSwitchableOrMustStayOn(t *testing.T) {
+	mustStayOn := map[string]bool{"dispute_opened": true, "pact_settled": true}
+	emailed := map[string]bool{}
+	for _, kind := range EmailedKinds() {
+		emailed[kind] = true
+		if domain.IsSwitchableEmailKind(kind) == mustStayOn[kind] {
+			t.Errorf("%s: decide it: it is switchable=%v and listed as must-stay-on=%v here", kind, domain.IsSwitchableEmailKind(kind), mustStayOn[kind])
+		}
+	}
+	for _, kind := range []string{"terms_changed", "terms_signed", "proof_submitted", "proof_rejected", "proof_overridden", "proof_auto_approved"} {
+		if !emailed[kind] {
+			t.Errorf("%s can be switched off but is never emailed", kind)
+		}
 	}
 }
