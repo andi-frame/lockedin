@@ -1,6 +1,6 @@
 # Tepati: project status and handoff
 
-Last updated: 2026-10-08, after task 8.5 (the security review, which closes Phase 8; the backend is complete, Phases 5 to 8 are done). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
+Last updated: 2026-10-08, after the preparation of task 9.1 (the runbook and the restore drill, done without a server; Phases 0 to 8 are done and merged). This is the first thing to read when you start a new session, together with `docs/HANDOVER.md` (how to work in this repo and on this machine, whatever agent you are). `docs/PLAN.md` says *what* is next; this file says *where we are*, what exists, what was decided on the way, and what to watch out for. Update it at the end of every phase.
 
 ## 1. Where we are
 
@@ -15,9 +15,9 @@ Last updated: 2026-10-08, after task 8.5 (the security review, which closes Phas
 | 6 Web features | done | 6.1 new pact wizard and invite/accept flow (PR #6). 6.2 Today screen (PR #7). 6.3 proof editor and submission (PR #8). 6.4 pact page with the coin book and calendar (PR #9). 6.5 review queue and check-in detail (PR #10). 6.6 settlement and payout screens (PR #11). 6.7 notifications inbox and settings: done on `p6.7-notifications` (not pushed or merged yet). Next: Phase 7 |
 | 7 Docker and deploy | done | 7.1 Dockerfiles (PR #13). 7.2 compose dev and prod, Caddy, deploy:up, deploy:scale, backups (PR #14). 7.3 native mode polish: done on `p7.3-native-polish` (not pushed or merged yet) |
 | 8 Quality gates | done | 8.1 CI (PR #16). 8.2 design finish and `DESIGN.md` (PR #17). 8.3 guidelines audit (PR #18). 8.4 load test (PR #19). 8.5 security review: done on `p8.5-security-review` (not pushed or merged yet) |
-| 9 Staging | not started | 9.1 deploy to a VPS, 9.2 landing page: both need the owner (domain, DNS, SMTP provider; a design round for the landing page) |
+| 9 Staging | in progress | 9.1 deploy to a VPS: **prepared, not done** (runbook, restore drill rehearsed on a local stack, stricter `deploy:up` checks, on `p9.1-staging`; the server, DNS, SMTP and the drill on the server need the owner). 9.2 landing page: not started |
 
-The first unchecked task in `docs/PLAN.md` is **9.1** (deploy to a VPS), which needs the owner's decisions (`docs/HANDOVER.md` §10). The real staging deploy (9.1) needs the owner's decisions on the SMTP provider, the domain and DNS (a `media.` host too), see `docs/HANDOVER.md` §10.
+The first unchecked task in `docs/PLAN.md` is **9.1** (deploy to a VPS): it is prepared (`docs/RUNBOOK.md`, the restore drill) but the deploy itself needs the owner's server, domain and DNS (a `media.` host too) and SMTP provider, see `docs/HANDOVER.md` §9 and §10. 9.2 (the landing page) does not need a server.
 
 ## 2. Branch and merge state
 
@@ -33,7 +33,7 @@ e4f987f (end of Phase 1) ─ p2.1-openapi ─ p2.2-fiber-middleware ─ p2.3-han
 - 5.3 was merged as PR #5 (merge commit `373f3aa`, 2026-10-08). The branch `p5.3-auth-shell` still exists on `origin`, like the other two.
 - 6.1 was merged as PR #6 (merge commit `ddff0a3`, 2026-10-08). The branch `p6.1-pact-wizard` still exists on `origin`.
 - 6.2 was merged as PR #7 (merge commit `88d0da4`, 2026-10-08). The branch `p6.2-today-screen` still exists on `origin`.
-- 6.3 was merged as PR #8 (`a54f2d7`), 6.4 as PR #9 (`d4e89b2`), 6.5 as PR #10 (`93d095a`), 6.6 as PR #11 (`e8121ad`), 6.7 as PR #12 (`72b934b`), 7.1 as PR #13 (`fa114b0`), 7.2 as PR #14 (`c6bb76b`) and 7.3 as PR #15 (`7e495f7`). 8.1 was merged as PR #16 (`728c86c`) after several GitHub runs (see PLAN 8.1). 8.2 was merged as PR #17 (`f0c4e37`). 8.3 was merged as PR #18 (`dae5f85`). 8.4 was merged as PR #19 (`831781e`). 8.5 lives on `p8.5-security-review` (`b82771c`, plus a docs commit), cut from `main` after that merge; it is not pushed or merged yet.
+- 6.3 was merged as PR #8 (`a54f2d7`), 6.4 as PR #9 (`d4e89b2`), 6.5 as PR #10 (`93d095a`), 6.6 as PR #11 (`e8121ad`), 6.7 as PR #12 (`72b934b`), 7.1 as PR #13 (`fa114b0`), 7.2 as PR #14 (`c6bb76b`) and 7.3 as PR #15 (`7e495f7`). 8.1 was merged as PR #16 (`728c86c`) after several GitHub runs (see PLAN 8.1). 8.2 was merged as PR #17 (`f0c4e37`). 8.3 was merged as PR #18 (`dae5f85`). 8.4 was merged as PR #19 (`831781e`). 8.5 was merged as PR #20 (`0e3ee86`). The 9.1 preparation lives on `p9.1-staging` (`8c44b68`, plus a docs commit), cut from `main` after that merge; it is not pushed or merged yet.
 - `p2.3` is far over the ~600-line PR guideline in `AGENTS.md`. It is split into three commits (contract fixes, service layer, handlers) so it can be reviewed commit by commit. `p3.1` is four commits (service relay and reminders, worker, CLI and air, docs). `p3.2` is service claims and the invite event, the `notify` package, the worker email tasks, a copy fix, and docs.
 - Commit messages carry no Claude attribution lines (the project owner's rule).
 
@@ -292,6 +292,12 @@ Why things are the way they are, beyond the ADRs. API conventions are written up
 - `deploy:build` passes `--pull` (the Go base image was stale); CI uses the newest Go 1.26 patch and has a `vulncheck` job (`govulncheck`, `bun audit`); `golang.org/x/net` is v0.60.0. **Rebuild images before a real deploy.**
 - A test that a link in a proof opens with `noopener noreferrer` and that `javascript:` is never drawn.
 - Accepted risks, with reasons, are in PLAN 8.5: CSP keeps `'unsafe-inline'` (a nonce is the next hardening step), one dev-only `braces` advisory without a fix.
+
+**What the 9.1 preparation added (no server was used):**
+- `docs/RUNBOOK.md`: the order of a first deploy, updates, rollback, backups and the restore drill, secrets, a troubleshooting table, known gaps.
+- `bun run restore -- --env <env> list | check <key> | restore <key> --live` (`deploy/backup/restore.sh`, `scripts/restore.ts`): `check` restores a backup into a scratch database and counts what is in it (the drill; nothing live is touched), `restore --live` replaces the live database after storing a safety copy under `pre-restore/`. Rehearsed on the local staging stack, including the way back (PLAN 9.1).
+- `deploy:up` also refuses `DOMAIN=localhost` or Mailpit in production, a real domain without `ACME_EMAIL`, `APP_BASE_URL` on another host than `DOMAIN`, and a raised auth limit in production.
+- **Still to do, with the owner:** the VPS, DNS for `<DOMAIN>` and `media.<DOMAIN>`, a Let's Encrypt certificate, real SMTP, the drill on the server (write its date in the runbook), off-host copies of the dumps and the env file.
 
 **Useful for the web work:**
 - `bun run dev:hybrid` starts infra, api and worker. `bun run db:seed` and `bun run db:seed -- invite` give data to look at (seed users `seed-backer@tepati.test` / `seed-doer@tepati.test`, password `tepati-seed-1234`). Mailpit is at http://localhost:8025.
