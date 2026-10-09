@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { addDays, clockIn, daysBetween, isDate, isoWeekday, isTimeZone, todayIn } from "./dates";
+import { addDays, clockIn, daysBetween, isDate, isoWeekday, isTimeZone, startHasPassed, todayIn } from "./dates";
 
 describe("isDate", () => {
   test.each([
@@ -59,4 +59,18 @@ describe("isTimeZone", () => {
     ["Mars/Olympus", false],
     ["", false],
   ])("%s is %p", (zone, ok) => expect(isTimeZone(zone)).toBe(ok));
+});
+
+describe("startHasPassed", () => {
+  // SPEC §3, same rule as the server's domain.StartHasPassed: before today in the pact's own zone.
+  test("the start day itself is not passed, the day after is", () => {
+    expect(startHasPassed("2026-11-02", "Asia/Jakarta", new Date("2026-11-02T16:59:00Z"))).toBe(false);
+    expect(startHasPassed("2026-11-02", "Asia/Jakarta", new Date("2026-11-02T17:00:00Z"))).toBe(true);
+  });
+  test("is judged in the pact's zone, not the browser's", () => {
+    expect(startHasPassed("2026-11-02", "America/Los_Angeles", new Date("2026-11-03T05:00:00Z"))).toBe(false);
+  });
+  test("a start in the future is not passed", () => {
+    expect(startHasPassed("2026-11-09", "Asia/Jakarta", new Date("2026-11-02T03:00:00Z"))).toBe(false);
+  });
 });

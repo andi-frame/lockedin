@@ -703,5 +703,11 @@
     "closeTitle": "Mulai dengan satu kontrak.",
     "closeBody": "Buat akun, tentukan ketentuannya, lalu kirim undangan ke temanmu.",
     "footer": "Tepati"
+  },
+  "StartPassed": {
+    "body": "Tanggal mulai kontrak ini, {date}, sudah lewat, jadi belum bisa ditandatangani.",
+    "backer": "Geser tanggalnya ke hari ini atau lebih lambat, lalu kalian berdua tanda tangan lagi.",
+    "other": "Minta penyokong menggeser tanggalnya ke hari ini atau lebih lambat, lalu kalian berdua tanda tangan lagi.",
+    "edit": "Ubah tanggal"
   }
 }
