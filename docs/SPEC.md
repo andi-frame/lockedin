@@ -219,6 +219,8 @@ User-triggered transitions (approve, reject, dispute, resolve, override, rest) g
 
 **The account (`PATCH /me`).** A person can change their display name, language and time zone. The name is also the signature typed on terms: signatures already given keep the name that was typed then, and the next signature must match the current name. The time zone is the default for new pacts and the zone of Today's date and the inbox; a pact keeps its own zone.
 
+**The password.** A person can change it from Settings by giving the current one. That ends every other session and keeps the one asking; a wrong current password changes nothing and counts toward a per-user limit of 10 attempts a minute, so a stolen session cannot be used to guess it. There is no password reset by e-mail and no way to change the e-mail address in the MVP (both need an e-mail verification flow).
+
 ## 10. Non-functional requirements
 
 - p95 API latency below 150 ms for reads and below 300 ms for writes at 200 RPS on a single 2 vCPU API instance (excluding uploads).

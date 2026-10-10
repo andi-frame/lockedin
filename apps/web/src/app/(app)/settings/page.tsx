@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { EmailForm } from "@/components/settings/email-form";
 import { AccountForm } from "@/components/settings/account-form";
+import { PasswordForm } from "@/components/settings/password-form";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LogoutButton } from "@/components/shell/logout-button";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -26,6 +27,16 @@ export default async function SettingsPage() {
             {t("account")}
           </h2>
           <AccountForm user={user} />
+        </section>
+      ) : null}
+
+      {user ? (
+        <section aria-labelledby="password" className="mt-10 max-w-xl">
+          <h2 id="password" className="text-lg font-semibold tracking-tight">
+            {t("passwordTitle")}
+          </h2>
+          <p className="mt-2 max-w-prose text-[15px]">{t("passwordBody")}</p>
+          <PasswordForm />
         </section>
       ) : null}
 

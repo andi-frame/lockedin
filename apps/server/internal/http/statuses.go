@@ -10,6 +10,7 @@ var statuses = map[api.ErrorCode]int{
 	api.AuthInvalidEmail:            400,
 	api.AuthInvalidName:             400,
 	api.AuthWeakPassword:            400,
+	api.AuthWrongPassword:           400,
 	api.PactInvalidTerms:            400,
 	api.PactTermsMembers:            400,
 	api.ProofInvalidDoc:             400,

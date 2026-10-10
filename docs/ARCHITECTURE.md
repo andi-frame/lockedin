@@ -242,9 +242,10 @@ Base path `/api/v1`. Authentication uses session cookies. Errors use `problem+js
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/auth/register`, `/auth/login`, `/auth/logout` | session lifecycle |
+| POST | `/auth/register`, `/auth/login`, `/auth/logout` | session lifecycle. Sessions are Redis keys `sess:<sha256(token)>`; each user also has a set `usess:<user id>` of their session keys, so ending the other sessions does not scan Redis |
 | GET | `/me` | current user |
 | PATCH | `/me` | change name, language, time zone, and which emails are on (SPEC §9) |
+| POST | `/me/password` | change the password: needs the current one, ends the user's other sessions, keeps the calling one; wrong attempts are limited per user (10 a minute, the login limiter) |
 | GET | `/today` | aggregate for the Today screen: my open check-ins with deadlines, my review queue count, and a pot summary per active pact |
 | GET/POST | `/pacts` | list mine / create draft |
 | GET/PATCH | `/pacts/{id}` | detail / edit terms (draft/proposed only) |

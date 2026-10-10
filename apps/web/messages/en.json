@@ -13,6 +13,7 @@
     "auth_invalid_credentials": "That email and password don't match. Check them and try again.",
     "auth_email_taken": "This email already has an account. Sign in, or use another email.",
     "auth_weak_password": "That password is too easy to guess. Use at least 8 characters and avoid common ones.",
+    "auth_wrong_password": "The current password does not match. Check it and try again.",
     "auth_invalid_email": "That email doesn't look right. Example: name@campus.ac.id",
     "auth_invalid_name": "That name can't be used. Write the name you'll type when you sign a pact.",
     "auth_rate_limited": "Too many attempts. Wait a moment and try again.",
@@ -201,7 +202,15 @@
       "termsChanged": "my friend changes the contract terms",
       "termsSigned": "my friend signs the terms"
     },
-    "emailMustStay": "Always sent: contract invitations, a dispute opened against your review, and a contract that has been settled. A deadline or a payment can depend on those."
+    "emailMustStay": "Always sent: contract invitations, a dispute opened against your review, and a contract that has been settled. A deadline or a payment can depend on those.",
+    "passwordTitle": "Password",
+    "passwordBody": "Change your password. Every other device is signed out and has to sign in again; this one stays signed in.",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "newPasswordHint": "At least 8 characters.",
+    "changePassword": "Change password",
+    "passwordChanged": "Password changed.",
+    "passwordChangedBody": "Other devices have been signed out."
   },
   "Boundary": {
     "title": "This page failed to load",

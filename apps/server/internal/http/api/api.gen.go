@@ -223,6 +223,7 @@ const (
 	AuthRateLimited             ErrorCode = "auth.rate_limited"
 	AuthUnauthenticated         ErrorCode = "auth.unauthenticated"
 	AuthWeakPassword            ErrorCode = "auth.weak_password"
+	AuthWrongPassword           ErrorCode = "auth.wrong_password"
 	CheckinConflict             ErrorCode = "checkin.conflict"
 	CheckinDeadlinePassed       ErrorCode = "checkin.deadline_passed"
 	CheckinEvidenceInsufficient ErrorCode = "checkin.evidence_insufficient"
@@ -278,6 +279,8 @@ func (e ErrorCode) Valid() bool {
 	case AuthUnauthenticated:
 		return true
 	case AuthWeakPassword:
+		return true
+	case AuthWrongPassword:
 		return true
 	case CheckinConflict:
 		return true
@@ -650,6 +653,12 @@ type AttachmentUrls struct {
 	Thumb  *string `json:"thumb,omitempty"`
 }
 
+// ChangePasswordRequest defines model for ChangePasswordRequest.
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
 // CheckIn defines model for CheckIn.
 type CheckIn struct {
 	CutoffAt        time.Time          `json:"cutoff_at"`
@@ -743,7 +752,7 @@ type EmailKind string
 //
 // | Status | Codes |
 // |---|---|
-// | 400 | `validation.failed`, `auth.invalid_email`, `auth.invalid_name`, `auth.weak_password`, `pact.invalid_terms`, `pact.terms_members`, `proof.invalid_doc`, `checkin.reason_required`, `upload.size_mismatch` |
+// | 400 | `validation.failed`, `auth.invalid_email`, `auth.invalid_name`, `auth.weak_password`, `auth.wrong_password`, `pact.invalid_terms`, `pact.terms_members`, `proof.invalid_doc`, `checkin.reason_required`, `upload.size_mismatch` |
 // | 401 | `auth.unauthenticated`, `auth.invalid_credentials` |
 // | 403 | `auth.csrf`, `pact.not_backer`, `pact.not_doer`, `checkin.not_allowed` |
 // | 404 | `not_found` (also for non-members) |
@@ -971,7 +980,7 @@ type Problem struct {
 	//
 	// | Status | Codes |
 	// |---|---|
-	// | 400 | `validation.failed`, `auth.invalid_email`, `auth.invalid_name`, `auth.weak_password`, `pact.invalid_terms`, `pact.terms_members`, `proof.invalid_doc`, `checkin.reason_required`, `upload.size_mismatch` |
+	// | 400 | `validation.failed`, `auth.invalid_email`, `auth.invalid_name`, `auth.weak_password`, `auth.wrong_password`, `pact.invalid_terms`, `pact.terms_members`, `proof.invalid_doc`, `checkin.reason_required`, `upload.size_mismatch` |
 	// | 401 | `auth.unauthenticated`, `auth.invalid_credentials` |
 	// | 403 | `auth.csrf`, `pact.not_backer`, `pact.not_doer`, `checkin.not_allowed` |
 	// | 404 | `not_found` (also for non-members) |
@@ -1440,6 +1449,9 @@ type RejectCheckInJSONRequestBody = ReasonRequest
 // UpdateMeJSONRequestBody defines body for UpdateMe for application/json ContentType.
 type UpdateMeJSONRequestBody = UpdateMeRequest
 
+// ChangePasswordJSONRequestBody defines body for ChangePassword for application/json ContentType.
+type ChangePasswordJSONRequestBody = ChangePasswordRequest
+
 // MarkNotificationsReadJSONRequestBody defines body for MarkNotificationsRead for application/json ContentType.
 type MarkNotificationsReadJSONRequestBody = MarkReadRequest
 
@@ -1511,6 +1523,9 @@ type ServerInterface interface {
 	// UpdateMe Change my name, language, time zone or which emails I get
 	// (PATCH /me)
 	UpdateMe(c fiber.Ctx) error
+	// ChangePassword Change my password
+	// (POST /me/password)
+	ChangePassword(c fiber.Ctx) error
 	// ListNotifications My inbox
 	// (GET /notifications)
 	ListNotifications(c fiber.Ctx, params ListNotificationsParams) error
@@ -2142,6 +2157,24 @@ func (siw *ServerInterfaceWrapper) UpdateMe(c fiber.Ctx) error {
 
 	handler := func(c fiber.Ctx) error {
 		return siw.Handler.UpdateMe(c)
+	}
+
+	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
+		m := siw.HandlerMiddlewares[i]
+		next := handler
+		handler = func(c fiber.Ctx) error {
+			return m(c, next)
+		}
+	}
+
+	return handler(c)
+}
+
+// ChangePassword operation middleware
+func (siw *ServerInterfaceWrapper) ChangePassword(c fiber.Ctx) error {
+
+	handler := func(c fiber.Ctx) error {
+		return siw.Handler.ChangePassword(c)
 	}
 
 	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
@@ -2913,6 +2946,8 @@ func RegisterHandlersWithOptions(router fiber.Router, si ServerInterface, option
 
 	router.Patch(options.BaseURL+"/me", wrapper.UpdateMe)
 
+	router.Post(options.BaseURL+"/me/password", wrapper.ChangePassword)
+
 	router.Get(options.BaseURL+"/today", wrapper.GetToday)
 
 	router.Get(options.BaseURL+"/pacts", wrapper.ListPacts)
@@ -3631,6 +3666,46 @@ type UpdateMedefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response UpdateMedefaultApplicationProblemPlusJSONResponse) VisitUpdateMeResponse(ctx fiber.Ctx) error {
+	ctx.Response().Header.Set("Content-Type", "application/problem+json")
+	ctx.Status(response.StatusCode)
+
+	return ctx.JSON(&response.Body)
+}
+
+type ChangePasswordRequestObject struct {
+	Body *ChangePasswordJSONRequestBody
+}
+
+type ChangePasswordResponseObject interface {
+	VisitChangePasswordResponse(ctx fiber.Ctx) error
+}
+
+type ChangePassword204Response struct {
+}
+
+func (response ChangePassword204Response) VisitChangePasswordResponse(ctx fiber.Ctx) error {
+	ctx.Status(204)
+	return nil
+}
+
+type ChangePassword4XXApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ChangePassword4XXApplicationProblemPlusJSONResponse) VisitChangePasswordResponse(ctx fiber.Ctx) error {
+	ctx.Response().Header.Set("Content-Type", "application/problem+json")
+	ctx.Status(response.StatusCode)
+
+	return ctx.JSON(&response.Body)
+}
+
+type ChangePassworddefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ChangePassworddefaultApplicationProblemPlusJSONResponse) VisitChangePasswordResponse(ctx fiber.Ctx) error {
 	ctx.Response().Header.Set("Content-Type", "application/problem+json")
 	ctx.Status(response.StatusCode)
 
@@ -4356,6 +4431,9 @@ type StrictServerInterface interface {
 	// UpdateMe Change my name, language, time zone or which emails I get
 	// (PATCH /me)
 	UpdateMe(ctx context.Context, request UpdateMeRequestObject) (UpdateMeResponseObject, error)
+	// ChangePassword Change my password
+	// (POST /me/password)
+	ChangePassword(ctx context.Context, request ChangePasswordRequestObject) (ChangePasswordResponseObject, error)
 	// ListNotifications My inbox
 	// (GET /notifications)
 	ListNotifications(ctx context.Context, request ListNotificationsRequestObject) (ListNotificationsResponseObject, error)
@@ -4889,6 +4967,37 @@ func (sh *strictHandler) UpdateMe(ctx fiber.Ctx) error {
 		return err
 	} else if validResponse, ok := response.(UpdateMeResponseObject); ok {
 		if err := validResponse.VisitUpdateMeResponse(ctx); err != nil {
+			return err
+		}
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// ChangePassword operation middleware
+func (sh *strictHandler) ChangePassword(ctx fiber.Ctx) error {
+	var request ChangePasswordRequestObject
+
+	var body ChangePasswordJSONRequestBody
+	if err := ctx.Bind().Body(&body); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+	request.Body = &body
+
+	handler := func(ctx fiber.Ctx, request interface{}) (interface{}, error) {
+		return sh.ssi.ChangePassword(ctx.Context(), request.(ChangePasswordRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ChangePassword")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(ChangePasswordResponseObject); ok {
+		if err := validResponse.VisitChangePasswordResponse(ctx); err != nil {
 			return err
 		}
 	} else if response != nil {

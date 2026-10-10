@@ -20,6 +20,7 @@ var (
 	ErrEmailTaken         = &domain.Error{Code: "auth.email_taken", Msg: "this email is already registered"}
 	ErrInvalidEmail       = &domain.Error{Code: "auth.invalid_email", Msg: "enter a valid email address"}
 	ErrInvalidName        = &domain.Error{Code: "auth.invalid_name", Msg: "display name must be 1 to 80 characters"}
+	ErrWrongPassword      = &domain.Error{Code: "auth.wrong_password", Msg: "the current password is wrong"}
 )
 
 // Login limits: 10 attempts per minute per IP, and per email (ARCHITECTURE §3).
@@ -118,6 +119,32 @@ func (s *Service) Login(ctx context.Context, email, password, ip string) (store.
 		return store.User{}, "", err
 	}
 	return u, token, nil
+}
+
+// ChangePassword sets a new password after checking the current one, then ends every session of
+// the user except `keepToken` (the one asking), so a stolen session or a forgotten device does not
+// survive the change. Attempts are limited per user with the login limiter: a stolen session must
+// not be able to guess the current password.
+func (s *Service) ChangePassword(ctx context.Context, user uuid.UUID, keepToken, current, next string) error {
+	if err := s.login.Allow(ctx, "pw:"+user.String()); err != nil {
+		return err
+	}
+	u, err := s.st.GetUser(ctx, user)
+	if err != nil {
+		return err
+	}
+	ok, err := VerifyPassword(current, u.PasswordHash)
+	if err != nil || !ok {
+		return ErrWrongPassword
+	}
+	hash, err := HashPassword(next)
+	if err != nil {
+		return err
+	}
+	if err := s.st.UpdateUserPassword(ctx, store.UpdateUserPasswordParams{ID: user, PasswordHash: hash}); err != nil {
+		return err
+	}
+	return s.sessions.RevokeOthers(ctx, user, keepToken)
 }
 
 func (s *Service) Logout(ctx context.Context, token string) error {

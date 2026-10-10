@@ -121,6 +121,6 @@ Restoring after losing the host: install Docker, restore the env file, `deploy:u
 ## 10. Known gaps
 
 - A pact whose start date has passed cannot be signed (`pact.start_passed`); the people have to move the dates later and sign again.
-- Changing the e-mail address and the password is not possible from the app (name, language, time zone and which e-mails to get are, in Settings).
+- Changing the e-mail address is not possible from the app (it would need an e-mail verification flow, which does not exist), and there is no "forgot my password": a person who has lost their password has no way back in except an operator changing the hash in the database. Name, language, time zone, which e-mails to get and the password (with the current one) can be changed in Settings.
 - The CSP keeps `'unsafe-inline'` for scripts and styles because Next.js writes inline ones; a per-request nonce is the next hardening step.
 - Dumps and uploads live on one host until you copy them elsewhere (section 6).

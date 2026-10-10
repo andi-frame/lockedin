@@ -343,6 +343,30 @@ func TestUpdateMeOverHTTP(t *testing.T) {
 	forged.fails(403, api.AuthCsrf, "PATCH", "/api/v1/me", map[string]any{"display_name": "X"})
 }
 
+// PLAN 9.9: POST /me/password needs the current password, keeps the calling session and ends the others.
+func TestChangePasswordOverHTTP(t *testing.T) {
+	s := newStack(t)
+	here := &client{s: s, name: "laptop"}
+	here.ok(201, "POST", "/api/v1/auth/register", map[string]any{"email": "sari@tepati.test", "password": "correct horse battery", "display_name": "Sari"})
+	phone := &client{s: s, name: "phone"}
+	phone.ok(200, "POST", "/api/v1/auth/login", map[string]any{"email": "sari@tepati.test", "password": "correct horse battery"})
+
+	here.fails(400, api.AuthWrongPassword, "POST", "/api/v1/me/password", map[string]any{"current_password": "not the password", "new_password": "a brand new passphrase"})
+	here.fails(400, api.AuthWeakPassword, "POST", "/api/v1/me/password", map[string]any{"current_password": "correct horse battery", "new_password": "short"})
+	phone.ok(200, "GET", "/api/v1/me", nil) // refused attempts end nothing
+
+	forged := &client{s: s, name: "forger", session: here.session, csrf: "forged"}
+	forged.fails(403, api.AuthCsrf, "POST", "/api/v1/me/password", map[string]any{"current_password": "correct horse battery", "new_password": "a brand new passphrase"})
+	s.anon().fails(401, api.AuthUnauthenticated, "POST", "/api/v1/me/password", map[string]any{"current_password": "x", "new_password": "a brand new passphrase"})
+
+	here.ok(204, "POST", "/api/v1/me/password", map[string]any{"current_password": "correct horse battery", "new_password": "a brand new passphrase"})
+	here.ok(200, "GET", "/api/v1/me", nil)
+	phone.fails(401, api.AuthUnauthenticated, "GET", "/api/v1/me", nil)
+
+	s.anon().fails(401, api.AuthInvalidCredentials, "POST", "/api/v1/auth/login", map[string]any{"email": "sari@tepati.test", "password": "correct horse battery"})
+	s.anon().ok(200, "POST", "/api/v1/auth/login", map[string]any{"email": "sari@tepati.test", "password": "a brand new passphrase"})
+}
+
 // ---------------------------------------------------------------- pact onboarding
 
 func TestPactOnboardingOverHTTP(t *testing.T) {
