@@ -41,6 +41,11 @@ func (s *Sessions) key(token string) string {
 	return s.prefix + hex.EncodeToString(sum[:])
 }
 
+// index is the set of a user's session keys. It exists so "end every other session" (a password
+// change) does not have to scan Redis. It has no expiry of its own: a member whose session has
+// expired is harmless and is dropped the next time the user logs out or the others are revoked.
+func (s *Sessions) index(user uuid.UUID) string { return "usess:" + user.String() }
+
 // Create returns a new random session token for the user.
 func (s *Sessions) Create(ctx context.Context, user uuid.UUID) (string, error) {
 	b := make([]byte, 32)
@@ -48,7 +53,10 @@ func (s *Sessions) Create(ctx context.Context, user uuid.UUID) (string, error) {
 		return "", err
 	}
 	token := base64.RawURLEncoding.EncodeToString(b)
-	if err := s.rdb.Set(ctx, s.key(token), user.String(), SessionTTL).Err(); err != nil {
+	pipe := s.rdb.TxPipeline()
+	pipe.Set(ctx, s.key(token), user.String(), SessionTTL)
+	pipe.SAdd(ctx, s.index(user), s.key(token))
+	if _, err := pipe.Exec(ctx); err != nil {
 		return "", fmt.Errorf("auth: store session: %w", err)
 	}
 	return token, nil
@@ -74,8 +82,52 @@ func (s *Sessions) Lookup(ctx context.Context, token string) (uuid.UUID, error) 
 	return id, nil
 }
 
+// Delete ends one session and takes it out of its user's index.
 func (s *Sessions) Delete(ctx context.Context, token string) error {
-	return s.rdb.Del(ctx, s.key(token)).Err()
+	k := s.key(token)
+	v, err := s.rdb.GetDel(ctx, k).Result()
+	if errors.Is(err, redis.Nil) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("auth: delete session: %w", err)
+	}
+	if user, err := uuid.Parse(v); err == nil {
+		return s.rdb.SRem(ctx, s.index(user), k).Err()
+	}
+	return nil
+}
+
+// RevokeOthers ends every session of the user except the one holding `keep` (which may be empty to
+// end them all). It also drops index entries whose sessions have expired.
+func (s *Sessions) RevokeOthers(ctx context.Context, user uuid.UUID, keep string) error {
+	idx := s.index(user)
+	members, err := s.rdb.SMembers(ctx, idx).Result()
+	if err != nil {
+		return fmt.Errorf("auth: list sessions: %w", err)
+	}
+	keepKey := ""
+	if keep != "" {
+		keepKey = s.key(keep)
+	}
+	var gone []any
+	for _, k := range members {
+		if k != keepKey {
+			gone = append(gone, k)
+		}
+	}
+	if len(gone) == 0 {
+		return nil
+	}
+	pipe := s.rdb.TxPipeline()
+	for _, k := range gone {
+		pipe.Del(ctx, k.(string))
+	}
+	pipe.SRem(ctx, idx, gone...)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return fmt.Errorf("auth: revoke sessions: %w", err)
+	}
+	return nil
 }
 
 // CSRFToken is HMAC(secret, session token): a double-submit token bound to the

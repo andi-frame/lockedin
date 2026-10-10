@@ -18,3 +18,6 @@ update users set
   email_off    = coalesce(sqlc.narg(email_off)::text[], email_off)
 where id = sqlc.arg(id)
 returning *;
+
+-- name: UpdateUserPassword :exec
+update users set password_hash = $2 where id = $1;

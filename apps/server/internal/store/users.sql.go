@@ -95,6 +95,20 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	return i, err
 }
 
+const updateUserPassword = `-- name: UpdateUserPassword :exec
+update users set password_hash = $2 where id = $1
+`
+
+type UpdateUserPasswordParams struct {
+	ID           uuid.UUID
+	PasswordHash string
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {
+	_, err := q.db.Exec(ctx, updateUserPassword, arg.ID, arg.PasswordHash)
+	return err
+}
+
 const updateUserProfile = `-- name: UpdateUserProfile :one
 update users set
   display_name = coalesce($1::text, display_name),

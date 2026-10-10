@@ -154,6 +154,25 @@ paths:
               schema: { $ref: "#/components/schemas/User" }
         "4XX": { $ref: "#/components/responses/Problem" }
         default: { $ref: "#/components/responses/Problem" }
+  /me/password:
+    post:
+      tags: [me]
+      operationId: changePassword
+      summary: Change my password
+      description: |
+        Needs the current password. On success every other session of this user is ended and this
+        one stays signed in. Wrong attempts are limited per user (`auth.rate_limited`), so a stolen
+        session cannot be used to guess the current password.
+      x-problem-codes: [validation.failed, auth.wrong_password, auth.weak_password, auth.rate_limited, auth.unauthenticated, auth.csrf]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChangePasswordRequest" }
+      responses:
+        "204": { description: Password changed; other sessions ended. }
+        "4XX": { $ref: "#/components/responses/Problem" }
+        default: { $ref: "#/components/responses/Problem" }
   /today:
     get:
       tags: [me]
@@ -878,7 +897,7 @@ components:
 
         | Status | Codes |
         |---|---|
-        | 400 | `validation.failed`, `auth.invalid_email`, `auth.invalid_name`, `auth.weak_password`, `pact.invalid_terms`, `pact.terms_members`, `proof.invalid_doc`, `checkin.reason_required`, `upload.size_mismatch` |
+        | 400 | `validation.failed`, `auth.invalid_email`, `auth.invalid_name`, `auth.weak_password`, `auth.wrong_password`, `pact.invalid_terms`, `pact.terms_members`, `proof.invalid_doc`, `checkin.reason_required`, `upload.size_mismatch` |
         | 401 | `auth.unauthenticated`, `auth.invalid_credentials` |
         | 403 | `auth.csrf`, `pact.not_backer`, `pact.not_doer`, `checkin.not_allowed` |
         | 404 | `not_found` (also for non-members) |
@@ -909,6 +928,7 @@ components:
         - auth.invalid_email
         - auth.invalid_name
         - auth.weak_password
+        - auth.wrong_password
         - auth.rate_limited
         - pact.invalid_state
         - pact.invalid_terms
@@ -978,6 +998,12 @@ components:
           description: The kinds of email this person has switched off, sorted. Empty means every email is on.
           items: { $ref: "#/components/schemas/EmailKind" }
         created_at: { type: string, format: date-time }
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: { type: string, minLength: 1, maxLength: 128, format: password }
+        new_password: { type: string, minLength: 8, maxLength: 128, format: password }
     EmailKind:
       type: string
       description: A kind of notification email that can be switched off.

@@ -13,6 +13,7 @@
     "auth_invalid_credentials": "Email atau kata sandi belum cocok. Periksa lagi lalu coba masuk.",
     "auth_email_taken": "Email ini sudah terdaftar. Coba masuk, atau pakai email lain.",
     "auth_weak_password": "Kata sandi terlalu mudah ditebak. Pakai minimal 8 karakter dan hindari yang umum.",
+    "auth_wrong_password": "Kata sandi yang sekarang belum cocok. Periksa lagi.",
     "auth_invalid_email": "Format email belum benar. Contoh: nama@kampus.ac.id",
     "auth_invalid_name": "Nama ini belum bisa dipakai. Tulis nama yang akan kamu ketik saat menandatangani kontrak.",
     "auth_rate_limited": "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.",
@@ -201,7 +202,15 @@
       "termsChanged": "temanmu mengubah ketentuan kontrak",
       "termsSigned": "temanmu menandatangani ketentuan"
     },
-    "emailMustStay": "Yang selalu dikirim: undangan kontrak, sanggahan yang dibuka atas tinjauanmu, dan kontrak yang sudah selesai. Di situ ada batas waktu atau pembayaran yang bergantung padamu."
+    "emailMustStay": "Yang selalu dikirim: undangan kontrak, sanggahan yang dibuka atas tinjauanmu, dan kontrak yang sudah selesai. Di situ ada batas waktu atau pembayaran yang bergantung padamu.",
+    "passwordTitle": "Kata sandi",
+    "passwordBody": "Ganti kata sandimu. Semua perangkat lain akan keluar dan harus masuk lagi; perangkat ini tetap masuk.",
+    "currentPassword": "Kata sandi sekarang",
+    "newPassword": "Kata sandi baru",
+    "newPasswordHint": "Minimal 8 karakter.",
+    "changePassword": "Ganti kata sandi",
+    "passwordChanged": "Kata sandi diganti.",
+    "passwordChangedBody": "Perangkat lain sudah dikeluarkan."
   },
   "Boundary": {
     "title": "Halaman ini gagal dimuat",

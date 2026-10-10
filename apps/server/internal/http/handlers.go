@@ -127,6 +127,20 @@ func (h *Handlers) GetMe(ctx context.Context, _ api.GetMeRequestObject) (api.Get
 	return api.GetMe200JSONResponse(apiUser(u)), nil
 }
 
+func (h *Handlers) ChangePassword(ctx context.Context, req api.ChangePasswordRequestObject) (api.ChangePasswordResponseObject, error) {
+	id, err := me(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.Body == nil {
+		return nil, invalid("a JSON body is required")
+	}
+	if err := h.auth.ChangePassword(ctx, id, auth.SessionFromContext(ctx), req.Body.CurrentPassword, req.Body.NewPassword); err != nil {
+		return nil, err
+	}
+	return api.ChangePassword204Response{}, nil
+}
+
 func (h *Handlers) UpdateMe(ctx context.Context, req api.UpdateMeRequestObject) (api.UpdateMeResponseObject, error) {
 	id, err := me(ctx)
 	if err != nil {

@@ -93,3 +93,51 @@ test("settings: the account's language follows the person to a new device", asyn
   await expect(page).toHaveURL(/\/today$/);
   await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
 });
+
+test("settings: changing the password signs the other devices out and keeps this one", async ({ page, browser }) => {
+  const email = await register(page);
+
+  // Another device, signed in with the same account.
+  const other = await browser.newContext();
+  const phone = await other.newPage();
+  await phone.goto("/login");
+  await phone.getByLabel("Email", { exact: true }).fill(email);
+  await phone.getByLabel("Kata sandi", { exact: true }).fill("kata-sandi-e2e-1");
+  await phone.getByRole("button", { name: "Masuk" }).click();
+  await expect(phone).toHaveURL(/\/today$/);
+
+  await page.goto("/settings");
+  const section = page.locator("section[aria-labelledby=password]");
+
+  // Client checks come first, and the server refuses a wrong current password at the field.
+  await section.getByRole("button", { name: "Ganti kata sandi" }).click();
+  await expect(section.getByText("Isi kata sandimu.")).toBeVisible();
+  await section.getByLabel("Kata sandi sekarang", { exact: true }).fill("bukan-kata-sandi-ini");
+  await section.getByLabel("Kata sandi baru", { exact: true }).fill("kata-sandi-baru-2");
+  await section.getByRole("button", { name: "Ganti kata sandi" }).click();
+  await expect(section.getByText("Kata sandi yang sekarang belum cocok.")).toBeVisible();
+
+  await section.getByLabel("Kata sandi sekarang", { exact: true }).fill("kata-sandi-e2e-1");
+  const changed = page.waitForResponse((r) => r.url().endsWith("/api/v1/me/password") && r.request().method() === "POST" && r.status() === 204);
+  await section.getByRole("button", { name: "Ganti kata sandi" }).click();
+  await changed;
+  await expect(page.getByText("Perangkat lain sudah dikeluarkan.", { exact: true })).toBeVisible();
+
+  // This device is still in; the other one is not.
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1, name: "Pengaturan" })).toBeVisible();
+  await phone.goto("/today");
+  await expect(phone).toHaveURL(/\/login/);
+  await other.close();
+
+  // The old password is gone, the new one works.
+  await page.getByRole("button", { name: "Keluar" }).first().click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Kata sandi", { exact: true }).fill("kata-sandi-e2e-1");
+  await page.getByRole("button", { name: "Masuk" }).click();
+  await expect(page.getByText("Email atau kata sandi belum cocok", { exact: false })).toBeVisible();
+  await page.getByLabel("Kata sandi", { exact: true }).fill("kata-sandi-baru-2");
+  await page.getByRole("button", { name: "Masuk" }).click();
+  await expect(page).toHaveURL(/\/today$/);
+});

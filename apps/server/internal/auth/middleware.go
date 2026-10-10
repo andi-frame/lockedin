@@ -14,6 +14,10 @@ const localsUser = "auth.user_id"
 // generated strict handlers receive.
 type ctxUser struct{}
 
+// ctxSession carries the session token of the request, for the few handlers that must tell the
+// session they were called from apart from the user's other ones.
+type ctxSession struct{}
+
 // RequireUser rejects requests without a valid session cookie (401) and stores the
 // user id for handlers. Unsafe methods also need a CSRF header bound to the session.
 func RequireUser(s *Sessions) fiber.Handler {
@@ -30,7 +34,7 @@ func RequireUser(s *Sessions) fiber.Handler {
 			return fiber.NewError(fiber.StatusForbidden, "auth.csrf")
 		}
 		c.Locals(localsUser, user)
-		c.SetContext(context.WithValue(c.Context(), ctxUser{}, user))
+		c.SetContext(context.WithValue(context.WithValue(c.Context(), ctxUser{}, user), ctxSession{}, token))
 		return c.Next()
 	}
 }
@@ -46,6 +50,12 @@ func UserID(c fiber.Ctx) uuid.UUID {
 func UserFromContext(ctx context.Context) uuid.UUID {
 	id, _ := ctx.Value(ctxUser{}).(uuid.UUID)
 	return id
+}
+
+// SessionFromContext returns the session token of the current request (set by RequireUser).
+func SessionFromContext(ctx context.Context) string {
+	t, _ := ctx.Value(ctxSession{}).(string)
+	return t
 }
 
 func safeMethod(m string) bool {

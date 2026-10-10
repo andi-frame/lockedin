@@ -90,6 +90,28 @@ export interface paths {
         patch: operations["updateMe"];
         trace?: never;
     };
+    "/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change my password
+         * @description Needs the current password. On success every other session of this user is ended and this
+         *     one stays signed in. Wrong attempts are limited per user (`auth.rate_limited`), so a stolen
+         *     session cannot be used to guess the current password.
+         */
+        post: operations["changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/today": {
         parameters: {
             query?: never;
@@ -711,7 +733,7 @@ export interface components {
          *
          *     | Status | Codes |
          *     |---|---|
-         *     | 400 | `validation.failed`, `auth.invalid_email`, `auth.invalid_name`, `auth.weak_password`, `pact.invalid_terms`, `pact.terms_members`, `proof.invalid_doc`, `checkin.reason_required`, `upload.size_mismatch` |
+         *     | 400 | `validation.failed`, `auth.invalid_email`, `auth.invalid_name`, `auth.weak_password`, `auth.wrong_password`, `pact.invalid_terms`, `pact.terms_members`, `proof.invalid_doc`, `checkin.reason_required`, `upload.size_mismatch` |
          *     | 401 | `auth.unauthenticated`, `auth.invalid_credentials` |
          *     | 403 | `auth.csrf`, `pact.not_backer`, `pact.not_doer`, `checkin.not_allowed` |
          *     | 404 | `not_found` (also for non-members) |
@@ -726,7 +748,7 @@ export interface components {
          *     | 503 | `upload.queue_busy`, `server.unavailable` |
          * @enum {string}
          */
-        ErrorCode: "validation.failed" | "not_found" | "method_not_allowed" | "request.too_large" | "request.unsupported_media_type" | "rate_limited" | "server.internal" | "server.unavailable" | "idempotency.in_progress" | "idempotency.key_reused" | "auth.unauthenticated" | "auth.csrf" | "auth.invalid_credentials" | "auth.email_taken" | "auth.invalid_email" | "auth.invalid_name" | "auth.weak_password" | "auth.rate_limited" | "pact.invalid_state" | "pact.invalid_terms" | "pact.terms_members" | "pact.terms_mismatch" | "pact.not_backer" | "pact.not_doer" | "pact.invite_invalid" | "pact.limit_reached" | "pact.start_passed" | "pact.signature_mismatch" | "pact.member_missing" | "proof.invalid_doc" | "checkin.invalid_transition" | "checkin.not_allowed" | "checkin.deadline_passed" | "checkin.reason_required" | "checkin.evidence_insufficient" | "checkin.override_limit" | "checkin.rest_limit" | "checkin.conflict" | "upload.too_large" | "upload.unsupported_type" | "upload.size_mismatch" | "upload.quota_exceeded" | "upload.queue_busy";
+        ErrorCode: "validation.failed" | "not_found" | "method_not_allowed" | "request.too_large" | "request.unsupported_media_type" | "rate_limited" | "server.internal" | "server.unavailable" | "idempotency.in_progress" | "idempotency.key_reused" | "auth.unauthenticated" | "auth.csrf" | "auth.invalid_credentials" | "auth.email_taken" | "auth.invalid_email" | "auth.invalid_name" | "auth.weak_password" | "auth.wrong_password" | "auth.rate_limited" | "pact.invalid_state" | "pact.invalid_terms" | "pact.terms_members" | "pact.terms_mismatch" | "pact.not_backer" | "pact.not_doer" | "pact.invite_invalid" | "pact.limit_reached" | "pact.start_passed" | "pact.signature_mismatch" | "pact.member_missing" | "proof.invalid_doc" | "checkin.invalid_transition" | "checkin.not_allowed" | "checkin.deadline_passed" | "checkin.reason_required" | "checkin.evidence_insufficient" | "checkin.override_limit" | "checkin.rest_limit" | "checkin.conflict" | "upload.too_large" | "upload.unsupported_type" | "upload.size_mismatch" | "upload.quota_exceeded" | "upload.queue_busy";
         FieldError: {
             /** @description JSON path of the offending field, for example `terms.members.<id>.penalty_per_miss`. */
             field: string;
@@ -767,6 +789,12 @@ export interface components {
             email_kinds_off: components["schemas"]["EmailKind"][];
             /** Format: date-time */
             created_at: string;
+        };
+        ChangePasswordRequest: {
+            /** Format: password */
+            current_password: string;
+            /** Format: password */
+            new_password: string;
         };
         /**
          * @description A kind of notification email that can be switched off.
@@ -1479,6 +1507,30 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["User"];
                 };
+            };
+            "4XX": components["responses"]["Problem"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Password changed; other sessions ended. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             "4XX": components["responses"]["Problem"];
             default: components["responses"]["Problem"];
